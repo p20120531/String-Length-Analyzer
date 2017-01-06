@@ -7,9 +7,9 @@
 #include <map>
 using namespace std;
 
-class DGMgr;
-class DG;
-class Node;
+class PTMgr;
+class PT;
+class PTNode;
 
 enum VarType {
     VAR_INT,
@@ -18,13 +18,14 @@ enum VarType {
 };
 
 enum OpType {
+    OPERAND,
     OP_NOT, OP_NEG, OP_EQ, OP_AND, OP_OR, OP_ITE,
-    OP_STRCONCATE, OP_STRLEN, OP_STRINRE, OP_STRREPLACE,
+    OP_STRCONCATE, OP_STRLEN, OP_STRINRE, OP_STRREPLACE, OP_STRTORE,
     OP_RECONCATE, OP_REUNION, OP_REINTER
 };
 
-typedef vector<DG*>           DGList;
-typedef vector<Node*>         NodeList;
+typedef vector<PT*>           PTList;
+typedef vector<PTNode*>       PTNodeList;
 typedef pair<string,VarType>  Str2Var;
 typedef map<string,VarType>   Str2VarMap;
 

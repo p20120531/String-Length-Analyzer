@@ -1,10 +1,10 @@
-all: main.o parse.o dg.o
-	g++ main.o parse.o dg.o -o dg
+all: main.o parse.o pt.o
+	g++ main.o parse.o pt.o -o pt
 main.o: main.cpp
 	g++ main.cpp -c
 parse.o: parse.cpp
 	g++ parse.cpp -c
-dg.o: dg.cpp
-	g++ dg.cpp -c
+dg.o: pt.cpp
+	g++ pt.cpp -c
 clean:
-	rm *.o dg
+	rm *.o pt

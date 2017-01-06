@@ -1,5 +1,5 @@
-#include "dgmgr.h"
-void DGMgr::parse(const char* fileName)
+#include "ptmgr.h"
+void PTMgr::parse(const char* fileName)
 {
     string line;
 
@@ -31,9 +31,10 @@ void DGMgr::parse(const char* fileName)
             if (lCnt == rCnt && !tokenList.empty()) {
                 lCnt = 0;
                 rCnt = 0;
-                handleConstraint(tokenList);
                 for (size_t i = 0,size = tokenList.size(); i < size; ++i)
-                    cout << tokenList[i] << endl;
+                    cout << tokenList[i];
+                cout << endl;
+                handleConstraint(tokenList);
                 tokenList.clear();
             }
         }
@@ -45,26 +46,44 @@ void DGMgr::parse(const char* fileName)
         cout << it->first << " => " << it->second << '\n';
 }
 
-void DGMgr::handleConstraint(const vector<string>& tokenList)
+void PTMgr::handleConstraint(const vector<string>& tokenList)
 {   
     if (tokenList[1] == "assert") {
-        DG* ndg = new DG();
-        ndg->setSinkNode(handleAssertion(tokenList,2,tokenList.size()-1));
-        _dgList.push_back(ndg);
+        PT* npt = new PT();
+        npt->setRootNode(handleAssertion(tokenList,2,tokenList.size()-2));
+        _ptList.push_back(npt);
     }
     else if (tokenList[1] == "declare-fun"){
         handleDeclare(tokenList);
     }
 }
 
-Node* DGMgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size_t epos)
+PTNode* PTMgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size_t epos)
 {
-    Node* newNode = new Node();
-    newNode->setOpType(tokenList[1]);
+    PTNode* newNode = NULL;
     
+    if (bpos != epos) newNode = new PTNode(tokenList[bpos+1]);
+    else              newNode = new PTNode(tokenList[bpos]);
+    
+    size_t l_lCnt = 0, l_rCnt = 0, l_bpos = bpos + 2;
+    for (size_t i = bpos+2; i < epos; ++i) {
+        
+        const string& cstr = tokenList[i];
+        
+        if      (cstr == "(") ++l_lCnt;
+        else if (cstr == ")") ++l_rCnt;
+        
+        if (l_lCnt == l_rCnt) {
+            newNode->_children.push_back(handleAssertion(tokenList,l_bpos,i));
+            l_bpos = i + 1;
+            l_lCnt = 0;
+            l_rCnt = 0; 
+        }
+    }
+    return newNode;
 }
 
-void DGMgr::handleDeclare(const vector<string>& tokenList)
+void PTMgr::handleDeclare(const vector<string>& tokenList)
 {
     if (tokenList[5] == "Int")
         _typeMap.insert(Str2Var(tokenList[2],VAR_INT));

@@ -31,18 +31,18 @@ class Node{
       getTypeByName(string);
 };
 
-supported operation    corresponding automaton operation
-   str.++               concate
-   str.len              collect at sinkNode
-   str.replace          replace
+supported operation    corresponding automaton operation    currently suporrted
+   str.++               concate                               Y
+   str.len              collect at sinkNode                   Y
+   str.replace          replace                               Y
    str.substr           substr
    str.prefixof         prefix
    str.suffixof         suffix
-   str.in.re            intersection
-   str.to.re            automaton itself
-   re.++                concate
-   re.union             union
-   re.inter             intersection
+   str.in.re            intersection                          Y
+   str.to.re            the corresponding automaton           Y
+   re.++                concate                               Y
+   re.union             union                                 Y
+   re.inter             intersection                          Y
    re.*                 Kleene star
    re.+                 plus
 

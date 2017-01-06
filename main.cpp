@@ -1,7 +1,8 @@
-#include "dgmgr.h"
-DGMgr* dgmgr = new DGMgr();
+#include "ptmgr.h"
+PTMgr* ptmgr = new PTMgr();
 int main(int argc, char* argv[]) {
-    dgmgr->parse(argv[1]);
+    ptmgr->parse(argv[1]);
+    ptmgr->print();
     return 0;
     /*
     string delimiter = " ",token,line;
