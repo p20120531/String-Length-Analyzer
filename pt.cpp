@@ -1,4 +1,4 @@
-#include "ptmgr.h"
+#include "mgr.h"
 
 PTNode::PTNode(const string& name) : _name(name)
 {
@@ -21,20 +21,20 @@ void PTNode::setOpType(const string& optype)
     else if (optype == "re.++"      ) _optype = OP_RECONCATE;
     else if (optype == "re.union"   ) _optype = OP_REUNION;
     else if (optype == "re.inter"   ) _optype = OP_REINTER;
-    else                              _optype = OPERAND;
+    else                              _optype = OP_NONE;
 }
 
-void PTMgr::print()
+void Mgr::print()
 {
-    for (size_t i = 0, size = _ptList.size(); i < size; ++i) {
-        cout << "PT " << i << endl;
-        _ptList[i]->print();
+    _pt->print(_indent);
+}
+
+void PT::print(const size_t& indent)
+{
+    for (size_t i = 0, size = _root->_children.size(); i < size; ++i) {
+        cout << _root->_name << " " << i + 1 << endl;
+        _root->_children[i]->print(indent,0);
     }
-}
-
-void PT::print()
-{
-    _root->print(_indent,0);
 }
 
 void PTNode::print(const size_t& indent,size_t level)

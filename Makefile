@@ -1,5 +1,5 @@
 all: main.o parse.o pt.o
-	g++ main.o parse.o pt.o -o pt
+	g++ main.o parse.o pt.o -o smt2dg
 main.o: main.cpp
 	g++ main.cpp -c
 parse.o: parse.cpp
@@ -7,4 +7,4 @@ parse.o: parse.cpp
 dg.o: pt.cpp
 	g++ pt.cpp -c
 clean:
-	rm *.o pt
+	rm *.o smt2dg

@@ -1,5 +1,5 @@
-#include "ptmgr.h"
-void PTMgr::parse(const char* fileName)
+#include "mgr.h"
+void Mgr::parse(const char* fileName)
 {
     string line;
 
@@ -46,19 +46,17 @@ void PTMgr::parse(const char* fileName)
         cout << it->first << " => " << it->second << '\n';
 }
 
-void PTMgr::handleConstraint(const vector<string>& tokenList)
+void Mgr::handleConstraint(const vector<string>& tokenList)
 {   
     if (tokenList[1] == "assert") {
-        PT* npt = new PT();
-        npt->setRootNode(handleAssertion(tokenList,2,tokenList.size()-2));
-        _ptList.push_back(npt);
+        addAssertion(handleAssertion(tokenList,2,tokenList.size()-2));
     }
     else if (tokenList[1] == "declare-fun"){
         handleDeclare(tokenList);
     }
 }
 
-PTNode* PTMgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size_t epos)
+PTNode* Mgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size_t epos)
 {
     PTNode* newNode = NULL;
     
@@ -83,7 +81,7 @@ PTNode* PTMgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size
     return newNode;
 }
 
-void PTMgr::handleDeclare(const vector<string>& tokenList)
+void Mgr::handleDeclare(const vector<string>& tokenList)
 {
     if (tokenList[5] == "Int")
         _typeMap.insert(Str2Var(tokenList[2],VAR_INT));
@@ -92,4 +90,8 @@ void PTMgr::handleDeclare(const vector<string>& tokenList)
     else if (tokenList[5] == "String")
         _typeMap.insert(Str2Var(tokenList[2],VAR_STRING));
 
+}
+void Mgr::addAssertion(PTNode* n)
+{
+    _pt->_root->_children.push_back(n);
 }
