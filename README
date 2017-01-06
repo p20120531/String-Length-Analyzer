@@ -1,39 +1,7 @@
-class DGMgr {
-   vector<DG*> _dgList;
-   public :
-      void parse(sting filename);
-};
-class DG {
-   Node* _sink;
-   public:
-      # postorder traversal of the dependency graph
-      Node* successor();
-      Node* getSinkNode();
-};
-class Node{
-   # for binary operator '=' , the two children is merged as one node 
-   # with _name == leftChild , _operator == rightChild
-   # ex : (= T1_2 (str.++ T2_2 T3_2)) => single node with 
-   #      _name == T1_2 , _operator == str.++ , _children == [T2_2,T3_2]
+   operation            automaton operation               supported
 
-   # for operator with boolean return type such as 'not' and 'str.in.re' ... etc , new name is introduced
-   # ex : (not (str.in.re X1 R1)) => two nodes with 
-          (bottum-up construction)
-          _name1 == NEW1 , _operator == str.in.re , _children = [X1,R1]
-          _name2 == NEW2 , _operator == not , _children = [NEW1]
-   
-   Type          _operator;
-   string        _name;
-   string        _regex;
-   vector<Node*> _children; 
-    
-   public :
-      getTypeByName(string);
-};
-
-supported operation    corresponding automaton operation    currently suporrted
    str.++               concate                               Y
-   str.len              collect at sinkNode                   Y
+   str.len              attach at the node                    Y
    str.replace          replace                               Y
    str.substr           substr
    str.prefixof         prefix
@@ -50,3 +18,4 @@ using 8-bit to encode ASCII as alphabet
 reserve 0000 0000 epsilon 
         0000 0001 <
         0000 0010 >
+        0000 0011 sigma*
