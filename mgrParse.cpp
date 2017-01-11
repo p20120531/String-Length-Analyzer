@@ -1,4 +1,5 @@
 #include "mgr.h"
+
 void Mgr::parse(const char* fileName)
 {
     string line;
@@ -60,8 +61,8 @@ PTNode* Mgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size_t
 {
     PTNode* newNode = NULL;
     
-    if (bpos != epos) newNode = new PTNode(tokenList[bpos+1]);
-    else              newNode = new PTNode(tokenList[bpos]);
+    if (bpos != epos) newNode = buildPTNode(tokenList[bpos+1]);
+    else              newNode = buildPTNode(tokenList[bpos]);
     
     size_t l_lCnt = 0, l_rCnt = 0, l_bpos = bpos + 2;
     for (size_t i = bpos+2; i < epos; ++i) {
@@ -72,7 +73,7 @@ PTNode* Mgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size_t
         else if (cstr == ")") ++l_rCnt;
         
         if (l_lCnt == l_rCnt) {
-            newNode->_children.push_back(handleAssertion(tokenList,l_bpos,i));
+            newNode->addChild(handleAssertion(tokenList,l_bpos,i));
             l_bpos = i + 1;
             l_lCnt = 0;
             l_rCnt = 0; 
@@ -91,7 +92,50 @@ void Mgr::handleDeclare(const vector<string>& tokenList)
         _typeMap.insert(Str2Var(tokenList[2],VAR_STRING));
 
 }
+
 void Mgr::addAssertion(PTNode* n)
 {
-    _pt->_root->_children.push_back(n);
+    _pt->addAssertion(n);
+}
+
+PTNode* Mgr::buildPTNode(const string& name)
+{
+    if      (name == "not"        ) return new PTNotNode(name);
+    else if (name == "+"          ) return new PTPlusNode(name);
+    else if (name == "-"          ) return new PTNegNode(name);
+    else if (name == "="          ) return new PTEqNode(name);
+    else if (name == "and"        ) return new PTAndNode(name);
+    else if (name == "or"         ) return new PTOrNode(name);
+    else if (name == "ite"        ) return new PTIteNode(name);
+    else if (name == "str.++"     ) return new PTStrConcateNode(name);
+    else if (name == "str.len"    ) return new PTStrLenNode(name);
+    else if (name == "str.in.re"  ) return new PTStrInReNode(name);
+    else if (name == "str.replace") return new PTStrReplaceNode(name);
+    else if (name == "str.to.re"  ) return new PTStrToReNode(name);
+    else if (name == "re.++"      ) return new PTReConcateNode(name);
+    else if (name == "re.union"   ) return new PTReUnionNode(name);
+    else if (name == "re.inter"   ) return new PTReInterNode(name);
+    else if (name[0] == '\"'      ) return new PTConstStringNode(name);
+    else {
+        Str2VarMap::iterator it = _typeMap.find(name);
+        if (it != _typeMap.end()) {
+            const Type& type = it->second;
+            switch (type) {
+                case VAR_INT :
+                    return new PTVarIntNode(name);
+                    break;
+                case VAR_BOOL :
+                    return new PTVarBoolNode(name);
+                    break;
+                case VAR_STRING:
+                    return new PTVarStringNode(name);
+                    break;
+                default :
+                    break;
+            }
+        }
+        else if (name[0] == '\"') return new PTConstStringNode(name);
+        else                      return new PTConstIntNode(name);    
+        
+    }
 }

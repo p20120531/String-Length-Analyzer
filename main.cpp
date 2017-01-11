@@ -2,9 +2,14 @@
 #include <bitset>
 Mgr* mgr = new Mgr();
 int main(int argc, char* argv[]) {
+    //for (size_t i =0;i<50;++i)
+    //    cout << mgr->uint2str(i) << endl;
+    
     mgr->parse(argv[1]);
-    mgr->print();
-
+    mgr->printPT();
+    mgr->buildDG();
+    mgr->printDG();
+    
     /*
     for (int i = 0; i< 4;++i) {
         string s(new char(i));
