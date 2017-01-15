@@ -142,6 +142,13 @@ class PTStrInReNode : public PTNode {
         DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
 };
 
+class PTStrNotInReNode : public PTNode {
+    public :
+        PTStrNotInReNode() {}
+        PTStrNotInReNode(const string& name) : PTNode(name,1) {}
+        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+};
+
 class PTStrReplaceNode : public PTNode {
     public :
         PTStrReplaceNode() {}

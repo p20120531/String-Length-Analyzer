@@ -10,6 +10,7 @@ class PT {
         PTNode*         getRootNode() const {return _root;}
         void            print(const size_t&) const ;
         void            addAssertion(PTNode*);
+        void            mergeNotAndStrInRe();
     private :
         PTNode*         _root;
         PTNode*         _cur;

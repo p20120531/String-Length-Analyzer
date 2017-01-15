@@ -1,5 +1,9 @@
 #include "mgr.h"
-
+void Mgr::printPT() const
+{
+    _pt->mergeNotAndStrInRe();
+    _pt->print(_indent);
+}
 void Mgr::parse(const char* fileName)
 {
     string line;
@@ -76,7 +80,7 @@ PTNode* Mgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size_t
             newNode->addChild(handleAssertion(tokenList,l_bpos,i));
             l_bpos = i + 1;
             l_lCnt = 0;
-            l_rCnt = 0; 
+            l_rCnt = 0;
         }
     }
     return newNode;

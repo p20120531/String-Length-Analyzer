@@ -1,21 +1,33 @@
-   operation            automaton operation               supported
+SMTLIB Language   Parameter   Return Type   Automaton Operation
 
-   str.++               concate                               Y
-   str.len              attach at the node                    Y
-   str.replace          replace                               Y
-   str.substr           substr
-   str.prefixof         prefix
-   str.suffixof         suffix
-   str.in.re            intersection                          Y
-   str.to.re            the corresponding automaton           Y
-   re.++                concate                               Y
-   re.union             union                                 Y
-   re.inter             intersection                          Y
-   re.*                 Kleene star
-   re.+                 plus
+str.in.re         X R         bool          intersect
+str.len           X           int           encode length constraint
+str.++            X1 ... Xn   string        concate
+str.replace       X Y Z       string        replace
+str.to.re         X           regex         the corresponding automaton
+re.++             R1 ... Rn   regex         concate
+re.union          R1 ... Rn   regex         union
+re.inter          R1 ... Rn   regex         intersect
+re.*              R           regex         Kleene star
+re.+              R           regex         plus
+--------------------------------------------upon supported-------------
+str.contains      X Y         bool
+str.prefixof      X Y         bool
+str.suffixof      X Y         bool
+str.indexof       X Y N       int
+str.to.int        X           int
+str.to.u16        X           int
+str.to.u32        X           int
+str.substr        X N M       string
+int.to.str        N           string
+u16.to.str        N           string
+u32.to.str        N           string
+str.at            X N         string
+re.opt            R           regex
+
+* XYZ for string variable , R for regular expression , NM for integer variable
 
 using 8-bit to encode ASCII as alphabet
 reserve 0000 0000 epsilon 
         0000 0001 <
         0000 0010 >
-        0000 0011 sigma*

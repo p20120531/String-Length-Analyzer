@@ -6,14 +6,13 @@
 
 class Mgr{
     public :
-        Mgr             (): _pt(new PT("assert")), _indent(3), _gflag(0), _newStrCnt(0), _newReCnt(0) {}
+        Mgr             (): _pt(new PT("assert")), _indent(3), _dgFlag(10), _newDGNodeCnt(0) {}
         void            parse(const char*);
         void            buildDG();
         void            writeDG(const string&);
-        void            printPT()const{_pt->print(_indent);}
+        void            printPT()const;
         void            printDG()const;
-        string          getNewNodeName(const Type&);
-        string          uint2str(size_t cnt);
+        string          getNewNodeName();
     private :
         // for parsing
         void            handleConstraint(const vector<string>&);
@@ -24,14 +23,12 @@ class Mgr{
         
         // for building dependency graph
         void            buildDG_r(PTNodeQueue&,Str2DGNodeMap&);
-        //string          uint2str(size_t cnt);
 
         PT*             _pt;
         DGList          _dgList;
         Str2VarMap      _typeMap;
         size_t          _indent;
-        size_t          _gflag;
-        size_t          _newStrCnt;
-        size_t          _newReCnt;
+        size_t          _dgFlag;
+        size_t          _newDGNodeCnt;
 };
 #endif
