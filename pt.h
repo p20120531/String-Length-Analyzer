@@ -13,6 +13,5 @@ class PT {
         void            mergeNotAndStrInRe();
     private :
         PTNode*         _root;
-        PTNode*         _cur;
 };
 #endif

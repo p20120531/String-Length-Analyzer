@@ -1,7 +1,7 @@
 #include "ptnode.h"
 #include "dg.h"
 #include "mgr.h"
-#define _PTNODE_NDEBUG_
+//#define _PTNODE_NDEBUG_
 
 extern Mgr* mgr;
 
@@ -237,7 +237,7 @@ DGNode* PTEqNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
         return right; 
     }
     else {
-        cout << " [=] 2 operand are not VAR_STRING" << endl;
+        cout << " WARNING: [=] two operands are not VAR_STRING" << endl;
     }
     /*
     //TODO: need to consider symmerty

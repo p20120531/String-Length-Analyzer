@@ -89,9 +89,6 @@ void DGNode::printType() const
         case INT_NEG:
             cout << "INT_NEG";
             break;
-        case AUT_LEAF:
-            cout << "AUT_LEAF";
-            break;
         case AUT_CONCATE:
             cout << "AUT_CONCATE";
             break;
@@ -177,7 +174,6 @@ void DGNode::merge(const size_t& gflag)
             if ((*it)->_type == VAR_STRING) {
                 assert(((*it)->_children.empty()));
                 //FIXME
-                delete *it;
                 _children.erase(it);
                 --it;
             }
@@ -187,12 +183,20 @@ void DGNode::merge(const size_t& gflag)
         }
         if (cnt == 1) {
             DGNode* n = _children[0];
+            if (n->_type == CONST_STRING) {
+                _type = CONST_STRING; 
+                _regex = n->_regex;
+                _children.clear();
+            }
+                else {
+                _type = n->_type;
+                _children.clear();
+                _children = n->_children;
+            }
+        }
+        else if (cnt == 0) {
+            _type = VAR_STRING;
             _children.clear();
-            _type = n->_type;
-            _regex= n->_regex;
-            //FIXME
-            _length |= n->_length;
-            _children = n->_children;
         }
     }
     if (_flag != gflag) _flag = gflag;

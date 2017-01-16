@@ -16,11 +16,7 @@ void Mgr::printDG() const
         _dgList[i]->print();
         cout << endl;
         
-        /*
-        _dgList[i]->merge();
-        _dgList[i]->print();
-        cout << endl;
-        */
+        
     }
 }
 

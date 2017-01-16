@@ -8,32 +8,32 @@ class DGNode {
     public :
         DGNode () {}
         DGNode (const string& name,const Type& type,const bool& isStringVar) {
-            _type = type;
-            _name = name;
-            _length = 0;
-            _isSink = 1;
+            _type        = type;
+            _name        = name;
+            _length      = 0;
+            _isSink      = 1;
             _isStringVar = isStringVar;
-            _leader = this;
+            _leader      = this;
         }
         DGNode (const string& name,const string& regex) {
-            _type   = CONST_STRING;
-            _name   = name;
-            _regex  = regex;
-            _length = 0;
-            _isSink = 1;
+            _type        = CONST_STRING;
+            _name        = name;
+            _regex       = regex;
+            _length      = 0;
+            _isSink      = 1;
             _isStringVar = 0;
-            _leader = this;
+            _leader      = this;
         }
         DGNode (const string& name,DGNode* n) {
-            _type     = n->_type;
-            _name     = name;
-            _regex    = n->_regex;
-            _length   = n->_length;
-            _isSink   = 0;
-            _isStringVar = n->_isStringVar;
-            _leader   = this;
-            _children = n->_children;
-            _flag     = n->_flag;
+            _type        = n->_type;
+            _name        = name;
+            _regex       = n->_regex;
+            _length      = n->_length;
+            _isSink      = 0;
+            _isStringVar = 0;
+            _leader      = this;
+            _children    = n->_children;
+            _flag        = n->_flag;
         }
         const Type&    getType() {return _type;}
         const string&  getName() {return _name;}
@@ -74,9 +74,9 @@ class DG {
     friend class Mgr;
     public :
         DG  (DGNode* sink) {
-            _sink = sink;
+            _sink   = sink;
             _indent = 3;
-            _flag = 0;
+            _flag   = 0;
         }
         DGNode* successor();
         DGNode* getSinkNode() {return _sink;}
