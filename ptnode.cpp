@@ -4,6 +4,9 @@
 //#define _PTNODE_NDEBUG_
 
 extern Mgr* mgr;
+PT*& pt = mgr->getPT();
+PTNodeQueue& ptq = pt->getPTQ();
+Str2DGNodeMap& dgMap = pt->getDGMap();
 
 //-------------base class-----------
 
@@ -96,7 +99,7 @@ void PTIteNode::print(const size_t& indent , size_t level) const
 
 //-------------------buildDG------------------
 
-DGNode* PTVarIntNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTVarIntNode::buildDG()
 {
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " VAR_INT" << endl;
@@ -104,7 +107,7 @@ DGNode* PTVarIntNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return 0;
 }
 
-DGNode* PTVarBoolNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTVarBoolNode::buildDG()
 {
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " VAR_BOOL" << endl;
@@ -112,7 +115,7 @@ DGNode* PTVarBoolNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return 0;
 }
 
-DGNode* PTVarStringNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTVarStringNode::buildDG()
 {
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " VAR_STRING";
@@ -134,7 +137,7 @@ DGNode* PTVarStringNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     }
 }
 
-DGNode* PTConstIntNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTConstIntNode::buildDG()
 {
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " CONST_INT" << endl;
@@ -142,7 +145,7 @@ DGNode* PTConstIntNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return 0;
 }
 
-DGNode* PTConstBoolNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTConstBoolNode::buildDG()
 {
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " CONST_BOOL" << endl;
@@ -150,9 +153,9 @@ DGNode* PTConstBoolNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return 0;
 }
 
-DGNode* PTConstStringNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTConstStringNode::buildDG()
 {
-    string newName = mgr->getNewNodeName();
+    string newName = pt->getNewNodeName();
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " CONST_STRING => create new node name=" << newName << endl;
     #endif
@@ -161,7 +164,7 @@ DGNode* PTConstStringNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return newNode;
 }
 
-DGNode* PTNotNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTNotNode::buildDG()
 {
     // irrelavent to automaton operation
     #ifndef _PTNODE_NDEBUG_
@@ -170,7 +173,7 @@ DGNode* PTNotNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return 0;
 }
 
-DGNode* PTPlusNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTPlusNode::buildDG()
 {
     // irrelavent to automaton operation
     #ifndef _PTNODE_NDEBUG_
@@ -179,7 +182,7 @@ DGNode* PTPlusNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return 0;
 }
 
-DGNode* PTNegNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTNegNode::buildDG()
 {
     // irrelavent to automaton operation
     #ifndef _PTNODE_NDEBUG_
@@ -188,11 +191,11 @@ DGNode* PTNegNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return 0;
 }
 
-DGNode* PTEqNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTEqNode::buildDG()
 {
     assert((_children.size() == 2));
-    DGNode* left  = _children[0]->buildDG(ptq,dgMap);
-    DGNode* right = _children[1]->buildDG(ptq,dgMap);
+    DGNode* left  = _children[0]->buildDG();
+    DGNode* right = _children[1]->buildDG();
     
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " => left=";
@@ -204,8 +207,8 @@ DGNode* PTEqNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     #endif
 
     if (!left || !right) return 0;
-    string newLeftName  = mgr->getNewNodeName();
-    string newRightName = mgr->getNewNodeName();
+    string newLeftName  = pt->getNewNodeName();
+    string newRightName = pt->getNewNodeName();
     #ifndef _PTNODE_NDEBUG_
         cout << " newLeftName=" << newLeftName
              << " newRightName=" << newRightName;
@@ -273,7 +276,7 @@ DGNode* PTEqNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     */
 }
 
-DGNode* PTAndNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTAndNode::buildDG()
 {
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " => return 0" << endl;
@@ -281,7 +284,7 @@ DGNode* PTAndNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return 0;
 }
 
-DGNode* PTOrNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTOrNode::buildDG()
 {
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " => return 0" << endl;
@@ -289,7 +292,7 @@ DGNode* PTOrNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return 0;
 }
 
-DGNode* PTIteNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTIteNode::buildDG()
 {
     assert((_children.size() == 3));
     #ifndef _PTNODE_NDEBUG_
@@ -302,16 +305,16 @@ DGNode* PTIteNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return 0;
 }
 
-DGNode* PTStrConcateNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTStrConcateNode::buildDG()
 {
-    string newName = mgr->getNewNodeName();
+    string newName = pt->getNewNodeName();
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " => create new node name=" << newName << endl;
     #endif
     DGNode* newNode = new DGNode(newName,AUT_CONCATE,0);
     dgMap.insert(Str2DGNode(newName,newNode));
     for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
-        DGNode* cur = (*it)->buildDG(ptq,dgMap);
+        DGNode* cur = (*it)->buildDG();
         assert(cur);
         cur->setNotSink();
         newNode->addChild(cur);
@@ -319,10 +322,10 @@ DGNode* PTStrConcateNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return newNode;
 }
 
-DGNode* PTStrLenNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTStrLenNode::buildDG()
 {
     assert((_children.size() == 1));
-    DGNode* cur = _children[0]->buildDG(ptq,dgMap);
+    DGNode* cur = _children[0]->buildDG();
     cur->setLength();
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " => child=" << cur->getName() << " set length" << endl;
@@ -330,14 +333,14 @@ DGNode* PTStrLenNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return cur;
 }
 
-DGNode* PTStrInReNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTStrInReNode::buildDG()
 {
     assert((_children.size() == 2));
-    DGNode* left  = _children[0]->buildDG(ptq,dgMap);
-    DGNode* right = _children[1]->buildDG(ptq,dgMap);
+    DGNode* left  = _children[0]->buildDG();
+    DGNode* right = _children[1]->buildDG();
     
     assert((left && right));
-    string newLeftName = mgr->getNewNodeName();
+    string newLeftName = pt->getNewNodeName();
     #ifndef _PTNODE_NDEBUG_
         //cout << _name << " => left=" << (left? left->getName():"0")
         //              << " right=" << (right? right->getName():"0");
@@ -376,7 +379,7 @@ DGNode* PTStrInReNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     else {
         cout << _name << endl;
         assert((left->getType() == OP_STRCONCATE) || (left->getType() == OP_STRREPLACE));
-        string newName = mgr->getNewNodeName();
+        string newName = pt->getNewNodeName();
         DGNode* newNode = new DGNode(newName,OP_REINTER);
         dgMap.insert(Str2DGNode(newName,newNode));
         left->setNotSink();
@@ -391,15 +394,15 @@ DGNode* PTStrInReNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     */
 }
 
-DGNode* PTStrNotInReNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTStrNotInReNode::buildDG()
 {
     assert((_children.size() == 2));
-    DGNode* left  = _children[0]->buildDG(ptq,dgMap);
-    DGNode* right = _children[1]->buildDG(ptq,dgMap);
+    DGNode* left  = _children[0]->buildDG();
+    DGNode* right = _children[1]->buildDG();
     
     assert((left && right));
-    string newCompleName = mgr->getNewNodeName();
-    string newLeftName   = mgr->getNewNodeName();
+    string newCompleName = pt->getNewNodeName();
+    string newLeftName   = pt->getNewNodeName();
     #ifndef _PTNODE_NDEBUG_
         //cout << _name << " => left=" << (left? left->getName():"0")
         //              << " right=" << (right? right->getName():"0");
@@ -421,9 +424,9 @@ DGNode* PTStrNotInReNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return left;
 }
 
-DGNode* PTStrReplaceNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTStrReplaceNode::buildDG()
 {
-    string newName = mgr->getNewNodeName();
+    string newName = pt->getNewNodeName();
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " => create new node name=" << newName << endl;
     #endif
@@ -431,7 +434,7 @@ DGNode* PTStrReplaceNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     DGNode* newNode = new DGNode(newName,AUT_REPLACE,0);
     dgMap.insert(Str2DGNode(newName,newNode));
     for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
-        DGNode* cur = (*it)->buildDG(ptq,dgMap);
+        DGNode* cur = (*it)->buildDG();
         assert(cur);
         cur->setNotSink();
         newNode->addChild(cur);
@@ -439,25 +442,25 @@ DGNode* PTStrReplaceNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return newNode;
 }
 
-DGNode* PTStrToReNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTStrToReNode::buildDG()
 {
     assert((_children.size() == 1));
     #ifndef _DEBUG_
         cout << _name << " => return child=" << _children[0]->getName() << endl;
     #endif
-    return _children[0]->buildDG(ptq,dgMap);
+    return _children[0]->buildDG();
 }
 
-DGNode* PTReConcateNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTReConcateNode::buildDG()
 {
-    string newName = mgr->getNewNodeName();
+    string newName = pt->getNewNodeName();
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " => create new node name=" << newName << endl;
     #endif
     DGNode* newNode = new DGNode(newName,AUT_CONCATE,0);
     dgMap.insert(Str2DGNode(newName,newNode));
     for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
-        DGNode* cur = (*it)->buildDG(ptq,dgMap);
+        DGNode* cur = (*it)->buildDG();
         assert(cur);
         cur->setNotSink();
         newNode->addChild(cur);
@@ -465,16 +468,16 @@ DGNode* PTReConcateNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return newNode;
 }
 
-DGNode* PTReUnionNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTReUnionNode::buildDG()
 {
-    string newName = mgr->getNewNodeName();
+    string newName = pt->getNewNodeName();
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " => create new node name=" << newName << endl;
     #endif
     DGNode* newNode = new DGNode(newName,AUT_UNION,0);
     dgMap.insert(Str2DGNode(newName,newNode));
     for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
-        DGNode* cur = (*it)->buildDG(ptq,dgMap);
+        DGNode* cur = (*it)->buildDG();
         assert(cur);
         cur->setNotSink();
         newNode->addChild(cur);
@@ -482,16 +485,16 @@ DGNode* PTReUnionNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
     return newNode;
 }
 
-DGNode* PTReInterNode::buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap )
+DGNode* PTReInterNode::buildDG()
 {
-    string newName = mgr->getNewNodeName();
+    string newName = pt->getNewNodeName();
     #ifndef _PTNODE_NDEBUG_
         cout << _name << " => create new node name=" << newName << endl;
     #endif
     DGNode* newNode = new DGNode(newName,AUT_INTER,0);
     dgMap.insert(Str2DGNode(newName,newNode));
     for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
-        DGNode* cur = (*it)->buildDG(ptq,dgMap);
+        DGNode* cur = (*it)->buildDG();
         assert(cur);
         cur->setNotSink();
         newNode->addChild(cur);

@@ -2,11 +2,16 @@
 void Mgr::printPT() const
 {
     _pt->mergeNotAndStrInRe();
-    _pt->print(_indent);
+    _pt->print();
 }
+
 void Mgr::parse(const char* fileName)
 {
     string line;
+
+    string fstr  = string(fileName);
+    _path = fstr.substr(0,fstr.find_last_of(".")) + "/";
+    cout << "_path = " << _path << endl;
 
     ifstream file(fileName);
     if (file) {

@@ -13,7 +13,7 @@ class PTNode {
         
         void            setName(const string&);
         void            addChild(PTNode*);
-        virtual DGNode* buildDG(PTNodeQueue&,Str2DGNodeMap&) = 0;
+        virtual DGNode* buildDG() = 0;
         
         virtual void    print(const size_t&,size_t) const ;
     protected:
@@ -28,7 +28,7 @@ class PTVarIntNode : public PTNode {
         PTVarIntNode() {}
         PTVarIntNode(const string& name) : PTNode(name,0) {}
         void print(const size_t& , size_t) const ;
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTVarBoolNode : public PTNode {
@@ -36,7 +36,7 @@ class PTVarBoolNode : public PTNode {
         PTVarBoolNode() {}
         PTVarBoolNode(const string& name) : PTNode(name,0) {}
         void print(const size_t& , size_t) const ;
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTVarStringNode : public PTNode {
@@ -44,7 +44,7 @@ class PTVarStringNode : public PTNode {
         PTVarStringNode() {}
         PTVarStringNode(const string& name) : PTNode(name,0) {}
         void print(const size_t& , size_t) const; 
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTConstIntNode : public PTNode {
@@ -52,7 +52,7 @@ class PTConstIntNode : public PTNode {
         PTConstIntNode() {}
         PTConstIntNode(const string& name) : PTNode(name,0) {}
         void print(const size_t& , size_t) const ;
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTConstBoolNode : public PTNode {
@@ -60,7 +60,7 @@ class PTConstBoolNode : public PTNode {
         PTConstBoolNode() {}
         PTConstBoolNode(const string& name) : PTNode(name,0) {}
         void print(const size_t& , size_t) const ;
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTConstStringNode : public PTNode {
@@ -68,49 +68,49 @@ class PTConstStringNode : public PTNode {
         PTConstStringNode() {}
         PTConstStringNode(const string& name) : PTNode(name,0) {}
         void print(const size_t& , size_t) const;
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTNotNode : public PTNode {
     public :
         PTNotNode() {}
         PTNotNode(const string& name) : PTNode(name,0) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTPlusNode : public PTNode {
     public :
         PTPlusNode() {}
         PTPlusNode(const string& name) : PTNode(name,0) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTNegNode : public PTNode {
     public :
         PTNegNode() {}
         PTNegNode(const string& name) : PTNode(name,0) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTEqNode : public PTNode {
     public :
         PTEqNode() {}
         PTEqNode(const string& name) : PTNode(name,0) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTAndNode : public PTNode {
     public :
         PTAndNode() {}
         PTAndNode(const string& name) : PTNode(name,0) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTOrNode : public PTNode {
     public :
         PTOrNode() {}
         PTOrNode(const string& name) : PTNode(name,0) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTIteNode : public PTNode {
@@ -118,70 +118,70 @@ class PTIteNode : public PTNode {
         PTIteNode() {}
         PTIteNode(const string& name) : PTNode(name,0) {}
         void print(const size_t& , size_t) const ;
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTStrConcateNode : public PTNode {
     public :
         PTStrConcateNode() {}
         PTStrConcateNode(const string& name) : PTNode(name,1) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTStrLenNode : public PTNode {
     public :
         PTStrLenNode() {}
         PTStrLenNode(const string& name) : PTNode(name,1) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTStrInReNode : public PTNode {
     public :
         PTStrInReNode() {}
         PTStrInReNode(const string& name) : PTNode(name,1) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTStrNotInReNode : public PTNode {
     public :
         PTStrNotInReNode() {}
         PTStrNotInReNode(const string& name) : PTNode(name,1) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTStrReplaceNode : public PTNode {
     public :
         PTStrReplaceNode() {}
         PTStrReplaceNode(const string& name) : PTNode(name,1) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTStrToReNode : public PTNode {
     public :
         PTStrToReNode() {}
         PTStrToReNode(const string& name) : PTNode(name,1) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTReConcateNode : public PTNode {
     public :
         PTReConcateNode() {}
         PTReConcateNode(const string& name) : PTNode(name,1) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTReUnionNode : public PTNode {
     public :
         PTReUnionNode() {}
         PTReUnionNode(const string& name) : PTNode(name,1) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 class PTReInterNode : public PTNode {
     public :
         PTReInterNode() {}
         PTReInterNode(const string& name) : PTNode(name,1) {}
-        DGNode* buildDG( PTNodeQueue& ptq , Str2DGNodeMap& dgMap );
+        DGNode* buildDG();
 };
 
 #endif

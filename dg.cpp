@@ -9,7 +9,7 @@ string DGNode::getRegex()
     }
     else if(_type == AUT_COMPLE) {
         assert((_children.size() == 1));
-        return "?!" + _children[0]->getRegex();
+        return "\\~(" + _children[0]->getRegex() + ")";
     }
     else if(_type == AUT_CONCATE) {
         string s;
@@ -27,23 +27,6 @@ DGNode* DGNode::findLeader()
     if (_leader != this) 
         _leader = _leader->findLeader();
     return _leader;
-}
-//----------------merge----------------
-// VAR_STRING merges OP_STR
-void DGNode::mergeVSOS(DGNode* n)
-{
-    _type = n->_type;
-    assert(_children.empty());
-    for (size_t i = 0, size = n->_children.size(); i < size; ++i)
-        _children.push_back(n->_children[i]);
-    
-}
-// VAR_STRING merges CONST_STRING
-void DGNode::mergeVSCS(DGNode* n)
-{
-    _type   = CONST_STRING;
-    _regex  = n->_regex;
-    _isSink = 0;
 }
 
 //-----------------print---------------
@@ -105,6 +88,7 @@ void DGNode::printType() const
             break;
     }
 }
+
 void DGNode::printDBG(const size_t& indent,size_t level) const
 {
     cout << string(indent*level,' ') 
@@ -115,53 +99,27 @@ void DGNode::printDBG(const size_t& indent,size_t level) const
     for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it)
         (*it)->printDBG(indent,level+1);
 }
-void DG::printDBG() const
+
+void DGNode::writeCmdFile(ofstream& cmdFile,ofstream& autFile) const
 {
-    _sink->printDBG(_indent,0);
-}
-void DGNode::print() const
-{
-    string s;
     for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it)
         if ((*it)->_type != CONST_STRING && (*it)->_type != VAR_STRING && (*it)->_type != AUT_COMPLE) {
-            (*it)->print();
+            (*it)->writeCmdFile(cmdFile,autFile);
         }
-    for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it) {
-        if ((*it)->_type == CONST_STRING || (*it)->_type == VAR_STRING || (*it)->_type == AUT_COMPLE) {
-            if ((*it)->_length)
-                s += "addlen " + (*it)->_name + ".blif = " + (*it)->getRegex() 
-                   + "\nwrite "+ (*it)->_name + "_length.blif\n";
-        }
-    }
     
-    if     (_type == AUT_CONCATE) s += "concate";  
-    else if(_type == AUT_REPLACE) s += "replace";
-    else if(_type == AUT_UNION)   s += "union";
-    else if(_type == AUT_INTER)   s += "intersect";
+    if     (_type == AUT_CONCATE) cmdFile << "concate";  
+    else if(_type == AUT_REPLACE) cmdFile << "replace";
+    else if(_type == AUT_UNION)   cmdFile << "union";
+    else if(_type == AUT_INTER)   cmdFile << "intersect";
     for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it) {
-        s += " ";
-        if ((*it)->_length)
-            s += (*it)->_name + "_length.blif";
-        else {
-            if ((*it)->_type == CONST_STRING || (*it)->_type == VAR_STRING || (*it)->_type == AUT_COMPLE) {
-                s += (*it)->_name + ".blif = " + (*it)->getRegex();
-            }
-            else {
-                s += (*it)->_name + ".blif";
-            }
+        cmdFile << " " << (*it)->_name << ".vmt";
+        if ((*it)->_type == CONST_STRING || (*it)->_type == VAR_STRING || (*it)->_type == AUT_COMPLE) {
+            autFile << (*it)->_name << " " << (*it)->getRegex() << endl;
         }
     }
-    if (_length)
-        s += "\naddlen\nwrite " + _name + "_legnth.blif\n";
-    else
-        s += "\nwrite " + _name + ".blif\n";
-    cout << s;
+    cmdFile << "\nwrite " << _name << endl;
 }
 
-void DG::print() const
-{
-    _sink->print();
-}
 //-----------------merge-------------
 void DGNode::merge(const size_t& gflag)
 {
@@ -184,11 +142,12 @@ void DGNode::merge(const size_t& gflag)
         if (cnt == 1) {
             DGNode* n = _children[0];
             if (n->_type == CONST_STRING) {
+                assert((n->_children.size()==0));
                 _type = CONST_STRING; 
                 _regex = n->_regex;
                 _children.clear();
             }
-                else {
+            else {
                 _type = n->_type;
                 _children.clear();
                 _children = n->_children;
@@ -201,8 +160,4 @@ void DGNode::merge(const size_t& gflag)
     }
     if (_flag != gflag) _flag = gflag;
     else                cout << "this DG is a DAG : at node " << _name << endl;
-}
-void DG::merge()
-{
-    _sink->merge(++_flag);
 }

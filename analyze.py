@@ -30,13 +30,14 @@ reserveD= { reserve[i]:i for i in range(len(reserve))}
 path  = sys.argv[1]
 files = [join(path,f) for f in listdir(path) if isfile(join(path, f))]
 #files = ['SMTLIB/sat/small/1001.corecstrs.readable.smt2']
+orCnt = 0
 untracked = set()
 for fName in files :
     var = set()
     with open(fName) as f:
         for line in f :
             #print 'l =' ,line
-            w = re.split('\s|\(|\)|',line)
+            w = re.split('[\s\(\)]',line)
             #print 'w = ',w
             v = []
             for word in w :
@@ -46,13 +47,16 @@ for fName in files :
             if v and v[0] == 'declare-fun' :
                 var.add(v[1])
                 continue
-            for w in v :
+            for i in range(len(v)) :
+                w = v[i]
                 if w in supS :
                     supA[supD[w]] = 1
                 elif w in unsupS :
                     unsupA[unsupD[w]] = 1
                 elif w in boolopS :
                     boolopA[boolopD[w]] = 1
+                    if w == 'not' and v[i+1] == 'and':
+                        orCnt += 1
                 elif w in intopS :
                     intopA[intopD[w]] = 1
                 elif w in reserveS:
@@ -79,6 +83,8 @@ for i in range(len(boolop)) :
         print '%-30s     1' %(boolop[i])
     else :
         print '%-30s     0' %(boolop[i])
+print '%-30s     %d' %('or*',orCnt)
+
 print '\n%-30s appears? 1:0' %('int operator')
 for i in range(len(intop)) :
     if intopA[i] == 1 :

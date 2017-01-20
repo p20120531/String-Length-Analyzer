@@ -8,6 +8,7 @@
 #include <map>
 #include <queue>
 #include <assert.h>
+#include <stdlib.h>
 using namespace std;
 
 class Mgr;
@@ -15,6 +16,7 @@ class PT;
 class PTNode;
 class DG;
 class DGNode;
+class PredicateNode;
 
 enum Type {
     VAR_INT, VAR_BOOL, VAR_STRING,
@@ -32,6 +34,8 @@ typedef vector<DG*>           DGList;
 typedef vector<DGNode*>       DGNodeList;
 typedef pair<string,Type>     Str2Var;
 typedef map<string,Type>      Str2VarMap;
+typedef pair<string,size_t>   Str2Uint;
+typedef map<string,size_t>    Str2UintMap;
 typedef pair<string,DGNode*>  Str2DGNode;
 typedef map<string,DGNode*>   Str2DGNodeMap;
 typedef queue<PTNode*>        PTNodeQueue;

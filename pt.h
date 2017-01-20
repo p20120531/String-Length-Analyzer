@@ -5,13 +5,25 @@
 class PT {
     friend class Mgr;
     public :
-        PT              () {};
-        PT              (const string& name): _root(new PTAndNode(name)) {}
+        PT              (const string& name,size_t& indent,size_t& gflag): 
+                        _root(new PTAndNode(name)),_indent(indent),_gflag(gflag) {
+            _newDGNodeCnt = 0;
+        }
+        
         PTNode*         getRootNode() const {return _root;}
-        void            print(const size_t&) const ;
+        PTNodeQueue&    getPTQ() {return _ptq;}
+        Str2DGNodeMap&  getDGMap() {return _dgMap;}
+        string          getNewNodeName();
+        
+        void            print() const ;
         void            addAssertion(PTNode*);
         void            mergeNotAndStrInRe();
     private :
         PTNode*         _root;
+        PTNodeQueue     _ptq;
+        Str2DGNodeMap   _dgMap;
+        size_t&         _indent;
+        size_t&         _gflag;
+        size_t          _newDGNodeCnt;
 };
 #endif

@@ -13,45 +13,33 @@ void Mgr::printDG() const
         cout << "printDBG" << endl;
         _dgList[i]->printDBG();
         cout << "print" << endl;
-        _dgList[i]->print();
-        cout << endl;
-        
-        
+        _dgList[i]->writeCmdFile();
+        cout << endl; 
     }
-}
-
-string Mgr::getNewNodeName()
-{
-    stringstream ss;
-    ss << ++_newDGNodeCnt;
-    return string("NEW_DGNode_") + ss.str();
 }
 
 void Mgr::buildDG()
 {
-    PTNodeQueue ptq;
+    ++_gflag;
+    size_t dgIdx = 0;
+    PTNodeQueue&   ptq   = _pt->getPTQ();
+    Str2DGNodeMap& dgMap = _pt->getDGMap();
     ptq.push(_pt->_root);
     while (!ptq.empty()) {
-        Str2DGNodeMap dgMap;
-        buildDG_r(ptq,dgMap);
+        (_pt->getDGMap()).clear();
+        PTNode* cur = ptq.front();
+        ptq.pop();
+        cout << "handle " << cur->getName() << endl;
+        for (PTNodeList::iterator it=cur->_children.begin();it!=cur->_children.end();++it)
+            DGNode* newNode = (*it)->buildDG();
+        for (Str2DGNodeMap::iterator it=dgMap.begin(); it!=dgMap.end(); ++it) {
+            DGNode* leader = it->second->findLeader();
+            if (leader->isSink() && leader->getFlag() != _gflag) {
+                cout << "found sink node = " << leader->getName() << endl;
+                leader->setFlag(_gflag);
+                _dgList.push_back(new DG(leader,_indent,_gflag,_path,++dgIdx));
+            }
+        }
     }
 
 }
-
-void Mgr::buildDG_r(PTNodeQueue& ptq , Str2DGNodeMap& dgMap)
-{
-    PTNode* cur = ptq.front();
-    ptq.pop();
-    cout << "handle " << cur->getName() << endl;
-    for (size_t i = 0, size = cur->_children.size(); i < size ; ++i) {
-        DGNode* newNode = cur->_children[i]->buildDG(ptq,dgMap);
-    }
-    for (Str2DGNodeMap::iterator it=dgMap.begin(); it!=dgMap.end(); ++it) {
-        DGNode* leader = it->second->findLeader();
-        if (leader->isSink() && leader->getFlag() != _dgFlag) {
-            cout << "found sink node = " << leader->getName() << endl;
-            leader->setFlag(_dgFlag);
-            _dgList.push_back(new DG(leader));
-        }
-    }
-}        
