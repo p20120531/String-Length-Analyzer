@@ -9,6 +9,7 @@ int main(int argc, char* argv[]) {
     mgr->printPT();
     mgr->buildDG();
     mgr->printDG();
+    mgr->closeLogFile();
     
     /*
     for (int i = 0; i< 4;++i) {

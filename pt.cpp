@@ -1,15 +1,24 @@
 #include "pt.h"
-#define _PT_MERGENDBG_
+#include "mgr.h"
+//#define _PT_NDBG_
+extern Mgr* mgr;
+static ofstream& logFile = mgr->getLogFile();
+
 void PT::addAssertion(PTNode* n)
 {
     _root->addChild(n);
 }
 
-void PT::print() const
+void PT::writeDBG() const
 {
+    #ifndef _PT_NDBG_
+        splitLine(logFile,"PT::writeDBG()");
+    #endif
     for (size_t i = 0, size = _root->_children.size(); i < size; ++i) {
-        cout << _root->_name << " " << i + 1 << endl;
-        _root->_children[i]->print(_indent,0);
+        #ifndef _PT_NDBG_
+            logFile << _root->_name << " " << i + 1 << endl;
+        #endif
+        _root->_children[i]->writeDBG(_indent,0);
     }
 }
 
@@ -31,6 +40,14 @@ void PT::mergeNotAndStrInRe()
                     p->addChild(newNode);
                     ptq.push(newNode);
                 }
+                else if ((*it)->_children[0]->_name == "=") {
+                    PTNode* newNode = new PTNotEqNode("!=");
+                    newNode->_children = (*it)->_children[0]->_children;
+                    p->_children.erase(it);
+                    --it;
+                    p->addChild(newNode);
+                    ptq.push(newNode);
+                }
                 else
                     ptq.push(*it);
             }
@@ -42,7 +59,5 @@ void PT::mergeNotAndStrInRe()
 
 string PT::getNewNodeName()
 {
-    stringstream ss;
-    ss << ++_newDGNodeCnt;
-    return string("NEW_DGNode_") + ss.str();
+    return string("NEW_DGNode_") + itos(++_newDGNodeCnt);
 }

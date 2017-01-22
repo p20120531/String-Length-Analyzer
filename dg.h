@@ -7,6 +7,10 @@ class DGNode {
     friend class Mgr;
     public :
         DGNode () {}
+        DGNode (const string& name,const Type& type) {
+            _type = type;
+            _name = name;
+        }
         DGNode (const string& name,const Type& type,const bool& isStringVar) {
             _type        = type;
             _name        = name;
@@ -51,21 +55,20 @@ class DGNode {
         void           setType       (const Type& type)    {_type = type;}
         void           setNotSink    ()                    {_isSink = 0;}
         void           setLength     ()                    {_length = 1;}
-        void           setLeader     (DGNode* n)           {_leader = n;}
+        void           setLeader     (DGNode* n);
         void           setFlag       (const size_t& flag)  {_flag=flag;}
-        void           merge         (const size_t&);
         
-        void printType() const;
+        void           merge         (const size_t&);
+        const char* getTypeString() const;
         void writeCmdFile (ofstream&,ofstream&) const;
-        void printDBG (const size_t&,size_t)const;
+        void writeDBG (const size_t&,size_t)const;
     private:
         Type          _type;
         string        _name;    // NEW_STR_n / NEW_RE_n for extra nodes
         string        _regex;   // "..." for _type=CONST_STRING , "" otherwise
-        string        _legnthConstraint;
         bool          _length;  // default 0
         bool          _isSink;  // default 1
-        bool          _isStringVar;
+        bool          _isStringVar; // used to indicate whether this node will be refered in the construction of DG after the time it is constructed
         DGNode*       _leader;
         DGNodeList    _children;
         size_t        _flag;
@@ -73,27 +76,13 @@ class DGNode {
 class DG {
     friend class Mgr;
     public :
-        DG  (DGNode* sink,size_t& indent,size_t& gflag,const string& path,const size_t& idx): _sink(sink),_indent(indent),_gflag(gflag),_idx(idx) {
-            stringstream ss;
-            ss << _idx;
-            _path = path + ss.str() + "/";
-            system(("mkdir -p "+_path).c_str());
-        }
+        DG  (DGNode*,size_t&,size_t&,const string&,const size_t&);
+
         DGNode* getSinkNode() {return _sink;}
         void setSinkNode(DGNode* sink) {_sink = sink;}
-        void writeCmdFile () const {
-            stringstream ss;
-            ss << _idx;
-            string cmdstr = _path + "cmd";
-            string autstr = _path + "aut";
-            ofstream cmdFile(cmdstr.c_str());
-            ofstream autFile(autstr.c_str());
-            _sink->writeCmdFile(cmdFile,autFile);
-            cmdFile.close();
-            autFile.close();
-        }
-        void printDBG () const {_sink->printDBG(_indent,0);}
-        void merge() {_sink->merge(++_gflag);}
+        void writeCmdFile () const;
+        void writeDBG () const;
+        void merge();
     private :
         DGNode*        _sink;
         size_t&        _indent;

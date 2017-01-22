@@ -9,11 +9,13 @@ class Mgr{
         Mgr             (): _pt(new PT("assert",_indent,_gflag)) {_indent=3;_gflag=0;}
         void            parse(const char*);
         void            buildDG();
-        void            writeDG(const string&);
-        void            printPT()const;
-        void            printDG()const;
+        void            printPT();
+        void            printDG();
 
         PT*&            getPT() {return _pt;}
+        const LCList&   getLCList(const size_t& idx) {return _lolcList.at(idx);}
+        ofstream&       getLogFile() {return _logFile;}
+        void            closeLogFile() {_logFile.close();}
     private :
         // for parsing
         void            handleConstraint(const vector<string>&);
@@ -24,9 +26,11 @@ class Mgr{
 
         PT*             _pt;
         DGList          _dgList;
+        LoLCList        _lolcList;
         Str2VarMap      _typeMap;
         size_t          _indent;
         size_t          _gflag;
         string          _path;
+        ofstream        _logFile;
 };
 #endif

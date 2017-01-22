@@ -1,43 +1,46 @@
 #include "mgr.h"
 
-void Mgr::printDG() const
+void Mgr::printDG()
 {
-    cout << "dgList = " << _dgList.size() << endl;
+    splitLine(_logFile,"Mgr::printDG()");
+    _logFile << "dgList = " << _dgList.size() << endl;
     for (size_t i = 0,size = _dgList.size(); i < size; ++i) {
-        cout << "DG " << i + 1 << endl;
+        _logFile << "\nDG " << i + 1 << endl;
         
-        cout << "printDBG" << endl;
-        _dgList[i]->printDBG();
-        cout << "merge" << endl;
+        _dgList[i]->writeDBG();
         _dgList[i]->merge();
-        cout << "printDBG" << endl;
-        _dgList[i]->printDBG();
-        cout << "print" << endl;
+        _dgList[i]->writeDBG();
         _dgList[i]->writeCmdFile();
-        cout << endl; 
     }
 }
 
 void Mgr::buildDG()
 {
+    splitLine(_logFile,"Mgr::buildDG()");
     ++_gflag;
     size_t dgIdx = 0;
-    PTNodeQueue&   ptq   = _pt->getPTQ();
-    Str2DGNodeMap& dgMap = _pt->getDGMap();
+    PTNodeQueue&   ptq    = _pt->getPTQ();
+    Str2DGNodeMap& dgMap  = _pt->getDGMap();
+    LCList&        lcList = _pt->getLCList();
     ptq.push(_pt->_root);
     while (!ptq.empty()) {
-        (_pt->getDGMap()).clear();
+        dgMap.clear();
+        lcList.clear();
+        //(_pt->getDGMap()).clear();
+        //(_pt->getLCList()).clear();
         PTNode* cur = ptq.front();
         ptq.pop();
-        cout << "handle " << cur->getName() << endl;
+        _logFile << "handle " << cur->getName() << endl;
         for (PTNodeList::iterator it=cur->_children.begin();it!=cur->_children.end();++it)
             DGNode* newNode = (*it)->buildDG();
         for (Str2DGNodeMap::iterator it=dgMap.begin(); it!=dgMap.end(); ++it) {
             DGNode* leader = it->second->findLeader();
             if (leader->isSink() && leader->getFlag() != _gflag) {
-                cout << "found sink node = " << leader->getName() << endl;
+                _logFile << "found sink node = " << leader->getName() << endl;
                 leader->setFlag(_gflag);
-                _dgList.push_back(new DG(leader,_indent,_gflag,_path,++dgIdx));
+                _dgList.push_back(new DG(leader,_indent,_gflag,_path,dgIdx++));
+                _lolcList.push_back(lcList);
+                //_lolcList.push_back(_pt->getLCList());
             }
         }
     }
