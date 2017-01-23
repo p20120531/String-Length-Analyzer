@@ -97,13 +97,13 @@ void DGNode::writeDBG(const size_t& indent,size_t level) const
         (*it)->writeDBG(indent,level+1);
 }
 
-void DGNode::writeCmdFile(ofstream& cmdFile,ofstream& autFile) const
+void DGNode::writeCmdFile(const Str2UintMap& intVarMap, ofstream& cmdFile,ofstream& autFile) const
 {
     for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it)
         if ((*it)->_type != CONST_STRING && (*it)->_type != VAR_STRING && (*it)->_type != AUT_COMPLE) {
-            (*it)->writeCmdFile(cmdFile,autFile);
+            (*it)->writeCmdFile(intVarMap,cmdFile,autFile);
         }
-    
+    cmdFile << "./parse.exe -";
     if     (_type == AUT_CONCATE) cmdFile << "concate";  
     else if(_type == AUT_REPLACE) cmdFile << "replace";
     else if(_type == AUT_UNION)   cmdFile << "union";
@@ -111,10 +111,49 @@ void DGNode::writeCmdFile(ofstream& cmdFile,ofstream& autFile) const
     for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it) {
         cmdFile << " " << (*it)->_name << ".vmt";
         if ((*it)->_type == CONST_STRING || (*it)->_type == VAR_STRING || (*it)->_type == AUT_COMPLE) {
-            autFile << (*it)->_name << " " << (*it)->getRegex() << endl;
+            Str2UintMap::const_iterator jt = intVarMap.find((*it)->_name);
+            cout << _name << " " << getTypeString() << endl;
+            assert((jt != intVarMap.end()));
+            autFile << (*it)->_name << " n" << jt->second << " " << (*it)->getRegex() << endl;
         }
     }
-    cmdFile << "\nwrite " << _name << ".vmt" << endl;
+    cmdFile << " " << _name << ".vmt" << endl;
+    //cmdFile << "\nwrite " << _name << ".vmt" << endl;
+}
+
+void DGNode::lcTraversal(Str2UintMap& intVarMap,size_t& cnt) const
+{
+    for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it)
+        if ((*it)->_type != CONST_STRING && (*it)->_type != VAR_STRING && (*it)->_type != AUT_COMPLE) {
+            (*it)->lcTraversal(intVarMap,cnt);
+        }
+    for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it) {
+        if ((*it)->_type == CONST_STRING || (*it)->_type == VAR_STRING || (*it)->_type == AUT_COMPLE) {
+            Str2UintMap::const_iterator jt = intVarMap.find((*it)->_name);
+            if (jt == intVarMap.end())
+                intVarMap.insert(Str2Uint((*it)->_name,cnt++));
+        }
+    }
+    /*
+    if (isRecord) {
+        smt2File << "(assert (= " << _name;
+        if (_type == AUT_CONCATE) {
+            smt2File << " (str.++";
+            
+            smt2File << ")";
+        }
+        else if(_type == )
+        smt2File << "))\n";
+    }
+    else {
+        if (strVarMap.find(_name)!=strVarMap.end())
+            strVarMap.insert(Str2Type(_name,_type));
+        if (_type == AUT_COMPLE || _type == CONST_STRING || _type == VAR_STRING)
+            return;
+        for(DGNodeList::iterator it=_children.begin();it!=_children.end();++it)
+            (*it)->lcTraversal(smt2File,isRecord,strVarMap);
+    }
+    */
 }
 
 //-----------------merge-------------
@@ -156,5 +195,8 @@ void DGNode::merge(const size_t& gflag)
         }
     }
     if (_flag != gflag) _flag = gflag;
-    else                logFile << "this DG is a DAG : at node " << _name << endl;
+    else {              
+        logFile << "this DG is a DAG : at node " << _name << endl;
+        cout    << "this DG is a DAG : at node " << _name << endl;
+    }
 }

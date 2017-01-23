@@ -57,7 +57,7 @@ void Mgr::parse(const char* fileName)
     }
     else
         _logFile << "fail open" <<endl;
-    for (Str2VarMap::iterator it=_typeMap.begin(); it!=_typeMap.end(); ++it)
+    for (Str2TypeMap::iterator it=_typeMap.begin(); it!=_typeMap.end(); ++it)
         _logFile << it->first << " => " << it->second << '\n';
 }
 
@@ -99,11 +99,11 @@ PTNode* Mgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size_t
 void Mgr::handleDeclare(const vector<string>& tokenList)
 {
     if (tokenList[5] == "Int")
-        _typeMap.insert(Str2Var(tokenList[2],VAR_INT));
+        _typeMap.insert(Str2Type(tokenList[2],VAR_INT));
     else if (tokenList[5] == "Bool")
-        _typeMap.insert(Str2Var(tokenList[2],VAR_BOOL));
+        _typeMap.insert(Str2Type(tokenList[2],VAR_BOOL));
     else if (tokenList[5] == "String")
-        _typeMap.insert(Str2Var(tokenList[2],VAR_STRING));
+        _typeMap.insert(Str2Type(tokenList[2],VAR_STRING));
 
 }
 
@@ -135,7 +135,7 @@ PTNode* Mgr::buildPTNode(const string& name)
     else if (name == "re.union"   ) return new PTReUnionNode(name);
     else if (name == "re.inter"   ) return new PTReInterNode(name);
     else {
-        Str2VarMap::iterator it = _typeMap.find(name);
+        Str2TypeMap::iterator it = _typeMap.find(name);
         if (it != _typeMap.end()) {
             const Type& type = it->second;
             switch (type) {

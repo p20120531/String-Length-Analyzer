@@ -14,6 +14,8 @@ class PT {
         PTNodeQueue&    getPTQ() {return _ptq;}
         Str2DGNodeMap&  getDGMap() {return _dgMap;}
         LCList&         getLCList() {return _lcList;}
+        PTNodeList&     getLCPTList() {return _lcptList;}
+        Str2TypeMap&    getIntVarMap() {return _intVarMap;}
         string          getNewNodeName();
         
         void            writeDBG() const ;
@@ -24,6 +26,8 @@ class PT {
         PTNodeQueue     _ptq;
         Str2DGNodeMap   _dgMap;
         LCList          _lcList;
+        PTNodeList      _lcptList;
+        Str2TypeMap     _intVarMap;
         size_t&         _indent;
         size_t&         _gflag;
         size_t          _newDGNodeCnt;

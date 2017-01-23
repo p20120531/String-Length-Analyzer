@@ -60,8 +60,10 @@ class DGNode {
         
         void           merge         (const size_t&);
         const char* getTypeString() const;
-        void writeCmdFile (ofstream&,ofstream&) const;
+        void writeCmdFile (const Str2UintMap&,ofstream&,ofstream&) const;
+        void writeSmt2File () const;
         void writeDBG (const size_t&,size_t)const;
+        void lcTraversal (Str2UintMap&,size_t&)const;
     private:
         Type          _type;
         string        _name;    // NEW_STR_n / NEW_RE_n for extra nodes
@@ -80,7 +82,8 @@ class DG {
 
         DGNode* getSinkNode() {return _sink;}
         void setSinkNode(DGNode* sink) {_sink = sink;}
-        void writeCmdFile () const;
+        void writeCmdFile () ;
+        void writeSmt2File () const;
         void writeDBG () const;
         void merge();
     private :
@@ -89,5 +92,7 @@ class DG {
         size_t&        _gflag;
         string         _path;
         size_t         _idx;
+        Str2UintMap    _strVarMap;
+        Str2UintMap    _intVarMap;
 };
 #endif

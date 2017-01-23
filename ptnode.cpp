@@ -5,10 +5,12 @@
 
 extern Mgr* mgr;
 PT*& pt = mgr->getPT();
-static ofstream& logFile = mgr->getLogFile();
-static PTNodeQueue& ptq = pt->getPTQ();
-static Str2DGNodeMap& dgMap = pt->getDGMap();
-static LCList& lcList = pt->getLCList();
+static ofstream&      logFile   = mgr->getLogFile();
+static PTNodeQueue&   ptq       = pt->getPTQ();
+static Str2DGNodeMap& dgMap     = pt->getDGMap();
+static LCList&        lcList    = pt->getLCList();
+static PTNodeList&    lcptList  = pt->getLCPTList();
+static Str2TypeMap&   intVarMap = pt->getIntVarMap();
 
 //-------------base class-----------
 
@@ -22,6 +24,33 @@ void PTNode::writeDBG(const size_t& indent,size_t level) const
     logFile << string( indent * level ,' ') << _name << endl;
     for (size_t i = 0, size = _children.size(); i < size; ++i)
         _children[i]->writeDBG(indent,level+1);
+}
+
+void PTNode::lcTraversal(ofstream& outFile,const Str2UintMap& dgIntVarMap) const
+{
+    if (_children.empty()) {
+        outFile << " " << _name;
+        return;
+    }
+        
+    if (_name == "!=") {
+        assert((_children.size() == 1));
+        outFile << " (not (=";
+        _children[0]->lcTraversal(outFile,dgIntVarMap);
+        outFile << "))";
+    }
+    else if (_name == "str.len") {
+        assert((_children.size() == 1));
+        Str2UintMap::const_iterator it=dgIntVarMap.find(_children[0]->_name);
+        assert((it!=dgIntVarMap.end()));
+        outFile << " n" << it->second;
+    }
+    else {
+        outFile << " (" << _name;
+        for (PTNodeList::const_iterator it=_children.begin();it!=_children.end();++it)
+            (*it)->lcTraversal(outFile,dgIntVarMap);
+        outFile << ")";
+    }
 }
 
 void PTNode::addChild(PTNode* n)
@@ -105,6 +134,8 @@ DGNode* PTVarIntNode::buildDG()
     #ifndef _PTNODE_NDEBUG_
         logFile << _name << " VAR_INT" << endl;
     #endif
+    if (intVarMap.find(_name) == intVarMap.end())
+        intVarMap.insert(Str2Type(_name,VAR_INT));
     return new DGNode(_name,VAR_INT);
 }
 
@@ -205,18 +236,21 @@ else {
     if (ltype == VAR_INT || ltype == CONST_INT || rtype == VAR_INT || rtype == CONST_INT || ltype>=40 && ltype<=50 || rtype>=40 && rtype<=50) {
         string lc = left->getName() + " == " + right->getName();
         lcList.push_back(lc);
+        lcptList.push_back(this);
         return 0;
     }
     else if (rtype == STRING_LEN) {
         assert((ltype == CONST_INT || ltype == VAR_INT || ltype>=40 && ltype<=50));
         string lc = left->getName() + " == " + right->getName();
         lcList.push_back(lc);
+        lcptList.push_back(this);
         return 0;
     }
     else if (ltype == STRING_LEN) {
         assert((rtype == CONST_INT || rtype == VAR_INT || rtype>=40 && rtype<=50));
         string lc = left->getName() + " == " + right->getName();
         lcList.push_back(lc);
+        lcptList.push_back(this);
         return 0;
     }
     else {
@@ -285,6 +319,7 @@ logFile << " left = " << left->getName()
 #endif
         string lc = left->getName() + " != " + right->getName();
         lcList.push_back(lc);
+        lcptList.push_back(this);
         return 0;
     }
     else {
@@ -384,6 +419,7 @@ DGNode* PTLTNode::buildDG()
     assert((_children.size() == 2));
     string lc = _children[0]->getName() + " " + _name + " " + _children[1]->getName();
     lcList.push_back(lc);
+    lcptList.push_back(this);
     return 0;
 }
 
@@ -392,6 +428,7 @@ DGNode* PTLTOEQNode::buildDG()
     assert((_children.size() == 2));
     string lc = _children[0]->getName() + " " + _name + " " + _children[1]->getName();
     lcList.push_back(lc);
+    lcptList.push_back(this);
     return 0;
 }
 
@@ -400,6 +437,7 @@ DGNode* PTMTNode::buildDG()
     assert((_children.size() == 2));
     string lc = _children[0]->getName() + " " + _name + " " + _children[1]->getName();
     lcList.push_back(lc);
+    lcptList.push_back(this);
     return 0;
 }
 
@@ -408,6 +446,7 @@ DGNode* PTMTOEQNode::buildDG()
     assert((_children.size() == 2));
     string lc = _children[0]->getName() + " " + _name + " " + _children[1]->getName();
     lcList.push_back(lc);
+    lcptList.push_back(this);
     return 0;
 }
 

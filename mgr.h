@@ -8,7 +8,7 @@ class Mgr{
     public :
         Mgr             (): _pt(new PT("assert",_indent,_gflag)) {_indent=3;_gflag=0;}
         void            parse(const char*);
-        void            buildDG();
+        void            buildAndWriteDG();
         void            printPT();
         void            printDG();
 
@@ -27,7 +27,7 @@ class Mgr{
         PT*             _pt;
         DGList          _dgList;
         LoLCList        _lolcList;
-        Str2VarMap      _typeMap;
+        Str2TypeMap     _typeMap;
         size_t          _indent;
         size_t          _gflag;
         string          _path;

@@ -7,8 +7,7 @@ int main(int argc, char* argv[]) {
     
     mgr->parse(argv[1]);
     mgr->printPT();
-    mgr->buildDG();
-    mgr->printDG();
+    mgr->buildAndWriteDG();
     mgr->closeLogFile();
     
     /*

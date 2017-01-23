@@ -31,12 +31,16 @@ enum Type {
     //OP_RECONCATE, OP_REUNION, OP_REINTER
 };
 
+enum FType {
+    SMT2, VMT
+};
+
 typedef vector<PT*>           PTList;
 typedef vector<PTNode*>       PTNodeList;
 typedef vector<DG*>           DGList;
 typedef vector<DGNode*>       DGNodeList;
-typedef pair<string,Type>     Str2Var;
-typedef map<string,Type>      Str2VarMap;
+typedef pair<string,Type>     Str2Type;
+typedef map<string,Type>      Str2TypeMap;
 typedef pair<string,size_t>   Str2Uint;
 typedef map<string,size_t>    Str2UintMap;
 typedef pair<string,DGNode*>  Str2DGNode;

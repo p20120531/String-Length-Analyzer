@@ -16,6 +16,7 @@ class PTNode {
         void            setName(const string&);
         void            addChild(PTNode*);
         void            setFlag(const size_t& flag) {_flag=flag;}
+        void            lcTraversal(ofstream&,const Str2UintMap&) const;
         virtual DGNode* buildDG() = 0;
         
         virtual void    writeDBG(const size_t&,size_t) const ;
