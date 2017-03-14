@@ -1,23 +1,29 @@
-#ifndef _MGR_H_
-#define _MGR_H_
+#ifndef _KALUZA_MGR_H_
+#define _KALUZA_MGR_H_
 #include "typedef.h"
 #include "pt.h"
 #include "dg.h"
 
-class Mgr{
+class KaluzaMgr{
     public :
-        Mgr             (): _pt(new PT("assert",_indent,_gflag)) {_indent=3;_gflag=0;}
-        void            parse(const char*);
+        KaluzaMgr       (): _pt(new PT("assert",_indent,_gflag)) {_indent=3;_gflag=0;}
+        void            read(const char*);
         void            buildAndWriteDG();
+        void            analyzePT();
+        
+        // Print Function
         void            printPT();
         void            printDG();
+        void            printTypeMap();
 
+        // Access Function
         PT*&            getPT() {return _pt;}
-        const LCList&   getLCList(const size_t& idx) {return _lolcList.at(idx);}
+        const Str2PTNodeMap& getPTNodeMap() {return _ptnodeMap;}
+        const size_t&   getGFlag() {return _gflag;}
         ofstream&       getLogFile() {return _logFile;}
         void            closeLogFile() {_logFile.close();}
     private :
-        // for parsing
+        // For Read
         void            handleConstraint(const vector<string>&);
         PTNode*         handleAssertion(const vector<string>&,size_t,size_t);
         void            handleDeclare(const vector<string>&);
@@ -26,10 +32,10 @@ class Mgr{
 
         PT*             _pt;
         DGList          _dgList;
-        LoLCList        _lolcList;
-        Str2TypeMap     _typeMap;
+        Str2PTNodeMap   _ptnodeMap;
         size_t          _indent;
         size_t          _gflag;
+        string          _file;
         string          _path;
         ofstream        _logFile;
 };

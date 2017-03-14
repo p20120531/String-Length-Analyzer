@@ -1,29 +1,120 @@
 #include "ptnode.h"
 #include "dg.h"
-#include "mgr.h"
-//#define _PTNODE_NDEBUG_
+#include "kaluzaMgr.h"
 
-extern Mgr* mgr;
-PT*& pt = mgr->getPT();
-static ofstream&      logFile   = mgr->getLogFile();
-static PTNodeQueue&   ptq       = pt->getPTQ();
-static Str2DGNodeMap& dgMap     = pt->getDGMap();
-static LCList&        lcList    = pt->getLCList();
-static PTNodeList&    lcptList  = pt->getLCPTList();
-static Str2TypeMap&   intVarMap = pt->getIntVarMap();
-
+extern                     KaluzaMgr*   kmgr;
+static PT*&                pt         = kmgr->getPT();
+static const size_t&       gflag      = kmgr->getGFlag();
+static const Str2PTNodeMap& ptnodeMap = kmgr->getPTNodeMap();
+static ofstream&           logFile    = kmgr->getLogFile();
+static PTNodeQueue&        ptq        = pt->getPTQ();
+static Str2DGNodeMap&      dgMap      = pt->getDGMap();
+static PTNode2PTNodeListMap& ptnodeListMap = pt->getPTNodeListMap();
 //-------------base class-----------
 
-void PTNode::setName(const string& name)
+void PTNode::print(const size_t& indent,size_t level) const
 {
-    _name = name;
+    //logFile << string( indent * level ,' ') << _name << endl;
+    logFile << string( indent * level ,' ') << _name << " " << this << endl;
+    for (size_t i = 0, size = _children.size(); i < size; ++i)
+        _children[i]->print(indent,level+1);
 }
 
-void PTNode::writeDBG(const size_t& indent,size_t level) const
+void PTNode::analyze(bool& iteDVarLegal, bool& iteCLevel1, bool& strinreRLevel1, bool& strninreRLevel1, bool& streqRLevel1, bool& strneqRLevel1, bool& strlenRLevel2, bool& andCLevel2, bool& ornexist, bool& strinreLCSV, bool& strninreLCSV, bool& streqLCSV, bool& strneqLCSV, size_t& strlenCnt, size_t& strlenEqCnt, bool& streqBothSV, bool& strneqBothSV, bool& strneqOneConst, int cLevel, int rLevel) const
 {
-    logFile << string( indent * level ,' ') << _name << endl;
+    // cLevel : cumulated level
+    // rLevel : reset level
+    if (_name == "ite") {
+        if (cLevel != 1) iteCLevel1 = 0;
+        rLevel = -1;
+        Str2PTNodeMap::const_iterator it = ptnodeMap.find(_children[0]->_name);
+        if (it != ptnodeMap.end()) {
+            if ((it->second)->getType() != VAR_BOOL) {
+                iteDVarLegal = 0;
+            }
+        }
+    }
+    else if (_name == "str.in.re") {
+        if (rLevel != 1) strinreRLevel1 = 0;
+        if (!_children[0]->isVarStr()) strinreLCSV = 0;
+    }
+    else if (_name == "str.nin.re") {
+        if (rLevel != 1) strninreRLevel1 = 0;
+        if (!_children[0]->isVarStr()) strninreLCSV = 0;
+    }
+    else if (_name == "str.len") {
+        ++strlenCnt;
+        if (rLevel != 2) strlenRLevel2 = 0;
+    }
+    else if (_name == "=") {
+        if ( _children[0]->isReturnTypeStr() || _children[1]->isReturnTypeStr() ) {
+            if (rLevel != 1) streqRLevel1 = 0;
+            if (!_children[0]->isVarStr()) streqLCSV = 0;
+            if (_children[0]->isVarStr() && _children[1]->isVarStr()) streqBothSV = 1;
+        }
+        for (size_t i = 0, size = _children.size(); i < size; ++i)
+            if (_children[i]->_name == "str.len") ++strlenEqCnt;
+    }
+    else if (_name == "!=") {
+        if ( _children[0]->isReturnTypeStr() || _children[1]->isReturnTypeStr()) {
+            if (rLevel != 1) strneqRLevel1 = 0;
+            if (!_children[0]->isVarStr()) strneqLCSV = 0;
+            if (_children[0]->isVarStr() && _children[1]->isVarStr()) strneqBothSV = 1;
+            if (!_children[0]->isConstStr() && !_children[1]->isConstStr()) strneqOneConst = 0;
+        }
+    }
+    else if (_name == "and" && cLevel != 2) andCLevel2 = 0; 
+    else if (_name == "or") ornexist = 0;
     for (size_t i = 0, size = _children.size(); i < size; ++i)
-        _children[i]->writeDBG(indent,level+1);
+        _children[i]->analyze(
+            iteDVarLegal,iteCLevel1,strinreRLevel1,strninreRLevel1,
+            streqRLevel1,strneqRLevel1,strlenRLevel2,andCLevel2,ornexist,
+            strinreLCSV,strninreLCSV,streqLCSV,strneqLCSV,strlenCnt,strlenEqCnt,
+            streqBothSV,strneqBothSV,strneqOneConst,cLevel+1,rLevel+1);
+}
+
+bool PTNode::isVarStr()
+{
+    Str2PTNodeMap::const_iterator it = ptnodeMap.find(_name);
+    if (it != ptnodeMap.end()) {
+        if (it->second->getType() == VAR_STRING)
+            return true;
+        else
+            return false;
+    }
+    else {
+        return false;
+    }
+}
+
+bool PTNode::isConstStr()
+{
+    if (_name[0] == '\"') return true;
+    else return false;
+}
+
+bool PTNode::isReturnTypeStr()
+{
+    if (_name == "str.++") return true;
+    else {
+        Str2PTNodeMap::const_iterator it = ptnodeMap.find(_name);
+        if (it != ptnodeMap.end()) {
+            if (it->second->getType() == VAR_STRING)
+                return true;
+            else
+                return false;
+        }
+        else 
+            return false;
+    }
+}
+
+void PTNode::setLevel(size_t level)
+{
+    _level = level;
+    for (PTNodeList::iterator it = _children.begin(); it != _children.end(); ++it) {
+        (*it)->setLevel(level+1);
+    }
 }
 
 void PTNode::lcTraversal(ofstream& outFile,const Str2UintMap& dgIntVarMap) const
@@ -53,6 +144,10 @@ void PTNode::lcTraversal(ofstream& outFile,const Str2UintMap& dgIntVarMap) const
     }
 }
 
+void PTNode::writeCVC4Pred(Str2TypeMap& typeMap,vector<string>& cvc4PredList,const size_t& bflag)
+{
+}
+
 void PTNode::addChild(PTNode* n)
 {
     _children.push_back(n);
@@ -63,85 +158,92 @@ const PTNodeList& PTNode::getChildren() const
     return _children;
 }
 
-//----------------writeDBG--------------
-void PTVarIntNode::writeDBG(const size_t& indent , size_t level) const 
+//----------------print--------------
+void PTVarIntNode::print(const size_t& indent , size_t level) const 
 {
     logFile << string( indent * level ,' ')
-             << _name << ((_isString)? " Y ":" N " )
-             << "VAR_INT" << endl;
+            << _name
+            << " " << this
+            << " VAR_INT" << endl;
     for (size_t i = 0, size = _children.size(); i < size; ++i)
-        _children[i]->writeDBG(indent,level+1);
+        _children[i]->print(indent,level+1);
 }
 
-void PTVarBoolNode::writeDBG(const size_t& indent , size_t level) const 
+void PTVarBoolNode::print(const size_t& indent , size_t level) const 
 {
     logFile << string( indent * level ,' ')
-             << _name << ((_isString)? " Y ":" N " )
-             << "VAR_BOOL" << endl;
+            << _name
+            << " " << this
+            << " VAR_BOOL" << endl;
     for (size_t i = 0, size = _children.size(); i < size; ++i)
-        _children[i]->writeDBG(indent,level+1);
+        _children[i]->print(indent,level+1);
 }
 
-void PTVarStringNode::writeDBG(const size_t& indent , size_t level) const 
+void PTVarStringNode::print(const size_t& indent , size_t level) const 
 {
     logFile << string( indent * level ,' ')
-             << _name << ((_isString)? " Y ":" N " )
-             << "VAR_STRING" << endl;
+            << _name
+            << " " << this
+            << " VAR_STRING" << endl;
     for (size_t i = 0, size = _children.size(); i < size; ++i)
-        _children[i]->writeDBG(indent,level+1);
+        _children[i]->print(indent,level+1);
 }
 
-void PTConstIntNode::writeDBG(const size_t& indent , size_t level) const 
+void PTConstIntNode::print(const size_t& indent , size_t level) const 
 {
     logFile << string( indent * level ,' ')
-             << _name << ((_isString)? " Y ":" N " )
-             << "CONST_INT" << endl;
+            << _name
+            << " " << this
+            << " CONST_INT" << endl;
     for (size_t i = 0, size = _children.size(); i < size; ++i)
-        _children[i]->writeDBG(indent,level+1);
+        _children[i]->print(indent,level+1);
 }
 
-void PTConstBoolNode::writeDBG(const size_t& indent , size_t level) const 
+void PTConstBoolNode::print(const size_t& indent , size_t level) const 
 {
     logFile << string( indent * level ,' ')
-             << _name << ((_isString)? " Y ":" N " )
-             << "CONST_BOOL" << endl;
+            << _name
+            << " " << this
+            << " CONST_BOOL" << endl;
     for (size_t i = 0, size = _children.size(); i < size; ++i)
-        _children[i]->writeDBG(indent,level+1);
+        _children[i]->print(indent,level+1);
 }
 
-void PTConstStringNode::writeDBG(const size_t& indent , size_t level) const 
+void PTConstStringNode::print(const size_t& indent , size_t level) const 
 {
     logFile << string( indent * level ,' ')
-             << _name << ((_isString)? " Y ":" N " )
-             << "CONST_STRING" << endl;
+            << _name
+            << " " << this
+            << " CONST_STRING" << endl;
     for (size_t i = 0, size = _children.size(); i < size; ++i)
-        _children[i]->writeDBG(indent,level+1);
+        _children[i]->print(indent,level+1);
 }
 
-void PTIteNode::writeDBG(const size_t& indent , size_t level) const
+void PTIteNode::print(const size_t& indent , size_t level) const
 {
     logFile << string( indent * level ,' ')
-             << _name << ((_isString)? " Y ":" N " )
-             << "ITE" << endl;
+            << _name
+            << " " << this
+            << " ITE" << endl;
     for (size_t i = 0, size = _children.size(); i < size; ++i)
-        _children[i]->writeDBG(indent,level+1);
+        _children[i]->print(indent,level+1);
 }
 
 //-------------------buildDG------------------
 
 DGNode* PTVarIntNode::buildDG()
 {
-    #ifndef _PTNODE_NDEBUG_
+    _bflag = gflag;
+    #ifndef _NLOG_
         logFile << _name << " VAR_INT" << endl;
     #endif
-    if (intVarMap.find(_name) == intVarMap.end())
-        intVarMap.insert(Str2Type(_name,VAR_INT));
-    return new DGNode(_name,VAR_INT);
+    return 0;
 }
 
 DGNode* PTVarBoolNode::buildDG()
 {
-    #ifndef _PTNODE_NDEBUG_
+    _bflag = gflag;
+    #ifndef _NLOG_
         logFile << _name << " VAR_BOOL" << endl;
     #endif
     return 0;
@@ -149,50 +251,57 @@ DGNode* PTVarBoolNode::buildDG()
 
 DGNode* PTVarStringNode::buildDG()
 {
-    #ifndef _PTNODE_NDEBUG_
+    _bflag = gflag;
+    #ifndef _NLOG_
         logFile << _name << " VAR_STRING";
     #endif
     Str2DGNodeMap::iterator it = dgMap.find(_name);
     if (it != dgMap.end()) {
-        #ifndef _PTNODE_NDEBUG_
-            logFile << " => already exist , leader=" << it->second->findLeader()->getName() << " type=" << it->second->findLeader()->getType() << " isStringVar=" << it->second->findLeader()->isStringVar() << endl;
+        #ifndef _NLOG_
+            logFile << " => already exist ,"
+                    << " leader=" << it->second->findLeader()->getName() 
+                    << " type=" << it->second->findLeader()->getType() 
+                    << endl;
         #endif
         return it->second->findLeader();
     }
     else {
-        DGNode* newNode = new DGNode(_name,VAR_STRING,1);
+        DGNode* newNode = new DGNode(_name);
         dgMap.insert(Str2DGNode(_name,newNode));
-#ifndef _PTNODE_NDEBUG_
-logFile << " => create new node name=" << newNode->getName() << " isStringVar=" << newNode->isStringVar() << endl;
-#endif
+        #ifndef _NLOG_
+            logFile << " => create new node"
+                    << " name=" << newNode->getName() 
+                    << endl;
+        #endif
         return newNode;
     }
 }
 
 DGNode* PTConstIntNode::buildDG()
 {
-#ifndef _PTNODE_NDEBUG_
-logFile << _name << " CONST_INT" << endl;
-#endif
-    //DGNode* n = new DGNode(_name,CONST_INT);
-    //return n;
-    return new DGNode(_name,CONST_INT);
+    _bflag = gflag;
+    #ifndef _NLOG_
+        logFile << _name << " CONST_INT" << endl;
+    #endif
+    return 0;
 }
 
 DGNode* PTConstBoolNode::buildDG()
 {
-#ifndef _PTNODE_NDEBUG_
-logFile << _name << " CONST_BOOL" << endl;
-#endif
+    _bflag = gflag;
+    #ifndef _NLOG_
+        logFile << _name << " CONST_BOOL" << endl;
+    #endif
     return 0;
 }
 
 DGNode* PTConstStringNode::buildDG()
 {
+    _bflag = gflag;
     string newName = pt->getNewNodeName();
-#ifndef _PTNODE_NDEBUG_
-logFile << _name << " CONST_STRING => create new node name=" << newName << endl;
-#endif
+    #ifndef _NLOG_
+        logFile << _name << " CONST_STRING => create new node name=" << newName << endl;
+    #endif
     DGNode* newNode = new DGNode(newName,_name);
     dgMap.insert(Str2DGNode(newNode->getName(),newNode));
     return newNode;
@@ -202,92 +311,90 @@ logFile << _name << " CONST_STRING => create new node name=" << newName << endl;
 
 DGNode* PTNotNode::buildDG()
 {
+    _bflag = gflag;
     // irrelavent to automaton operation
-#ifndef _PTNODE_NDEBUG_
-logFile << _name << " => return 0" << endl;
-#endif
+    #ifndef _NLOG_
+        logFile << _name << " => return 0" << endl;
+    #endif
     return 0;
 }
 
 DGNode* PTEqNode::buildDG()
 {
     assert((_children.size() == 2));
+    _bflag = gflag;
     DGNode* left  = _children[0]->buildDG();
     DGNode* right = _children[1]->buildDG();
     
-#ifndef _PTNODE_NDEBUG_
-logFile << _name << " => left=";
-if (!left) logFile << "0";
-else {
-    logFile << left->getName() << left->getTypeString() << endl;
-}
-logFile << " right=";
-if (!right) logFile<< "0";
-else {
-    logFile << right->getName() << right->getTypeString() << endl;
-}
-#endif
-
-    if (!left || !right) return 0;
-
-    Type ltype = left->getType();
-    Type rtype = right->getType();
+    #ifndef _NLOG_
+        logFile << _name << " => left=";
+        if (!left) logFile << "0";
+        else {
+            logFile << left->getName() << left->getTypeString();
+        }
+        logFile << " right=";
+        if (!right) logFile<< "0" << endl;
+        else {
+            logFile << right->getName() << right->getTypeString() << endl;
+        }
+    #endif
     
-    if (ltype == VAR_INT || ltype == CONST_INT || rtype == VAR_INT || rtype == CONST_INT || ltype>=40 && ltype<=50 || rtype>=40 && rtype<=50) {
-        string lc = left->getName() + " == " + right->getName();
-        lcList.push_back(lc);
-        lcptList.push_back(this);
-        return 0;
-    }
-    else if (rtype == STRING_LEN) {
-        assert((ltype == CONST_INT || ltype == VAR_INT || ltype>=40 && ltype<=50));
-        string lc = left->getName() + " == " + right->getName();
-        lcList.push_back(lc);
-        lcptList.push_back(this);
-        return 0;
-    }
-    else if (ltype == STRING_LEN) {
-        assert((rtype == CONST_INT || rtype == VAR_INT || rtype>=40 && rtype<=50));
-        string lc = left->getName() + " == " + right->getName();
-        lcList.push_back(lc);
-        lcptList.push_back(this);
+    if (!left || !right) {
+        const string& lname = _children[0]->getName();
+        const string& rname = _children[1]->getName();
+
+        if (lname == "str.len")
+            left->addLengthVar(_children[1]);
+        else if (rname == "str.len")
+            right->addLengthVar(_children[0]);
+        else if (lname == "==" || lname == "!=")
+            left->addIMP(IMP(_children[1],1));
+        else if (rname == "==" || rname == "!=")
+            right->addIMP(IMP(_children[0],1));
         return 0;
     }
     else {
-        string newLeftName  = pt->getNewNodeName();
-        string newRightName = pt->getNewNodeName();
-        #ifndef _PTNODE_NDEBUG_
-            logFile << " newLeftName=" << newLeftName
-                 << " newRightName=" << newRightName;
+        string newLName = pt->getNewNodeName();
+        string newRName = pt->getNewNodeName();
+        #ifndef _NLOG_
+            logFile << " newLName=" << newLName
+                    << " newRName=" << newRName;
         #endif
-        DGNode* newLeft  = new DGNode(newLeftName,left);
-        DGNode* newRight = new DGNode(newRightName,right);
-        //dgMap.insert(Str2DGNode(newLeftName,newLeft));
-        //dgMap.insert(Str2DGNode(newRightName,newRight));
+        DGNode* newLNode = new DGNode(newLName,left);
+        DGNode* newRNode = new DGNode(newRName,right);
         left->clearChildren();
         right->clearChildren();
-        if (left->isStringVar()) {
-            #ifndef _PTNODE_NDEBUG_
+        if (left->isStrVar()) {
+            #ifndef _NLOG_
                 logFile << " set right=" << right->getName() << " leader=left" << endl;
             #endif
             right->setLeader(left);
             left->setType(AUT_INTER);
-            left->addChild(newLeft);
-            left->addChild(newRight);
+            left->addChild(newLNode);
+            left->addChild(newRNode);
             return left;
         }
-        else if(right->isStringVar()) {
-            #ifndef _PTNODE_NDEBUG_
+        else if(right->isStrVar()) {
+            #ifndef _NLOG_
                 logFile << " set left=" << left->getName() << " leader=right" << endl;
             #endif
             left->setLeader(right);
             right->setType(AUT_INTER);
-            right->addChild(newLeft);
-            right->addChild(newRight);
+            right->addChild(newLNode);
+            right->addChild(newRNode);
             return right; 
         }
         else {
-            logFile << " WARNING: [=] two operands are not VAR_STRING" << endl;
+            #ifndef _NLOG_
+                logFile << " [WARNING05]: [=] two operands are not VAR_STRING"
+                        << " n1=" << left->getName() << " type=" << left->getTypeString()
+                        << " n2=" << right->getName() << " type=" << right->getTypeString()
+                        << endl;
+            #endif
+            cout << "[WARNING05]: [=] two operands are not VAR_STRING"
+                 << " n1=" << left->getName() << " type=" << left->getTypeString()
+                 << " n2=" << right->getName() << " type=" << right->getTypeString()
+                 << endl;
         }
     }
 }
@@ -295,99 +402,64 @@ else {
 DGNode* PTNotEqNode::buildDG()
 {
     assert((_children.size() == 2));
+    _bflag = gflag;
     DGNode* left  = _children[0]->buildDG();
     DGNode* right = _children[1]->buildDG();
     
-#ifndef _PTNODE_NDEBUG_
-logFile << _name << " => left=";
-if (!left) logFile << "0";
-else       logFile << left->getName();
-logFile << " right=";
-if (!right) logFile<< "0";
-else        logFile<< right->getName();
-#endif
+    #ifndef _NLOG_
+        logFile << _name << " => left=";
+        if (!left) logFile << "0";
+        else       logFile << left->getName();
+        logFile << " right=";
+        if (!right) logFile<< "0";
+        else        logFile<< right->getName();
+    #endif
 
-    if (!left || !right) return 0;
-    
-    Type ltype = left->getType();
-    Type rtype = right->getType();
-    
-    if (ltype == VAR_INT || ltype == CONST_INT || rtype == VAR_INT || rtype == CONST_INT || ltype>=40 && ltype<=50 || rtype>=40 && rtype<=50) {
-#ifndef _PTNODE_NDEBUG_
-logFile << " left = " << left->getName()
-     << " right = " << right->getName();
-#endif
-        string lc = left->getName() + " != " + right->getName();
-        lcList.push_back(lc);
-        lcptList.push_back(this);
+    if (!left || !right) {
+        #ifndef _NLOG_
+        logFile << endl;
+        #endif
         return 0;
     }
-    else {
-        assert((ltype == CONST_STRING || rtype == CONST_STRING));
-        string newCompleName = pt->getNewNodeName();
-        string newName = pt->getNewNodeName();
-        DGNode* compleNode = new DGNode(newCompleName,AUT_COMPLE,0);
-        compleNode->setNotSink();
-        if (rtype == CONST_STRING) {
-            #ifndef _PTNODE_NDEBUG_
-                logFile << " set left=" << left->getName() << " to AUT_INTER" << endl;
-            #endif
-            left->clearChildren();
-            DGNode* newNode = new DGNode(newName,left);
-            compleNode->addChild(right);
-            left->setType(AUT_INTER);
-            left->addChild(newNode);
-            left->addChild(compleNode);
-            return left;
-        }
-        else {
-            #ifndef _PTNODE_NDEBUG_
-                logFile << " set right=" << right->getName() << " to AUT_INTER" << endl;
-            #endif
-            right->clearChildren();
-            DGNode* newNode = new DGNode(newName,right);
-            compleNode->addChild(left);
-            right->setType(AUT_INTER);
-            right->addChild(newNode);
-            right->addChild(compleNode);
-            return right;
-        }
-        /*
-        string newName1 = pt->getNewNodeName();
-        string newName2 = pt->getNewNodeName();
-        string newName3 = pt->getNewNodeName();
-        string newName4 = pt->getNewNodeName();
-        string newCompleName1 = pt->getNewNodeName();
-        string newCompleName2 = pt->getNewNodeName();
-        #ifndef _PTNODE_NDEBUG_
-        #endif
-        DGNode* new1 = new DGNode(newName1,left);
-        DGNode* new2 = new DGNode(newName2,right);
-        DGNode* new3 = new DGNode(newName3,left);
-        DGNode* new4 = new DGNode(newName4,right);
-        DGNode* compleNode1 = new DGNode(newCompleName1,AUT_COMPLE,0);
-        DGNode* compleNode2 = new DGNode(newCompleName2,AUT_COMPLE,0);
+    
+    const Type& ltype = left->getType();
+    const Type& rtype = right->getType();
+    
+    assert((ltype == CONST_STRING || rtype == CONST_STRING));
 
-        compleNode1->addChild(new2);
+    string newCName = pt->getNewNodeName();
+    string newName  = pt->getNewNodeName();
+    DGNode* newCNode = new DGNode(newCName,AUT_COMPLE);
+    if (rtype == CONST_STRING) {
+        #ifndef _NLOG_
+            logFile << " set left=" << left->getName() << " to AUT_INTER" << endl;
+        #endif
+        newCNode->addChild(right);
+        DGNode* newNode = new DGNode(newName,left);
         left->clearChildren();
         left->setType(AUT_INTER);
-        left->addChild(new1);
-        left->addChild(compleNode1);
-    
-        compleNode2->addChild(new4);
+        left->addChild(newNode);
+        left->addChild(newCNode);
+        return left;
+    }
+    else {
+        #ifndef _NLOG_
+            logFile << " set right=" << right->getName() << " to AUT_INTER" << endl;
+        #endif
+        newCNode->addChild(left);
+        DGNode* newNode = new DGNode(newName,right);
         right->clearChildren();
         right->setType(AUT_INTER);
-        right->addChild(new3);
-        right->addChild(compleNode2);
-    
-        return 0;
-        */
+        right->addChild(newCNode);
+        right->addChild(newNode);
+        return right;
     }
 }
 
 DGNode* PTAndNode::buildDG()
 {
-    #ifndef _PTNODE_NDEBUG_
+    _bflag = gflag;
+    #ifndef _NLOG_
         logFile << _name << " => return 0" << endl;
     #endif
     return 0;
@@ -395,7 +467,8 @@ DGNode* PTAndNode::buildDG()
 
 DGNode* PTOrNode::buildDG()
 {
-    #ifndef _PTNODE_NDEBUG_
+    _bflag = gflag;
+    #ifndef _NLOG_
         logFile << _name << " => return 0" << endl;
     #endif
     return 0;
@@ -403,11 +476,13 @@ DGNode* PTOrNode::buildDG()
 
 DGNode* PTIteNode::buildDG()
 {
+    _bflag = gflag;
     assert((_children.size() == 3));
-    #ifndef _PTNODE_NDEBUG_
-        logFile << _name << " =>";
-        logFile << " push " << _children[1]->getName();
-        logFile << " push " << _children[2]->getName() << endl;
+    #ifndef _NLOG_
+        logFile << _name << " =>"
+                << " push " << _children[1]->getName()
+                << " push " << _children[2]->getName() 
+                << endl;
     #endif
     ptq.push(_children[1]);
     ptq.push(_children[2]);
@@ -416,37 +491,25 @@ DGNode* PTIteNode::buildDG()
 
 DGNode* PTLTNode::buildDG()
 {
-    assert((_children.size() == 2));
-    string lc = _children[0]->getName() + " " + _name + " " + _children[1]->getName();
-    lcList.push_back(lc);
-    lcptList.push_back(this);
+    _bflag = gflag;
     return 0;
 }
 
 DGNode* PTLTOEQNode::buildDG()
 {
-    assert((_children.size() == 2));
-    string lc = _children[0]->getName() + " " + _name + " " + _children[1]->getName();
-    lcList.push_back(lc);
-    lcptList.push_back(this);
+    _bflag = gflag;
     return 0;
 }
 
 DGNode* PTMTNode::buildDG()
 {
-    assert((_children.size() == 2));
-    string lc = _children[0]->getName() + " " + _name + " " + _children[1]->getName();
-    lcList.push_back(lc);
-    lcptList.push_back(this);
+    _bflag = gflag;
     return 0;
 }
 
 DGNode* PTMTOEQNode::buildDG()
 {
-    assert((_children.size() == 2));
-    string lc = _children[0]->getName() + " " + _name + " " + _children[1]->getName();
-    lcList.push_back(lc);
-    lcptList.push_back(this);
+    _bflag = gflag;
     return 0;
 }
 
@@ -454,78 +517,32 @@ DGNode* PTMTOEQNode::buildDG()
 
 DGNode* PTPlusNode::buildDG()
 {
-    size_t s = _children.size();
-    if (s == 1) {
-#ifndef _PTNODE_NDEBUG_
-logFile << _name << "INT_POS" << endl;
-#endif
-        DGNode* n = _children[0]->buildDG();
-        return new DGNode(n->getName(),INT_POS);
-    }
-    else {
-        assert((s == 2));
-#ifndef _PTNODE_NDEBUG_
-logFile << _name << "INT_PLUS" << endl;
-#endif
-        DGNode* left  = _children[0]->buildDG();
-        DGNode* right = _children[1]->buildDG();
-
-        string s = left->getName() + " " + _name + " " + right->getName();
-        return new DGNode(s,INT_PLUS);
-    }
+    _bflag = gflag;
+    return 0;
 }
 
 DGNode* PTMinusNode::buildDG()
 {
-    size_t s = _children.size();
-    if (s == 1) {
-#ifndef _PTNODE_NDEBUG_
-logFile << _name << "INT_NEG" << endl;
-#endif
-        DGNode* n = _children[0]->buildDG();
-        logFile << n->getName();
-        string s = _name + n->getName();
-#ifndef _PTNODE_NDEBUG_
-logFile << " => return -" << n->getName();
-#endif
-        return new DGNode(s,INT_NEG);
-    }
-    else {
-        assert((s == 2));
-#ifndef _PTNODE_NDEBUG_
-logFile << _name << "INT_MINUS" << endl;
-#endif
-        DGNode* left  = _children[0]->buildDG();
-        DGNode* right = _children[1]->buildDG();
-
-        string s = left->getName() + " " + _name + " " + right->getName();
-        return new DGNode(s,INT_MINUS);
-    }
+    _bflag = gflag;
+    return 0;
 }
 
 DGNode* PTDivNode::buildDG()
 {
-    assert((_children.size() == 2));
-#ifndef _PTNODE_NDEBUG_
-logFile << _name << "INT_DIV" << endl;
-#endif
-    DGNode* left  = _children[0]->buildDG();
-    DGNode* right = _children[1]->buildDG();
-
-    string s = left->getName() + " / " + right->getName();
-    return new DGNode(s,INT_DIV);
+    _bflag = gflag;
+    return 0;
 }
-
 //-----------------string type-------------------
 
 DGNode* PTStrConcateNode::buildDG()
 {
+    _bflag = gflag;
     string newName = pt->getNewNodeName();
-    #ifndef _PTNODE_NDEBUG_
+    #ifndef _NLOG_
         logFile << _name << " => create new node name=" << newName << endl;
     #endif
-    DGNode* newNode = new DGNode(newName,AUT_CONCATE,0);
-    dgMap.insert(Str2DGNode(newName,newNode));
+    DGNode* newNode = new DGNode(newName,AUT_CONCATE);
+    //dgMap.insert(Str2DGNode(newName,newNode));
     for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
         DGNode* cur = (*it)->buildDG();
         assert(cur);
@@ -539,31 +556,27 @@ DGNode* PTStrLenNode::buildDG()
 {
     //FIXME
     assert((_children.size() == 1));
-    DGNode* cur = _children[0]->buildDG();
-    cur->setLength();
-    #ifndef _PTNODE_NDEBUG_
-        logFile << _name << " => child=" << cur->getName() << " set length" << endl;
-    #endif
-    return new DGNode(_children[0]->getName(),STRING_LEN);
+    _bflag = gflag;
+    return _children[0]->buildDG();
 }
 
 DGNode* PTStrInReNode::buildDG()
 {
     assert((_children.size() == 2));
+    _bflag = gflag;
     DGNode* left  = _children[0]->buildDG();
     DGNode* right = _children[1]->buildDG();
     
     assert((left && right));
-    string newLeftName = pt->getNewNodeName();
-    #ifndef _PTNODE_NDEBUG_
-        //logFile << _name << " => left=" << (left? left->getName():"0")
-        //              << " right=" << (right? right->getName():"0");
+    string newLName = pt->getNewNodeName();
+    #ifndef _NLOG_
         logFile << _name << " => left=" <<  left->getName()
-                      << " right=" << right->getName()
-                      << " newLeftName=" << newLeftName << endl;
+                         << " right=" << right->getName()
+                         << " newLName=" << newLName 
+                         << endl;
     #endif
-    DGNode* newNode = new DGNode(newLeftName,left);
-    //dgMap.insert(Str2DGNode(newLeftName,newNode));
+    DGNode* newNode = new DGNode(newLName,left);
+    //dgMap.insert(Str2DGNode(newLName,newNode));
     right->setNotSink();
     left->setType(AUT_INTER);
     left->clearChildren();
@@ -571,83 +584,47 @@ DGNode* PTStrInReNode::buildDG()
     left->addChild(right);
     
     return left;
-    /*
-    //TODO: need to consider symmetry
-    if (left->getType() == VAR_STRING) {
-        if (right->getType() == CONST_STRING) {
-            #ifndef _PTNODE_NDEBUG_
-                logFile << " => left VSCS right ; erase right" << endl;
-            #endif
-            left->mergeVSCS(right);
-        }
-        else {
-            #ifndef _PTNODE_NDEBUG_
-                logFile << " => left VSOS right ; erase right" << endl;
-            #endif
-            left->mergeVSOS(right);
-        }
-        dgMap.erase(dgMap.find(right->getName()));
-        delete right;
-        return left;
-    }
-    else {
-        logFile << _name << endl;
-        assert((left->getType() == OP_STRCONCATE) || (left->getType() == OP_STRREPLACE));
-        string newName = pt->getNewNodeName();
-        DGNode* newNode = new DGNode(newName,OP_REINTER);
-        dgMap.insert(Str2DGNode(newName,newNode));
-        left->setNotSink();
-        right->setNotSink();
-        newNode->addChild(left);
-        newNode->addChild(right);
-        #ifndef _PTNODE_NDEBUG_
-            logFile << " => create intersect name=" << newNode->getName() << endl;
-        #endif
-        return newNode;
-    }
-    */
 }
 
 DGNode* PTStrNotInReNode::buildDG()
 {
     assert((_children.size() == 2));
+    _bflag = gflag;
     DGNode* left  = _children[0]->buildDG();
     DGNode* right = _children[1]->buildDG();
     
     assert((left && right));
-    string newCompleName = pt->getNewNodeName();
-    string newLeftName   = pt->getNewNodeName();
-    #ifndef _PTNODE_NDEBUG_
-        //logFile << _name << " => left=" << (left? left->getName():"0")
-        //              << " right=" << (right? right->getName():"0");
+    string newCName = pt->getNewNodeName();
+    string newLName = pt->getNewNodeName();
+    #ifndef _NLOG_
         logFile << _name << " => left=" <<  left->getName()
-                      << " right=" << right->getName() 
-                      << " newLeftName=" << newLeftName
-                      << " comple=" << newCompleName << endl;
+                         << " right=" << right->getName() 
+                         << " newLName=" << newLName
+                         << " comple=" << newCName << endl;
     #endif
-    DGNode* newLeftNode = new DGNode(newLeftName,left);
-    DGNode* compleNode = new DGNode(newCompleName,AUT_COMPLE,0);
-    //dgMap.insert(Str2DGNode(newLeftName,newLeftNode));
-    //dgMap.insert(Str2DGNode(newCompleName,compleNode));
+    DGNode* newLNode = new DGNode(newLName,left);
+    DGNode* newCNode = new DGNode(newCName,AUT_COMPLE);
+    //dgMap.insert(Str2DGNode(newLName,newLNode));
+    //dgMap.insert(Str2DGNode(newCName,newCNode));
     right->setNotSink();
-    compleNode->setNotSink();
-    compleNode->addChild(right);
+    newCNode->addChild(right);
     left->setType(AUT_INTER);
     left->clearChildren();
-    left->addChild(newLeftNode);
-    left->addChild(compleNode);
+    left->addChild(newLNode);
+    left->addChild(newCNode);
     return left;
 }
 
 DGNode* PTStrReplaceNode::buildDG()
 {
+    _bflag = gflag;
     string newName = pt->getNewNodeName();
-    #ifndef _PTNODE_NDEBUG_
+    #ifndef _NLOG_
         logFile << _name << " => create new node name=" << newName << endl;
     #endif
     assert((_children.size() == 3));
-    DGNode* newNode = new DGNode(newName,AUT_REPLACE,0);
-    dgMap.insert(Str2DGNode(newName,newNode));
+    DGNode* newNode = new DGNode(newName,AUT_REPLACE);
+    //dgMap.insert(Str2DGNode(newName,newNode));
     for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
         DGNode* cur = (*it)->buildDG();
         assert(cur);
@@ -660,22 +637,24 @@ DGNode* PTStrReplaceNode::buildDG()
 DGNode* PTStrToReNode::buildDG()
 {
     assert((_children.size() == 1));
+    _bflag = gflag;
     #ifndef _DEBUG_
         logFile << _name << " => return child=" << _children[0]->getName() << endl;
     #endif
     return _children[0]->buildDG();
 }
 
-//-----------------automaton type-------------------
+//-----------------regex type-------------------
 
 DGNode* PTReConcateNode::buildDG()
 {
+    _bflag = gflag;
     string newName = pt->getNewNodeName();
-    #ifndef _PTNODE_NDEBUG_
+    #ifndef _NLOG_
         logFile << _name << " => create new node name=" << newName << endl;
     #endif
-    DGNode* newNode = new DGNode(newName,AUT_CONCATE,0);
-    dgMap.insert(Str2DGNode(newName,newNode));
+    DGNode* newNode = new DGNode(newName,AUT_CONCATE);
+    //dgMap.insert(Str2DGNode(newName,newNode));
     for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
         DGNode* cur = (*it)->buildDG();
         assert(cur);
@@ -687,12 +666,13 @@ DGNode* PTReConcateNode::buildDG()
 
 DGNode* PTReUnionNode::buildDG()
 {
+    _bflag = gflag;
     string newName = pt->getNewNodeName();
-    #ifndef _PTNODE_NDEBUG_
+    #ifndef _NLOG_
         logFile << _name << " => create new node name=" << newName << endl;
     #endif
-    DGNode* newNode = new DGNode(newName,AUT_UNION,0);
-    dgMap.insert(Str2DGNode(newName,newNode));
+    DGNode* newNode = new DGNode(newName,AUT_UNION);
+    //dgMap.insert(Str2DGNode(newName,newNode));
     for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
         DGNode* cur = (*it)->buildDG();
         assert(cur);
@@ -704,12 +684,13 @@ DGNode* PTReUnionNode::buildDG()
 
 DGNode* PTReInterNode::buildDG()
 {
+    _bflag = gflag;
     string newName = pt->getNewNodeName();
-    #ifndef _PTNODE_NDEBUG_
+    #ifndef _NLOG_
         logFile << _name << " => create new node name=" << newName << endl;
     #endif
-    DGNode* newNode = new DGNode(newName,AUT_INTER,0);
-    dgMap.insert(Str2DGNode(newName,newNode));
+    DGNode* newNode = new DGNode(newName,AUT_INTER);
+    //dgMap.insert(Str2DGNode(newName,newNode));
     for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
         DGNode* cur = (*it)->buildDG();
         assert(cur);
@@ -719,3 +700,80 @@ DGNode* PTReInterNode::buildDG()
     return newNode;
 }
 
+//-------------------buildPTNodeListMap------------------
+void PTNode::buildPTNodeListMap(PTNode* root)
+{
+    return;
+}
+void PTVarIntNode::buildPTNodeListMap(PTNode* root)
+{
+    PTNode2PTNodeListMap::iterator it = ptnodeListMap.find(this);
+    assert((it!=ptnodeListMap.end()));
+    it->second.push_back(root);
+}
+void PTVarBoolNode::buildPTNodeListMap(PTNode* root)
+{
+    PTNode2PTNodeListMap::iterator it = ptnodeListMap.find(this);
+    assert((it!=ptnodeListMap.end()));
+    it->second.push_back(root);
+}
+void PTNotNode::buildPTNodeListMap(PTNode* root)
+{
+    assert((_children.size()==1));
+    _children[0]->buildPTNodeListMap(root);
+}
+void PTEqNode::buildPTNodeListMap(PTNode* root)
+{
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildPTNodeListMap(root);
+}
+void PTNotEqNode::buildPTNodeListMap(PTNode* root)
+{
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildPTNodeListMap(root);
+}
+void PTAndNode::buildPTNodeListMap(PTNode* root)
+{
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildPTNodeListMap(root);
+}
+void PTOrNode::buildPTNodeListMap(PTNode* root)
+{
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildPTNodeListMap(root);
+}
+void PTLTNode::buildPTNodeListMap(PTNode* root)
+{
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildPTNodeListMap(root);
+}
+void PTLTOEQNode::buildPTNodeListMap(PTNode* root)
+{
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildPTNodeListMap(root);
+}
+void PTMTNode::buildPTNodeListMap(PTNode* root)
+{
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildPTNodeListMap(root);
+}
+void PTMTOEQNode::buildPTNodeListMap(PTNode* root)
+{
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildPTNodeListMap(root);
+}
+void PTPlusNode::buildPTNodeListMap(PTNode* root)
+{
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildPTNodeListMap(root);
+}
+void PTMinusNode::buildPTNodeListMap(PTNode* root)
+{
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildPTNodeListMap(root);
+}
+void PTDivNode::buildPTNodeListMap(PTNode* root)
+{
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildPTNodeListMap(root);
+}

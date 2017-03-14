@@ -1,8 +1,10 @@
 #include "dg.h"
-#include "mgr.h"
+#include "kaluzaMgr.h"
 
-extern Mgr* mgr;
-static ofstream& logFile = mgr->getLogFile();
+extern KaluzaMgr* kmgr;
+static const size_t& gflag = kmgr->getGFlag(); 
+static PT* pt = kmgr->getPT();
+static ofstream& logFile = kmgr->getLogFile();
 
 string DGNode::getRegex()
 {
@@ -29,10 +31,10 @@ string DGNode::getRegex()
 void DGNode::setLeader(DGNode* n)
 {
     _leader = n;
-    if (_length || n->_length) {
-        _length = 1;
-        n->_length = 1;
-    }
+    for (PTNodeList::iterator it=_lengthVarList.begin(); it!=_lengthVarList.end(); ++it)
+        n->_lengthVarList.push_back(*it);
+    for (IMPList::iterator it=_impList.begin(); it!=_impList.end(); ++it)
+        n->_impList.push_back(*it);
 }
 
 DGNode* DGNode::findLeader()
@@ -86,7 +88,7 @@ const char* DGNode::getTypeString() const
     }
 }
 
-void DGNode::writeDBG(const size_t& indent,size_t level) const
+void DGNode::print(const size_t& indent,size_t level) const
 {
     logFile << string(indent*level,' ') 
             << _name << " "
@@ -94,7 +96,70 @@ void DGNode::writeDBG(const size_t& indent,size_t level) const
     if (_type == CONST_STRING) logFile << " regex=" << _regex;
     logFile << endl;
     for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it)
-        (*it)->writeDBG(indent,level+1);
+        (*it)->print(indent,level+1);
+}
+
+void DGNode::writeCVC4LeafNode(string& s)
+{
+    if (_type === AUT_CONCATE) {
+        s += " (re.++ ";
+        s += ")";
+    }
+    else if (_type == CONST_STRING) {
+        s += " (str.to.re " + _regex + ")";
+    }
+}
+
+void DGNode::writeCVC4File(Str2TypeMap& typeMap,vector<string>& cvc4StrList, vector<string>& cvc4PredList, const size_t& bflag )
+{
+    assert((_flag != gflag));
+    _flag = gflag;
+    Str2TypeMap::iterator it = typeMap.find(_name);
+    assert((it == typeMap.end()));
+    typeMap.insert(Str2Type(_name,_type));
+    
+    if (_type == AUT_CONCATE) 
+        cvc4StrList.push_back("(assert (= "+_name+" (str.++ "+_children[0]->_name+" "+_children[1]->_name+")))");
+    else if (_type == AUT_COMPLE) {
+        string s = "(assert (not (str.in.re " + _name;
+        _children[0]->writeCVC4LeafNode(s);
+        s += ")))";
+        cvc4StrList.push_back(s);
+    }    
+    else if (_type == CONST_STRING)
+        cvc4StrList.push_back("(assert (= "+_name+" "+_regex+"))");
+    else if (_type == AUT_INTER)
+
+    for (PTNodeList::iterator it=_lengthVarList.begin(); it!=_lengthVarList.end(); ++it) {
+        if ( (*it)->getFlag() != gflag) {
+            (*it)->setFlag(gflag);
+            cvc4PredList.push_back("(assert (= "+(*it)->getName()+" (str.len "+_name+" )))");
+            (*it)->writeCVC4Pred(typeMap,cvc4PredList,bflag);
+        }
+        else {
+            #ifndef _NLOG_
+                logFile << "[WARNING02]: same Int Variable assigned to 2 different String Variable" << endl;
+            #endif 
+            cout << "[WARNING02]: same Int Variable assigned to 2 different String Variable" << endl;
+        }
+    }
+    for (IMPList::iterator it=_impList.begin(); it!=_impList.end(); ++it) {
+        if ( (*it)->first->getFlag() != gflag) {
+            (*it)->first->setFlag(gflag);
+            assert(((*it)->first->getType() == VAR_BOOL));
+            assert(((*it)->second));
+            cvc4PredList.push_back("(assert "+(*it)->first->getName()+")");
+            (*it)->first->writeCVC4Pred(typeMap,cvc4PredList,bflag);
+        }
+        else {
+            #ifndef _NLOG_
+                logFile << "[WARNING07]: same Bool Variable implied by 2 different String Variable" << endl;
+            #endif 
+            cout << "[WARNING07]: same Bool Variable implied by 2 different String Variable" << endl;
+        }
+    }
+    for (DGNodeList::iterator it=_children.begin();it!=_children.end();++it)
+        (*it)->writeCVC4File(typeMap,cvc4StrList,cvc4PredList,bflag);
 }
 
 void DGNode::writeCmdFile(const Str2UintMap& intVarMap, ofstream& cmdFile,ofstream& autFile) const
@@ -134,34 +199,47 @@ void DGNode::lcTraversal(Str2UintMap& intVarMap,size_t& cnt) const
                 intVarMap.insert(Str2Uint((*it)->_name,cnt++));
         }
     }
-    /*
-    if (isRecord) {
-        smt2File << "(assert (= " << _name;
-        if (_type == AUT_CONCATE) {
-            smt2File << " (str.++";
-            
-            smt2File << ")";
-        }
-        else if(_type == )
-        smt2File << "))\n";
-    }
-    else {
-        if (strVarMap.find(_name)!=strVarMap.end())
-            strVarMap.insert(Str2Type(_name,_type));
-        if (_type == AUT_COMPLE || _type == CONST_STRING || _type == VAR_STRING)
-            return;
-        for(DGNodeList::iterator it=_children.begin();it!=_children.end();++it)
-            (*it)->lcTraversal(smt2File,isRecord,strVarMap);
-    }
-    */
 }
+/*
+void DGNode::writeSmt2File(ofstream& smt2File) const
+{
+    
+    for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it) {
+        const Type& type = (*it)->_type;
+        if (type != CONST_STRING && type != VAR_STRING && type != AUT_COMPLE)
+            (*it)->writeSmt2File(smt2File);    
+    }
+    smt2File << "(assert";
+    if (_type == AUT_CONCATE) {
+        
+    }
+    else if (_type == AUT_INTER) {
+    }
+    else if (_type == AUT_COMPLE) {
+
+    }
+    else if (_type == )
+    {}
+    smt2File << ")\n";
+    
+}
+*/
 
 //-----------------merge-------------
-void DGNode::merge(const size_t& gflag)
+void DGNode::merge()
 {
     for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
-        if ((*it)->_type != CONST_STRING && (*it)->_type != VAR_STRING)
-            (*it)->merge(gflag);
+        //if ((*it)->_type != CONST_STRING && (*it)->_type != VAR_STRING)
+        (*it)->merge();
+    
+    if (_flag != gflag) _flag = gflag;
+    else {
+        #ifndef _NLOG_
+        logFile << "[WARNING06]: this DG is NOT a DAG : at node " << _name << endl;
+        #endif
+        cout    << "[WARNING06]: this DG is NOT a DAG : at node " << _name << endl;
+    }
+    
     if (_type == AUT_INTER) {
         size_t cnt = 0;
         for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
@@ -194,9 +272,14 @@ void DGNode::merge(const size_t& gflag)
             _children.clear();
         }
     }
-    if (_flag != gflag) _flag = gflag;
-    else {              
-        logFile << "this DG is a DAG : at node " << _name << endl;
-        cout    << "this DG is a DAG : at node " << _name << endl;
+}
+
+void DGNode::renameLengthVar(size_t& lengthVarCnt)
+{
+    for (PTNodeList::iterator it=_lengthVarList.begin(); it!=_lengthVarList.end(); ++it) {
+        (*it)->setLengthVar(lengthVarCnt);
     }
+    ++lengthVarCnt;
+    for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->renameLengthVar(lengthVarCnt);
 }

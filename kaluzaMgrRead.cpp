@@ -1,29 +1,61 @@
-#include "mgr.h"
-void Mgr::printPT()
+#include "kaluzaMgr.h"
+void KaluzaMgr::printTypeMap()
 {
-    _pt->mergeNotAndStrInRe();
-    splitLine(_logFile,"Mgr::printPT()");
-    _pt->writeDBG();
+    #ifndef _NLOG_
+    splitLine(_logFile,"KaluzaMgr::printTypeMap");
+    for (Str2TypeMap::iterator it=_typeMap.begin(); it!=_typeMap.end(); ++it) {
+        _logFile << it->first << " => ";
+        switch (it->second) {
+            case VAR_INT :
+                _logFile << "Int\n";
+                break;
+            case VAR_BOOL :
+                _logFile << "Bool\n";
+                break;
+            case VAR_STRING :
+                _logFile << "String\n";
+                break;
+            default :
+                break;
+        }
+    }
+    #endif
 }
 
-void Mgr::parse(const char* fileName)
+void KaluzaMgr::printPT()
+{
+    splitLine(_logFile,"KaluzaMgr::printPT");
+    _pt->print();
+}
+
+void KaluzaMgr::analyzePT()
+{
+    _pt->analyze();
+}
+
+void KaluzaMgr::read(const char* fileName)
 {
     string line;
 
-    string fstr = string(fileName);
-    _path = fstr.substr(0,fstr.find_last_of(".")) + "/";
-    cout << ">> parse::path=" << _path << endl;
-    system(("mkdir -p "+_path).c_str());
-    _logFile.open((_path+"log").c_str());
-    
-    splitLine(_logFile,"Mgr::parse()");
+    _file = string(fileName);
+    _path = _file.substr(0,_file.find_last_of(".")) + "/";
+    cout << ">> read::file=" << fileName << endl;
+    #ifndef _NDIR_
+        cout << ">> create dir=" << _path << endl;
+        system(("mkdir -p "+_path).c_str());
+    #endif
+    #ifndef _NLOG_
+        _logFile.open((_path+"log").c_str());
+        splitLine(_logFile,"KaluzaMgr::read");
+    #endif
     ifstream file(fileName);
     if (file) {
         size_t lineCnt = 0,lCnt = 0,rCnt = 0;
         vector<string> tokenList;
         while(getline(file,line)) {
-            //cout << "lineCnt"<<++lineCnt <<" \""<< line <<"\""<<endl;
-            _logFile << "lineCnt"<<++lineCnt <<" \""<< line <<"\""<<endl;
+            #ifndef _NLOG_
+                _logFile << "lineCnt=" << ++lineCnt << " \"" << line << "\"" << endl;
+            #endif
             for (size_t i=0,j=0,size=line.length(); j < size; ++j) {
                 if (line[j] == ' ' || line[j] == ')') {
                     if (i != j ) {
@@ -46,9 +78,11 @@ void Mgr::parse(const char* fileName)
             if (lCnt == rCnt && !tokenList.empty()) {
                 lCnt = 0;
                 rCnt = 0;
-                for (size_t i = 0,size = tokenList.size(); i < size; ++i)
-                    _logFile << tokenList[i];
-                _logFile << endl;
+                #ifndef _NLOG_
+                    for (size_t i = 0,size = tokenList.size(); i < size; ++i)
+                        _logFile << tokenList[i];
+                    _logFile << endl;
+                #endif
                 handleConstraint(tokenList);
                 tokenList.clear();
             }
@@ -56,12 +90,26 @@ void Mgr::parse(const char* fileName)
         file.close();
     }
     else
-        _logFile << "fail open" <<endl;
-    for (Str2TypeMap::iterator it=_typeMap.begin(); it!=_typeMap.end(); ++it)
-        _logFile << it->first << " => " << it->second << '\n';
+        cout << "fail open" << endl;
+    _pt->print();
+    _pt->mergeNotEquivalence();
+    _pt->buildStr2PTNodeListMap();
+    _pt->setLevel();
+    _pt->print();
+    /*
+    _pt->printStr2PTNodeListMap();
+    _pt->print();
+    */
+    /*
+    _pt->setLevel();
+    _pt->buildPTNodeListMap();
+    printTypeMap();
+    _pt->printStr2PTNodeListMap();
+    _pt->print();
+    */
 }
 
-void Mgr::handleConstraint(const vector<string>& tokenList)
+void KaluzaMgr::handleConstraint(const vector<string>& tokenList)
 {   
     if (tokenList[1] == "assert") {
         addAssertion(handleAssertion(tokenList,2,tokenList.size()-2));
@@ -71,7 +119,7 @@ void Mgr::handleConstraint(const vector<string>& tokenList)
     }
 }
 
-PTNode* Mgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size_t epos)
+PTNode* KaluzaMgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size_t epos)
 {
     PTNode* newNode = NULL;
     
@@ -96,23 +144,25 @@ PTNode* Mgr::handleAssertion(const vector<string>& tokenList,size_t bpos, size_t
     return newNode;
 }
 
-void Mgr::handleDeclare(const vector<string>& tokenList)
+void KaluzaMgr::handleDeclare(const vector<string>& tokenList)
 {
-    if (tokenList[5] == "Int")
-        _typeMap.insert(Str2Type(tokenList[2],VAR_INT));
-    else if (tokenList[5] == "Bool")
-        _typeMap.insert(Str2Type(tokenList[2],VAR_BOOL));
-    else if (tokenList[5] == "String")
-        _typeMap.insert(Str2Type(tokenList[2],VAR_STRING));
-
+    if (tokenList[5] == "Int") {
+        _ptnodeMap.insert(Str2PTNode(tokenList[2],newNode));
+    }
+    else if (tokenList[5] == "Bool") {
+        _ptnodeMap.insert(Str2PTNode(tokenList[2],newNode));
+    }
+    else if (tokenList[5] == "String") {
+        _ptnodeMap.insert(Str2PTNode(tokenList[2],new PTVarStringNode(tokenList[2])));
+    }
 }
 
-void Mgr::addAssertion(PTNode* n)
+void KaluzaMgr::addAssertion(PTNode* n)
 {
     _pt->addAssertion(n);
 }
 
-PTNode* Mgr::buildPTNode(const string& name)
+PTNode* KaluzaMgr::buildPTNode(const string& name)
 {
     if      (name == "not"        ) return new PTNotNode(name);
     else if (name == "="          ) return new PTEqNode(name);
@@ -135,6 +185,7 @@ PTNode* Mgr::buildPTNode(const string& name)
     else if (name == "re.union"   ) return new PTReUnionNode(name);
     else if (name == "re.inter"   ) return new PTReInterNode(name);
     else {
+        /*
         Str2TypeMap::iterator it = _typeMap.find(name);
         if (it != _typeMap.end()) {
             const Type& type = it->second;
@@ -152,11 +203,18 @@ PTNode* Mgr::buildPTNode(const string& name)
                     break;
             }
         }
+        */
+        Str2PTNodeMap::iterator it = _ptnodeMap.find(name);
+        if (it != _ptnodeMap.end())                 return it->second;
         else if (name[0] == '\"')                   return new PTConstStringNode(name);
         else if (name == "true" || name == "false") return new PTConstBoolNode(name);    
         else if (isNumber(name))                    return new PTConstIntNode(name);
-        else
-            _logFile << "invalid string=" << name << " at file=" << _path << endl;
+        else {
+            #ifndef _NLOG_
+                _logFile << "[WARNING01]: invalid string=" << name << " at file=" << _file << endl;
+            #endif
+            cout << "[WARNING01]: invalid string=" << name << " at file=" << _file << endl;
+        }
     }
 }
 

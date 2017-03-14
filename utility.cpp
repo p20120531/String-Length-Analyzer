@@ -37,3 +37,14 @@ void splitLine(ofstream& outFile, const char* s)
             << "--------------------";
     outFile << endl;
 }
+
+void str2tokens(const string& s, vector<string>& tokenList)
+{
+    for (size_t i = 0, j = 0, size = s.size(); i < size; ++i) {
+        if (s[i] == ' ') continue;
+        j = i;
+        while (s[j] != ' ' && j < size) ++j;
+        tokenList.push_back(s.substr(i,j-i));
+        i = j;
+    }
+}
