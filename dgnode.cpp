@@ -1,12 +1,13 @@
 #include "dg.h"
 #include "kaluzaMgr.h"
 
-extern KaluzaMgr* kmgr;
-static const size_t& gflag = kmgr->getGFlag(); 
-static PT* pt = kmgr->getPT();
-static ofstream& logFile = kmgr->getLogFile();
+extern KaluzaMgr*    kmgr;
+static const size_t& gflag   = kmgr->getGFlag(); 
+static PT*&          pt      = kmgr->getPT();
+static DG*&          dg      = kmgr->getDG();
+static ofstream&     logFile = kmgr->getLogFile();
 
-string DGNode::getRegex()
+string DGNode::getRegex() const
 {
     if (_type == VAR_STRING)
         return ".*";
@@ -20,7 +21,7 @@ string DGNode::getRegex()
     }
     else if(_type == AUT_CONCATE) {
         string s;
-        for (DGNodeList::iterator it=_children.begin();it!=_children.end();++it)
+        for (DGNodeList::const_iterator it=_children.begin();it!=_children.end();++it)
             s += (*it)->getRegex();
         return s;
     }
@@ -31,10 +32,10 @@ string DGNode::getRegex()
 void DGNode::setLeader(DGNode* n)
 {
     _leader = n;
-    for (PTNodeList::iterator it=_lengthVarList.begin(); it!=_lengthVarList.end(); ++it)
+    for (PTNodePairList::iterator it=_lengthVarList.begin(); it!=_lengthVarList.end(); ++it)
         n->_lengthVarList.push_back(*it);
-    for (IMPList::iterator it=_impList.begin(); it!=_impList.end(); ++it)
-        n->_impList.push_back(*it);
+    for (PTNodePairList::iterator it=_assertionList.begin(); it!=_assertionList.end(); ++it)
+        n->_assertionList.push_back(*it);
 }
 
 DGNode* DGNode::findLeader()
@@ -90,37 +91,78 @@ const char* DGNode::getTypeString() const
 
 void DGNode::print(const size_t& indent,size_t level) const
 {
+    #ifndef _NLOG_
     logFile << string(indent*level,' ') 
             << _name << " "
             << getTypeString();
-    if (_type == CONST_STRING) logFile << " regex=" << _regex;
+    #endif
+    if (_type == CONST_STRING) {
+        #ifndef _NLOG_
+        logFile << " regex=" << _regex;
+        #endif
+    }
+    #ifndef _NLOG_
     logFile << endl;
+    #endif
     for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it)
-        (*it)->print(indent,level+1);
+        (*it)->findLeader()->print(indent,level+1);
+}
+
+void DGNode::printLengthVarList() const
+{
+    #ifndef _NLOG_
+        logFile << "DGNode: name=" << _name << endl;
+    #endif
+    for (PTNodePairList::const_iterator it=_lengthVarList.begin(); it!=_lengthVarList.end(); ++it)
+        (*it).second->print(3,0);
+    for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->findLeader()->printLengthVarList();
 }
 
 void DGNode::writeCVC4LeafNode(string& s)
 {
-    if (_type === AUT_CONCATE) {
-        s += " (re.++ ";
+    if (_type == AUT_CONCATE) {
+        s += " (re.++";
+        for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+            (*it)->findLeader()->writeCVC4LeafNode(s);
         s += ")";
     }
     else if (_type == CONST_STRING) {
+        assert((_children.size() == 0));
         s += " (str.to.re " + _regex + ")";
+    }
+    else {
+        #ifndef _NLOG_
+            logFile << "[WARNING:DGNode::writeCVC4LeafNode] invalid type=" << _type << " at LeafDGNode=" << _name << endl;
+        #endif
+        cout << "[WARNING:DGNode::writeCVC4LeafNode] invalid type=" << _type << " at LeafDGNode=" << _name << endl;
     }
 }
 
-void DGNode::writeCVC4File(Str2TypeMap& typeMap,vector<string>& cvc4StrList, vector<string>& cvc4PredList, const size_t& bflag )
+void DGNode::writeCVC4File()
 {
     assert((_flag != gflag));
     _flag = gflag;
+    Str2TypeMap& typeMap = dg->getTypeMap();
+    vector<string>& cvc4StrList = dg->getCVC4StrList();
+    vector<string>& cvc4PredList = dg->getCVC4PredList();
+    set<string>& bvStrSet = dg->getBVStrSet(); 
+    set<string>& ivStrSet = dg->getIVStrSet(); 
+
     Str2TypeMap::iterator it = typeMap.find(_name);
     assert((it == typeMap.end()));
-    typeMap.insert(Str2Type(_name,_type));
+    assert((_type == AUT_CONCATE || _type == AUT_INTER || _type == AUT_COMPLE || _type == CONST_STRING || _type == VAR_STRING));
+    typeMap.insert(Str2Type(_name,VAR_STRING));
     
     if (_type == AUT_CONCATE) 
         cvc4StrList.push_back("(assert (= "+_name+" (str.++ "+_children[0]->_name+" "+_children[1]->_name+")))");
+    else if (_type == AUT_INTER) {
+        assert((_children.size() == 2));
+        cvc4StrList.push_back("(assert (str.in.re "+_name+" (str.to.re "+_children[0]->_name+")))");
+        cvc4StrList.push_back("(assert (str.in.re "+_name+" (str.to.re "+_children[1]->_name+")))");
+    }
     else if (_type == AUT_COMPLE) {
+        assert((_children.size() == 1));
         string s = "(assert (not (str.in.re " + _name;
         _children[0]->writeCVC4LeafNode(s);
         s += ")))";
@@ -128,62 +170,95 @@ void DGNode::writeCVC4File(Str2TypeMap& typeMap,vector<string>& cvc4StrList, vec
     }    
     else if (_type == CONST_STRING)
         cvc4StrList.push_back("(assert (= "+_name+" "+_regex+"))");
-    else if (_type == AUT_INTER)
+    else {
+        assert((_type == VAR_STRING));
+        /*
+        #ifndef _NLOG_
+            logFile << "[WARNING08]: invalid type=" << _type << " at DGNode=" << _name << endl;
+        #endif
+        cout << "[WARNING08]: invalid type=" << _type << " at DGNode=" << _name << endl;
+        */
+    }
 
-    for (PTNodeList::iterator it=_lengthVarList.begin(); it!=_lengthVarList.end(); ++it) {
-        if ( (*it)->getFlag() != gflag) {
-            (*it)->setFlag(gflag);
-            cvc4PredList.push_back("(assert (= "+(*it)->getName()+" (str.len "+_name+" )))");
-            (*it)->writeCVC4Pred(typeMap,cvc4PredList,bflag);
+    for (PTNodePairList::iterator it=_lengthVarList.begin(); it!=_lengthVarList.end(); ++it) {
+        const Type& type = (*it).second->getType();
+        if (type == CONST_INT) {
+            cvc4PredList.push_back("(assert (= "+(*it).second->getName()+" (str.len "+_name+"))) ; cstrlen "+itos(_lengthVarCnt));
+        }
+        else {
+            assert((type == VAR_INT));
+            set<string>::iterator jt = ivStrSet.find((*it).second->getName());
+            if (jt == ivStrSet.end()) {
+                ivStrSet.insert((*it).second->getName());
+                string s = "(assert";
+                (*it).first->writeCVC4PredRoot(s);
+                s += ") ; vstrlen "+itos(_lengthVarCnt);
+                cvc4PredList.push_back(s);
+            }
+            else {
+                #ifndef _NLOG_
+                    logFile << "[WARNING:DGNode::writeCVC4File] same Int Variable assigned to 2 different String Variable" << endl;
+                #endif 
+                cout << "[WARNING:DGNode::writeCVC4File] same Int Variable assigned to 2 different String Variable" << endl;
+            }
+        }
+    }
+    for (PTNodePairList::iterator it=_assertionList.begin(); it!=_assertionList.end(); ++it) {
+        assert(((*it).second->getType() == VAR_BOOL));
+        set<string>::iterator jt = bvStrSet.find((*it).second->getName());
+        if (jt == bvStrSet.end()) {
+            bvStrSet.insert((*it).second->getName());
+            // FIXME
+            string s = "(assert " + (*it).second->getName() + ")";
+            cvc4PredList.push_back(s);
+            /*
+            string s = "(assert";
+            (*it).first->writeCVC4PredRoot(s);
+            s += ")";
+            cvc4PredList.push_back(s);
+            */
         }
         else {
             #ifndef _NLOG_
-                logFile << "[WARNING02]: same Int Variable assigned to 2 different String Variable" << endl;
+                logFile << "[WARNING:DGNode::writeCVC4File] same Bool Variable implied by 2 different String Variable" << endl;
             #endif 
-            cout << "[WARNING02]: same Int Variable assigned to 2 different String Variable" << endl;
+            cout << "[WARNING:DGNode::writeCVC4File] same Bool Variable implied by 2 different String Variable" << endl;
         }
     }
-    for (IMPList::iterator it=_impList.begin(); it!=_impList.end(); ++it) {
-        if ( (*it)->first->getFlag() != gflag) {
-            (*it)->first->setFlag(gflag);
-            assert(((*it)->first->getType() == VAR_BOOL));
-            assert(((*it)->second));
-            cvc4PredList.push_back("(assert "+(*it)->first->getName()+")");
-            (*it)->first->writeCVC4Pred(typeMap,cvc4PredList,bflag);
-        }
-        else {
-            #ifndef _NLOG_
-                logFile << "[WARNING07]: same Bool Variable implied by 2 different String Variable" << endl;
-            #endif 
-            cout << "[WARNING07]: same Bool Variable implied by 2 different String Variable" << endl;
-        }
-    }
+    if (_type == AUT_COMPLE) return;
     for (DGNodeList::iterator it=_children.begin();it!=_children.end();++it)
-        (*it)->writeCVC4File(typeMap,cvc4StrList,cvc4PredList,bflag);
+        (*it)->findLeader()->writeCVC4File();
 }
 
-void DGNode::writeCmdFile(const Str2UintMap& intVarMap, ofstream& cmdFile,ofstream& autFile) const
+void DGNode::writeCmdFile(ofstream& cmdFile,ofstream& autFile)
 {
-    for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it)
-        if ((*it)->_type != CONST_STRING && (*it)->_type != VAR_STRING && (*it)->_type != AUT_COMPLE) {
-            (*it)->writeCmdFile(intVarMap,cmdFile,autFile);
+    assert((_flag != gflag)); // Not DAG
+    _flag = gflag;
+    if(_type == VAR_STRING || _type == CONST_STRING || _type == AUT_COMPLE) {
+        if (_lengthVarCnt != -1) {
+            cmdFile << "addlen " << _name << ".vmt " << _lengthVarCnt << endl;
+            cmdFile << "write " << _name << "_l.vmt" << endl;
         }
-    cmdFile << "./parse.exe -";
+        autFile << _name << " " << getRegex() << endl;
+        return;
+    }
+    for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
+        (*it)->findLeader()->writeCmdFile(cmdFile,autFile);
+    }
     if     (_type == AUT_CONCATE) cmdFile << "concate";  
     else if(_type == AUT_REPLACE) cmdFile << "replace";
     else if(_type == AUT_UNION)   cmdFile << "union";
     else if(_type == AUT_INTER)   cmdFile << "intersect";
-    for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it) {
-        cmdFile << " " << (*it)->_name << ".vmt";
-        if ((*it)->_type == CONST_STRING || (*it)->_type == VAR_STRING || (*it)->_type == AUT_COMPLE) {
-            Str2UintMap::const_iterator jt = intVarMap.find((*it)->_name);
-            cout << _name << " " << getTypeString() << endl;
-            assert((jt != intVarMap.end()));
-            autFile << (*it)->_name << " n" << jt->second << " " << (*it)->getRegex() << endl;
-        }
+    for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
+        cmdFile << " " << (*it)->findLeader()->getName();
+        if ((*it)->findLeader()->_lengthVarCnt != -1) cmdFile << "_l";
+        cmdFile << ".vmt";
     }
-    cmdFile << " " << _name << ".vmt" << endl;
-    //cmdFile << "\nwrite " << _name << ".vmt" << endl;
+    cmdFile << endl << "write " << _name << ".vmt" << endl;
+    if (_lengthVarCnt != -1) {
+        cmdFile << "addlen " << _name << ".vmt " << _lengthVarCnt << endl;
+        cmdFile << "write " << _name << "_l.vmt" << endl;
+    }
 }
 
 void DGNode::lcTraversal(Str2UintMap& intVarMap,size_t& cnt) const
@@ -230,21 +305,21 @@ void DGNode::merge()
 {
     for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
         //if ((*it)->_type != CONST_STRING && (*it)->_type != VAR_STRING)
-        (*it)->merge();
+        (*it)->findLeader()->merge();
     
     if (_flag != gflag) _flag = gflag;
     else {
         #ifndef _NLOG_
-        logFile << "[WARNING06]: this DG is NOT a DAG : at node " << _name << endl;
+        logFile << "[WARNING:DGNode::merge] this DG is NOT a DAG : at node " << _name << endl;
         #endif
-        cout    << "[WARNING06]: this DG is NOT a DAG : at node " << _name << endl;
+        cout    << "[WARNING:DGNode::merge] this DG is NOT a DAG : at node " << _name << endl;
     }
     
     if (_type == AUT_INTER) {
         size_t cnt = 0;
         for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
-            if ((*it)->_type == VAR_STRING) {
-                assert(((*it)->_children.empty()));
+            if ((*it)->findLeader()->_type == VAR_STRING) {
+                assert(((*it)->findLeader()->_children.empty()));
                 //FIXME
                 _children.erase(it);
                 --it;
@@ -254,7 +329,7 @@ void DGNode::merge()
             }
         }
         if (cnt == 1) {
-            DGNode* n = _children[0];
+            DGNode* n = _children[0]->findLeader();
             if (n->_type == CONST_STRING) {
                 assert((n->_children.size()==0));
                 _type = CONST_STRING; 
@@ -276,10 +351,37 @@ void DGNode::merge()
 
 void DGNode::renameLengthVar(size_t& lengthVarCnt)
 {
-    for (PTNodeList::iterator it=_lengthVarList.begin(); it!=_lengthVarList.end(); ++it) {
-        (*it)->setLengthVar(lengthVarCnt);
+    #ifndef _NLOG_
+        logFile << "name=" << _name << endl;
+    #endif
+    Str2UintMap& lengthVarCntMap = dg->getLengthVarCntMap();
+    for (PTNodePairList::iterator it=_lengthVarList.begin(); it!=_lengthVarList.end(); ++it) {
+        const Type& type = (*it).second->getType();
+        const string& name = (*it).second->getName();
+        assert((type == CONST_INT || type == VAR_INT));
+        if (type == CONST_INT) {
+            #ifndef _NLOG_
+                logFile << "const=" << (*it).second->getName() << " cnt=" << lengthVarCnt << endl;
+            #endif
+            _lengthVarCnt = lengthVarCnt;
+            continue;
+        }
+        Str2UintMap::iterator jt = lengthVarCntMap.find(name);
+        if (jt != lengthVarCntMap.end()) {
+            #ifndef _NLOG_
+                logFile << "[WARNING:DGNode::renameLengthVar] same Int Variable=" << jt->first <<  "assigned to 2 different String Variable" << endl;
+            #endif 
+            cout << "[WARNING:DGNode::renameLengthVar] same Int Variable=" << jt->first << "assigned to 2 different String Variable" << endl;
+        }
+        else {
+            #ifndef _NLOG_
+                logFile << "var=" << name << " cnt=" << lengthVarCnt << endl;
+            #endif
+            _lengthVarCnt = lengthVarCnt;
+            lengthVarCntMap.insert(Str2Uint(name,lengthVarCnt));
+        }
     }
-    ++lengthVarCnt;
+    if (!_lengthVarList.empty()) ++lengthVarCnt;
     for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
-        (*it)->renameLengthVar(lengthVarCnt);
+        (*it)->findLeader()->renameLengthVar(lengthVarCnt);
 }

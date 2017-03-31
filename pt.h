@@ -11,14 +11,15 @@ class PT {
         }
         // Print Function
         void               print() const;
-        void               printStr2PTNodeListMap() const;
+        void               printPTNodeListMap() const;
         // Access Function
-        PTNode*            getRootNode() const {return _root;}
         PTNodeQueue&       getPTQ() {return _ptq;}
+        IMPQueue&          getIMPQ() {return _impq;}
         Str2DGNodeMap&     getDGMap() {return _dgMap;}
-        PTNode2PTNodeListMap& getPTNodeListMap() {return _ptnodeListMap;}
+        Str2PTNodeListMap& getPTNodeListMap() {return _ptnodeListMap;}
         string             getNewNodeName();
         // Modify Function
+        void               analyzeASCII();
         void               analyze();
         void               addAssertion(PTNode*);
         void               setLevel();
@@ -27,8 +28,9 @@ class PT {
     private :
         PTNode*            _root;
         PTNodeQueue        _ptq;
+        IMPQueue           _impq;
         Str2DGNodeMap      _dgMap;
-        PTNode2PTNodeListMap  _ptnodeListMap;
+        Str2PTNodeListMap  _ptnodeListMap;
         size_t&            _indent;
         size_t&            _gflag;
         size_t             _newDGNodeCnt;

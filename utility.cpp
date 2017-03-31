@@ -29,6 +29,16 @@ string itos(const size_t& n)
     return ss.str();
 }
 
+size_t stoi(const string& s)
+{
+    size_t sum = 0,p = 1;
+    for (string::const_reverse_iterator it = s.rbegin(); it != s.rend(); ++it) {
+        sum += p * (*it - 48);
+        p *= 10;
+    }
+    return sum;
+}
+
 void splitLine(ofstream& outFile, const char* s)
 {
     outFile << endl;
@@ -48,3 +58,4 @@ void str2tokens(const string& s, vector<string>& tokenList)
         i = j;
     }
 }
+

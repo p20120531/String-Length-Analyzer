@@ -24,8 +24,15 @@ void KaluzaMgr::printTypeMap()
 
 void KaluzaMgr::printPT()
 {
-    splitLine(_logFile,"KaluzaMgr::printPT");
+    #ifndef _NLOG_
+        splitLine(_logFile,"KaluzaMgr::printPT");
+    #endif
     _pt->print();
+}
+
+void KaluzaMgr::analyzePTASCII()
+{
+    _pt->analyzeASCII();
 }
 
 void KaluzaMgr::analyzePT()
@@ -33,15 +40,24 @@ void KaluzaMgr::analyzePT()
     _pt->analyze();
 }
 
-void KaluzaMgr::read(const char* fileName)
+void KaluzaMgr::read(const char* option,const char* fileName)
 {
     string line;
-
-    _file = string(fileName);
-    _path = _file.substr(0,_file.find_last_of(".")) + "/";
+    string opt(option);
+    
     cout << ">> read::file=" << fileName << endl;
+    _file = string(fileName);
+    if (opt == "--single") {
+        _path = _file.substr(0,_file.find_last_of(".")) + "/";
+    
+    }
+    else if (opt == "--whole") {
+        size_t p1 = _file.find_first_of("/");
+        size_t p2 = _file.find_last_of(".");
+        _path = "DG/" + _file.substr(p1+1,p2-p1-1) + "/";
+    }
     #ifndef _NDIR_
-        cout << ">> create dir=" << _path << endl;
+        //cout << ">> create dir=" << _path << endl;
         system(("mkdir -p "+_path).c_str());
     #endif
     #ifndef _NLOG_
@@ -91,9 +107,10 @@ void KaluzaMgr::read(const char* fileName)
     }
     else
         cout << "fail open" << endl;
-    _pt->print();
+    printTypeMap();
     _pt->mergeNotEquivalence();
-    _pt->buildStr2PTNodeListMap();
+    _pt->buildPTNodeListMap();
+    _pt->printPTNodeListMap();
     _pt->setLevel();
     _pt->print();
     /*
@@ -146,14 +163,17 @@ PTNode* KaluzaMgr::handleAssertion(const vector<string>& tokenList,size_t bpos, 
 
 void KaluzaMgr::handleDeclare(const vector<string>& tokenList)
 {
-    if (tokenList[5] == "Int") {
-        _ptnodeMap.insert(Str2PTNode(tokenList[2],newNode));
+    if (tokenList[5] == "Bool") {
+        _bvList.push_back(tokenList[2]);
+        _typeMap.insert(Str2Type(tokenList[2],VAR_BOOL));
     }
-    else if (tokenList[5] == "Bool") {
-        _ptnodeMap.insert(Str2PTNode(tokenList[2],newNode));
+    else if (tokenList[5] == "Int") {
+        _ivList.push_back(tokenList[2]);
+        _typeMap.insert(Str2Type(tokenList[2],VAR_INT));
     }
     else if (tokenList[5] == "String") {
-        _ptnodeMap.insert(Str2PTNode(tokenList[2],new PTVarStringNode(tokenList[2])));
+        _svList.push_back(tokenList[2]);
+        _typeMap.insert(Str2Type(tokenList[2],VAR_STRING));
     }
 }
 
@@ -185,7 +205,6 @@ PTNode* KaluzaMgr::buildPTNode(const string& name)
     else if (name == "re.union"   ) return new PTReUnionNode(name);
     else if (name == "re.inter"   ) return new PTReInterNode(name);
     else {
-        /*
         Str2TypeMap::iterator it = _typeMap.find(name);
         if (it != _typeMap.end()) {
             const Type& type = it->second;
@@ -203,17 +222,14 @@ PTNode* KaluzaMgr::buildPTNode(const string& name)
                     break;
             }
         }
-        */
-        Str2PTNodeMap::iterator it = _ptnodeMap.find(name);
-        if (it != _ptnodeMap.end())                 return it->second;
         else if (name[0] == '\"')                   return new PTConstStringNode(name);
         else if (name == "true" || name == "false") return new PTConstBoolNode(name);    
         else if (isNumber(name))                    return new PTConstIntNode(name);
         else {
             #ifndef _NLOG_
-                _logFile << "[WARNING01]: invalid string=" << name << " at file=" << _file << endl;
+                _logFile << "[WARNING:KaluzaMgr::buildPTNode] invalid string=" << name << " at file=" << _file << endl;
             #endif
-            cout << "[WARNING01]: invalid string=" << name << " at file=" << _file << endl;
+            cout << "[WARNING:KaluzaMgr::buildPTNode] invalid string=" << name << " at file=" << _file << endl;
         }
     }
 }

@@ -4,20 +4,35 @@
 
 extern                     KaluzaMgr*   kmgr;
 static PT*&                pt         = kmgr->getPT();
+static DG*&                dg         = kmgr->getDG();
 static const size_t&       gflag      = kmgr->getGFlag();
-static const Str2PTNodeMap& ptnodeMap = kmgr->getPTNodeMap();
+static const Str2TypeMap&  typeMap    = kmgr->getTypeMap();
 static ofstream&           logFile    = kmgr->getLogFile();
 static PTNodeQueue&        ptq        = pt->getPTQ();
+static IMPQueue&           impq       = pt->getIMPQ();
 static Str2DGNodeMap&      dgMap      = pt->getDGMap();
-static PTNode2PTNodeListMap& ptnodeListMap = pt->getPTNodeListMap();
+static Str2PTNodeListMap&  ptnodeListMap = pt->getPTNodeListMap();
+
 //-------------base class-----------
 
 void PTNode::print(const size_t& indent,size_t level) const
 {
-    //logFile << string( indent * level ,' ') << _name << endl;
+    #ifndef _NLOG_
     logFile << string( indent * level ,' ') << _name << " " << this << endl;
+    #endif
     for (size_t i = 0, size = _children.size(); i < size; ++i)
         _children[i]->print(indent,level+1);
+}
+
+void PTNode::analyzeASCII() const
+{
+    bool nonascii = 0;
+    if (_type == CONST_STRING)
+        for (string::const_iterator it=_name.begin(); it!=_name.end(); ++it)
+            if (*it < 0 || *it >= 128) nonascii = 1;
+    if (nonascii) cout << "NON-ASCII=" << _name << endl;
+    for (size_t i=0,size=_children.size(); i<size; ++i)
+        _children[i]->analyzeASCII();
 }
 
 void PTNode::analyze(bool& iteDVarLegal, bool& iteCLevel1, bool& strinreRLevel1, bool& strninreRLevel1, bool& streqRLevel1, bool& strneqRLevel1, bool& strlenRLevel2, bool& andCLevel2, bool& ornexist, bool& strinreLCSV, bool& strninreLCSV, bool& streqLCSV, bool& strneqLCSV, size_t& strlenCnt, size_t& strlenEqCnt, bool& streqBothSV, bool& strneqBothSV, bool& strneqOneConst, int cLevel, int rLevel) const
@@ -27,9 +42,9 @@ void PTNode::analyze(bool& iteDVarLegal, bool& iteCLevel1, bool& strinreRLevel1,
     if (_name == "ite") {
         if (cLevel != 1) iteCLevel1 = 0;
         rLevel = -1;
-        Str2PTNodeMap::const_iterator it = ptnodeMap.find(_children[0]->_name);
-        if (it != ptnodeMap.end()) {
-            if ((it->second)->getType() != VAR_BOOL) {
+        Str2TypeMap::const_iterator it = typeMap.find(_children[0]->_name);
+        if (it != typeMap.end()) {
+            if (it->second != VAR_BOOL) {
                 iteDVarLegal = 0;
             }
         }
@@ -75,9 +90,9 @@ void PTNode::analyze(bool& iteDVarLegal, bool& iteCLevel1, bool& strinreRLevel1,
 
 bool PTNode::isVarStr()
 {
-    Str2PTNodeMap::const_iterator it = ptnodeMap.find(_name);
-    if (it != ptnodeMap.end()) {
-        if (it->second->getType() == VAR_STRING)
+    Str2TypeMap::const_iterator it = typeMap.find(_name);
+    if (it != typeMap.end()) {
+        if (it->second == VAR_STRING)
             return true;
         else
             return false;
@@ -97,9 +112,9 @@ bool PTNode::isReturnTypeStr()
 {
     if (_name == "str.++") return true;
     else {
-        Str2PTNodeMap::const_iterator it = ptnodeMap.find(_name);
-        if (it != ptnodeMap.end()) {
-            if (it->second->getType() == VAR_STRING)
+        Str2TypeMap::const_iterator it = typeMap.find(_name);
+        if (it != typeMap.end()) {
+            if (it->second == VAR_STRING)
                 return true;
             else
                 return false;
@@ -107,6 +122,17 @@ bool PTNode::isReturnTypeStr()
         else 
             return false;
     }
+}
+
+bool PTNode::isStrComparison()
+{
+    assert((_type == BOOL_EQ || _type == BOOL_NEQ));
+    const Type& ltype = _children[0]->getType();
+    const Type& rtype = _children[1]->getType();
+    if (ltype == VAR_STRING || ltype == CONST_STRING || rtype == VAR_STRING || rtype == CONST_STRING)
+        return 1;
+    else
+        return 0;
 }
 
 void PTNode::setLevel(size_t level)
@@ -144,8 +170,73 @@ void PTNode::lcTraversal(ofstream& outFile,const Str2UintMap& dgIntVarMap) const
     }
 }
 
-void PTNode::writeCVC4Pred(Str2TypeMap& typeMap,vector<string>& cvc4PredList,const size_t& bflag)
+void PTNode::writeCVC4PredVar()
 {
+    assert((_type == VAR_BOOL || _type == VAR_INT));
+    Str2TypeMap& dgTypeMap  = dg->getTypeMap();
+    vector<string>& cvc4PredList = dg->getCVC4PredList();
+    set<string>& bvPredSet  = dg->getBVPredSet();
+    set<string>& ivPredSet  = dg->getIVPredSet();
+    set<string>::iterator kt;
+    if (_type == VAR_BOOL) {
+        kt = bvPredSet.find(_name);
+        if (kt != bvPredSet.end()) return;
+        else bvPredSet.insert(_name);
+    }
+    else {
+        kt = ivPredSet.find(_name);
+        if (kt != ivPredSet.end()) return;
+        else ivPredSet.insert(_name);
+    }
+
+    Str2TypeMap::iterator sit = dgTypeMap.find(_name);
+    if (sit == dgTypeMap.end()) {
+        dgTypeMap.insert(Str2Type(_name,_type));
+    }
+    else {
+    }
+    
+    Str2PTNodeListMap::iterator it = ptnodeListMap.find(_name);
+    if (it != ptnodeListMap.end()) {
+        PTNodeList& ptnodeList = it->second;
+        for (PTNodeList::iterator jt=ptnodeList.begin(); jt!=ptnodeList.end(); ++jt) {
+            if ((*jt)->_flag != gflag && ( (*jt)->_bflag == dg->getBFlag() || (*jt)->_level == 1 ) ) {
+                (*jt)->_flag = gflag;
+                string s = "(assert";
+                (*jt)->writeCVC4PredRoot(s);
+                s += ")";
+                cvc4PredList.push_back(s);
+            }
+        }
+    }
+}
+
+void PTNode::writeCVC4PredRoot(string& s)
+{
+    if (!_children.empty()) s += " (";
+    else                    s += " ";
+    if (_name == "!=") s += "not (=";
+    else               s += _name;
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
+        const Type& type = (*it)->_type;
+        if (type == VAR_INT || type == VAR_BOOL) {
+            s += " " + (*it)->_name;
+            (*it)->writeCVC4PredVar();
+        }
+        else if (type == CONST_BOOL || type == CONST_INT || type == CONST_STRING) {
+            s += " " + (*it)->_name;
+        }
+        else if (type == VAR_STRING) {
+            Str2DGNodeMap::iterator jt = dgMap.find((*it)->_name);
+            assert((jt != dgMap.end()));
+            s += " " + jt->second->findLeader()->getName();
+        }
+        else {
+            (*it)->writeCVC4PredRoot(s);
+        }
+    }
+    if (_name == "!=") s += ")";
+    if (!_children.empty()) s += ")";
 }
 
 void PTNode::addChild(PTNode* n)
@@ -303,7 +394,7 @@ DGNode* PTConstStringNode::buildDG()
         logFile << _name << " CONST_STRING => create new node name=" << newName << endl;
     #endif
     DGNode* newNode = new DGNode(newName,_name);
-    dgMap.insert(Str2DGNode(newNode->getName(),newNode));
+    //dgMap.insert(Str2DGNode(newNode->getName(),newNode));
     return newNode;
 }
 
@@ -338,19 +429,42 @@ DGNode* PTEqNode::buildDG()
             logFile << right->getName() << right->getTypeString() << endl;
         }
     #endif
-    
-    if (!left || !right) {
-        const string& lname = _children[0]->getName();
-        const string& rname = _children[1]->getName();
 
-        if (lname == "str.len")
-            left->addLengthVar(_children[1]);
-        else if (rname == "str.len")
-            right->addLengthVar(_children[0]);
-        else if (lname == "==" || lname == "!=")
-            left->addIMP(IMP(_children[1],1));
-        else if (rname == "==" || rname == "!=")
-            right->addIMP(IMP(_children[0],1));
+    if (!left && !right) return 0;
+    else if (left && !right) {
+        const string& LName = _children[0]->getName();
+        if (LName == "str.len") {
+            assert((_children[1]->getType() == VAR_INT || _children[1]->getType() == CONST_INT));
+            left->addLengthVar(PTNodePair(this,_children[1]));
+        }
+        else if  (LName == "=" || LName == "!=") {
+            assert((_children[1]->getType() == VAR_BOOL));
+            left->addAssertion(PTNodePair(this,_children[1]));
+        }
+        else {
+            #ifndef _NLOG_
+                logFile << "[WARNING:PTEqNode::buildDG] invalid right child name=" << LName << endl;
+            #endif
+            cout << "[WARNING:PTEqNode::buildDG] invalid right child name=" << LName << endl;
+        }
+        return 0;
+    }
+    else if (!left && right) {
+        const string& RName = _children[1]->getName();
+        if (RName == "str.len") {
+            assert((_children[0]->getType() == VAR_INT || _children[0]->getType() == CONST_INT));
+            right->addLengthVar(PTNodePair(this,_children[0]));
+        }
+        else if  (RName == "=" || RName == "!=") {
+            assert((_children[0]->getType() == VAR_BOOL));
+            right->addAssertion(PTNodePair(this,_children[0]));
+        }
+        else {
+            #ifndef _NLOG_
+                logFile << "[WARNING:PTEqNode::buildDG] invalid left child name=" << RName << endl;
+            #endif
+            cout << "[WARNING:PTEqNode::buildDG] invalid left child name=" << RName << endl;
+        }
         return 0;
     }
     else {
@@ -386,12 +500,12 @@ DGNode* PTEqNode::buildDG()
         }
         else {
             #ifndef _NLOG_
-                logFile << " [WARNING05]: [=] two operands are not VAR_STRING"
+                logFile << " [WARNING:PTEqNode::buildDG] \"=\" two operands are not VAR_STRING"
                         << " n1=" << left->getName() << " type=" << left->getTypeString()
                         << " n2=" << right->getName() << " type=" << right->getTypeString()
                         << endl;
             #endif
-            cout << "[WARNING05]: [=] two operands are not VAR_STRING"
+            cout << "[WARNING:PTEqNode::buildDG] \"=\" two operands are not VAR_STRING"
                  << " n1=" << left->getName() << " type=" << left->getTypeString()
                  << " n2=" << right->getName() << " type=" << right->getTypeString()
                  << endl;
@@ -486,6 +600,8 @@ DGNode* PTIteNode::buildDG()
     #endif
     ptq.push(_children[1]);
     ptq.push(_children[2]);
+    impq.push(IMP(_children[0],1));
+    impq.push(IMP(_children[0],0));
     return 0;
 }
 
@@ -570,7 +686,8 @@ DGNode* PTStrInReNode::buildDG()
     assert((left && right));
     string newLName = pt->getNewNodeName();
     #ifndef _NLOG_
-        logFile << _name << " => left=" <<  left->getName()
+        logFile << "str.in.re "
+                << _name << " => left=" <<  left->getName()
                          << " right=" << right->getName()
                          << " newLName=" << newLName 
                          << endl;
@@ -597,7 +714,8 @@ DGNode* PTStrNotInReNode::buildDG()
     string newCName = pt->getNewNodeName();
     string newLName = pt->getNewNodeName();
     #ifndef _NLOG_
-        logFile << _name << " => left=" <<  left->getName()
+        logFile << "str.nin.re "
+                << _name << " => left=" <<  left->getName()
                          << " right=" << right->getName() 
                          << " newLName=" << newLName
                          << " comple=" << newCName << endl;
@@ -707,13 +825,13 @@ void PTNode::buildPTNodeListMap(PTNode* root)
 }
 void PTVarIntNode::buildPTNodeListMap(PTNode* root)
 {
-    PTNode2PTNodeListMap::iterator it = ptnodeListMap.find(this);
+    Str2PTNodeListMap::iterator it = ptnodeListMap.find(_name);
     assert((it!=ptnodeListMap.end()));
     it->second.push_back(root);
 }
 void PTVarBoolNode::buildPTNodeListMap(PTNode* root)
 {
-    PTNode2PTNodeListMap::iterator it = ptnodeListMap.find(this);
+    Str2PTNodeListMap::iterator it = ptnodeListMap.find(_name);
     assert((it!=ptnodeListMap.end()));
     it->second.push_back(root);
 }
@@ -724,8 +842,30 @@ void PTNotNode::buildPTNodeListMap(PTNode* root)
 }
 void PTEqNode::buildPTNodeListMap(PTNode* root)
 {
-    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
-        (*it)->buildPTNodeListMap(root);
+    const string& LName = _children[0]->getName();
+    const string& RName = _children[1]->getName();
+    const Type&   LType = _children[0]->getType();
+    const Type&   RType = _children[1]->getType();
+    if (LName == "str.len") {
+        assert((RType == VAR_INT || RType == CONST_INT));
+        return;
+    }
+    else if (RName == "str.len") {
+        assert((LType == VAR_INT || LType == CONST_INT));
+        return;
+    }
+    else if ( (LName == "=" || LName == "!=") && _children[0]->isStrComparison() ) {
+        assert((RType == VAR_BOOL));
+        return;
+    }
+    else if ( (RName == "=" || RName == "!=") && _children[1]->isStrComparison() ) {
+        assert((LType == VAR_BOOL));
+        return;
+    }
+    else {
+        for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+            (*it)->buildPTNodeListMap(root);
+    }
 }
 void PTNotEqNode::buildPTNodeListMap(PTNode* root)
 {

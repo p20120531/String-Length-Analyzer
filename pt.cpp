@@ -1,8 +1,10 @@
 #include "pt.h"
 #include "kaluzaMgr.h"
-extern       KaluzaMgr*     kmgr;
-static       ofstream&      logFile = kmgr->getLogFile();
-static const Str2PTNodeMap& ptnodeMap = kmgr->getPTNodeMap();
+extern       KaluzaMgr*      kmgr;
+static       ofstream&       logFile = kmgr->getLogFile();
+static const vector<string>& bvList  = kmgr->getBVList();
+static const vector<string>& ivList  = kmgr->getIVList();
+static const Str2TypeMap&    typeMap = kmgr->getTypeMap();
 void PT::addAssertion(PTNode* n)
 {
     _root->addChild(n);
@@ -19,17 +21,21 @@ void PT::print() const
     #endif
 }
 
-void PT::printStr2PTNodeListMap() const
+void PT::printPTNodeListMap() const
 {
     #ifndef _NLOG_
-    splitLine(logFile,"PT::printStr2PTNodeListMap");
-    for (Str2PTNodeListMap::const_iterator it = _str2PTNodeListMap.begin(); it != _str2PTNodeListMap.end(); ++it) {
+    splitLine(logFile,"PT::printPTNodeListMap");
+    for (Str2PTNodeListMap::const_iterator it = _ptnodeListMap.begin(); it != _ptnodeListMap.end(); ++it) {
         logFile << it->first << " ";
         for (PTNodeList::const_iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
             logFile << *jt << " ";
         logFile << endl;
     }
     #endif
+}
+void PT::analyzeASCII()
+{
+    _root->analyzeASCII();
 }
 void PT::analyze()
 {
@@ -113,20 +119,20 @@ void PT::mergeNotEquivalence()
                     ptq.push(newNode);
                 }
                 else {
-                    Str2PTNodeMap::const_iterator jt = ptnodeMap.find((*it)->_children[0]->_name);
-                    if (jt != ptnodeMap.end()){
-                        if ((jt->second)->getType() != VAR_BOOL) {
+                    Str2TypeMap::const_iterator jt = typeMap.find((*it)->_children[0]->_name);
+                    if (jt != typeMap.end()){
+                        if (jt->second != VAR_BOOL) {
                             #ifndef _NLOG_
-                                logFile << "[WARNING03]: \"not\" having non-Bool Variable child=" << (*it)->_children[0]->_name << endl;
+                                logFile << "[WARNING:PT::mergNotEquivalence] \"not\" having non-Bool Variable child=" << (*it)->_children[0]->_name << endl;
                             #endif
-                            cout << "[WARNING03]: \"not\" having non-Bool Variable child=" << (*it)->_children[0]->_name << endl;
+                            cout << "[WARNING:PT::mergeNotEquivalence] \"not\" having non-Bool Variable child=" << (*it)->_children[0]->_name << endl;
                         }
                     }
                     else {
                         #ifndef _NLOG_
-                            logFile << "[WARNING04]: \"not\" having Bool Return Type child=" << (*it)->_children[0]->_name << endl;
+                            logFile << "[WARNING:PT::mergeNotEquivalence] \"not\" having Bool Return Type child=" << (*it)->_children[0]->_name << " other than Bool Variable" << endl;
                         #endif
-                        cout << "[WARNING04]: \"not\" having Bool Return Type child=" << (*it)->_children[0]->_name << endl;
+                        cout << "[WARNING:PT::mergeNotEquivalence] \"not\" having Bool Return Type child=" << (*it)->_children[0]->_name << " other than Bool Variable" << endl;
                     }
                     ptq.push(*it);
                 }
@@ -147,9 +153,13 @@ void PT::buildPTNodeListMap()
     #ifndef _NLOG_
         splitLine(logFile,"PT::buildPTNodeListMap");
     #endif
-    for (Str2PTNodeMap::const_iterator it=intboolPTNodeMap.begin(); it!=intboolPTNodeMap.end(); ++it) {
-        _ptnodeListMap.insert(PTNode2PTNodeList(it->second,PTNodeList()));
+    for (vector<string>::const_iterator it=bvList.begin(); it!=bvList.end(); ++it) {
+        _ptnodeListMap.insert(Str2PTNodeList(*it,PTNodeList()));
     }
+    for (vector<string>::const_iterator it=ivList.begin(); it!=ivList.end(); ++it) {
+        _ptnodeListMap.insert(Str2PTNodeList(*it,PTNodeList()));
+    }
+    
     PTNodeQueue ptq;
     ptq.push(_root);
     while(!ptq.empty()) {

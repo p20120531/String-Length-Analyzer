@@ -1,7 +1,7 @@
 #ifndef _TYPEDEF_H_
 #define _TYPEDEF_H_
 //#define _NDIR_
-//#define _NLOG_
+#define _NLOG_
 
 #include <iostream>
 #include <fstream>
@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <set>
 #include <queue>
 #include <assert.h>
 #include <stdlib.h>
@@ -23,8 +24,8 @@ class DGNode;
 class PredicateNode;
 
 enum Type {
-    VAR_INT=0, VAR_BOOL, VAR_STRING,
-    CONST_INT, CONST_BOOL, CONST_STRING,
+    VAR_BOOL=0, VAR_INT, VAR_STRING,
+    CONST_BOOL, CONST_INT, CONST_STRING,
     // classified by return value
     BOOL_NOT=10, BOOL_EQ, BOOL_NEQ, BOOL_AND, BOOL_OR, BOOL_ITE, BOOL_LT, BOOL_LTOEQ, BOOL_MT, BOOL_MTOEQ, BOOL_STRINRE, BOOL_STRNINRE, 
     INT_PLUS=40, INT_MINUS, INT_DIV, INT_POS, INT_NEG, INT_STRLEN,
@@ -45,8 +46,10 @@ typedef vector<DG*>             DGList;
 typedef vector<DGNode*>         DGNodeList;
 typedef pair<string,Type>       Str2Type;
 typedef map<string,Type>        Str2TypeMap;
+
 typedef pair<string,size_t>     Str2Uint;
 typedef map<string,size_t>      Str2UintMap;
+
 typedef pair<string,DGNode*>    Str2DGNode;
 typedef map<string,DGNode*>     Str2DGNodeMap;
 typedef pair<string,PTNodeList> Str2PTNodeList;
@@ -58,4 +61,7 @@ typedef pair<PTNode*,PTNodeList> PTNode2PTNodeList;
 typedef map<PTNode*,PTNodeList> PTNode2PTNodeListMap;
 typedef pair<PTNode*,bool>      IMP;
 typedef vector<IMP>             IMPList;
+typedef queue<IMP>              IMPQueue;
+typedef pair<PTNode*,PTNode*>   PTNodePair;
+typedef vector<PTNodePair>      PTNodePairList;
 #endif
