@@ -199,7 +199,7 @@ void AutOpMgr::readCmdFile(const char* fileName)
     readDefFile(defstr);
     readPredFile(predstr);
     mergeStringAndPred(cur);
-    cur->write(path+"arg_"+tokenList[1]);
+    cur->write(path+"sink.vmt");
 }
 
 void AutOpMgr::readDefFile(const string& fileName)

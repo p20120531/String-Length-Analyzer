@@ -261,45 +261,6 @@ void DGNode::writeCmdFile(ofstream& cmdFile,ofstream& autFile)
     }
 }
 
-void DGNode::lcTraversal(Str2UintMap& intVarMap,size_t& cnt) const
-{
-    for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it)
-        if ((*it)->_type != CONST_STRING && (*it)->_type != VAR_STRING && (*it)->_type != AUT_COMPLE) {
-            (*it)->lcTraversal(intVarMap,cnt);
-        }
-    for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it) {
-        if ((*it)->_type == CONST_STRING || (*it)->_type == VAR_STRING || (*it)->_type == AUT_COMPLE) {
-            Str2UintMap::const_iterator jt = intVarMap.find((*it)->_name);
-            if (jt == intVarMap.end())
-                intVarMap.insert(Str2Uint((*it)->_name,cnt++));
-        }
-    }
-}
-/*
-void DGNode::writeSmt2File(ofstream& smt2File) const
-{
-    
-    for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it) {
-        const Type& type = (*it)->_type;
-        if (type != CONST_STRING && type != VAR_STRING && type != AUT_COMPLE)
-            (*it)->writeSmt2File(smt2File);    
-    }
-    smt2File << "(assert";
-    if (_type == AUT_CONCATE) {
-        
-    }
-    else if (_type == AUT_INTER) {
-    }
-    else if (_type == AUT_COMPLE) {
-
-    }
-    else if (_type == )
-    {}
-    smt2File << ")\n";
-    
-}
-*/
-
 //-----------------merge-------------
 void DGNode::merge()
 {

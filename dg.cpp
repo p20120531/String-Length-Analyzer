@@ -81,7 +81,7 @@ void DG::writeCVC4File(const IMP& curimp)
     #ifndef _NLOG_
         splitLine(logFile,"DG::writeCVC4File");
     #endif
-    string cvc4str = _path + itos(_idx) + ".smt2";
+    string cvc4str = _path + "sink.smt2";
     string defstr  = _path + "def";
     string predstr = _path + "pred";
     ofstream cvc4File(cvc4str.c_str());

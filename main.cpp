@@ -115,9 +115,15 @@ int main(int argc, char* argv[]) {
         kmgr->read(argv[2],argv[3]);
         kmgr->analyzePTASCII();
     }
-    else if (input == "13") {
+    else if (input == "--buildDG") {
         kmgr->read(argv[2],argv[3]);
         kmgr->buildAndWriteDG();
+    }
+    else if (input == "--blif2vmt") {
+        autopmgr->blif2vmt(argv[2],argv[3]);
+    }
+    else if (input == "--readCmd") {
+        autopmgr->readCmdFile(argv[2]);
     }
     
 
