@@ -35,12 +35,13 @@ void PTNode::analyzeASCII() const
         _children[i]->analyzeASCII();
 }
 
-void PTNode::analyze(bool& iteDVarLegal, bool& iteCLevel1, bool& strinreRLevel1, bool& strninreRLevel1, bool& streqRLevel1, bool& strneqRLevel1, bool& strlenRLevel2, bool& andCLevel2, bool& ornexist, bool& strinreLCSV, bool& strninreLCSV, bool& streqLCSV, bool& strneqLCSV, size_t& strlenCnt, size_t& strlenEqCnt, bool& streqBothSV, bool& strneqBothSV, bool& strneqOneConst, int cLevel, int rLevel) const
+void PTNode::analyze(bool& iteDVarLegal, bool& iteCLevel1, bool& iteChildNotAnd, bool& strinreRLevel1, bool& strninreRLevel1, bool& streqRLevel1, bool& strneqRLevel1, bool& strlenRLevel2, bool& andCLevel2, bool& ornexist, bool& strinreLCSV, bool& strninreLCSV, bool& streqLCSV, bool& strneqLCSV, size_t& strlenCnt, size_t& strlenEqCnt, bool& streqBothSV, bool& strneqBothSV, bool& strneqOneConst, bool& streqBothSC, int cLevel, int rLevel, bool& strinreReConcateMT2, bool& strConcateMT2, size_t& strinreReConcateCnt, size_t& strninreReConcateCnt, size_t& reConcateCnt) const
 {
     // cLevel : cumulated level
     // rLevel : reset level
     if (_name == "ite") {
         if (cLevel != 1) iteCLevel1 = 0;
+        if (_children[1]->_name != "and" || _children[2]->_name != "and") iteChildNotAnd = 1;
         rLevel = -1;
         Str2TypeMap::const_iterator it = typeMap.find(_children[0]->_name);
         if (it != typeMap.end()) {
@@ -50,22 +51,44 @@ void PTNode::analyze(bool& iteDVarLegal, bool& iteCLevel1, bool& strinreRLevel1,
         }
     }
     else if (_name == "str.in.re") {
+        //cout << "left=" << _children[0]->_name <<  " right=" << _children[1]->_name << endl;
         if (rLevel != 1) strinreRLevel1 = 0;
         if (!_children[0]->isVarStr()) strinreLCSV = 0;
+        if (_children[1]->_name == "re.++") {
+            ++strinreReConcateCnt;
+            if (_children[1]->_children.size() > 2)
+                strinreReConcateMT2 = 1;
+        }
     }
     else if (_name == "str.nin.re") {
+        //cout << "left=" << _children[0]->_name <<  " right=" << _children[1]->_name << endl;
         if (rLevel != 1) strninreRLevel1 = 0;
         if (!_children[0]->isVarStr()) strninreLCSV = 0;
+        if (_children[1]->_name == "re.++") {
+            ++strninreReConcateCnt;
+        }
+    }
+    else if (_name == "re.++") {
+        ++reConcateCnt;
+    }
+    else if (_name == "str.++") {
+        if (_children.size() > 2)
+            strConcateMT2 = 1;
     }
     else if (_name == "str.len") {
         ++strlenCnt;
         if (rLevel != 2) strlenRLevel2 = 0;
+    }
+    else if (_name == "str.to.re") {
+        assert ((_children.size() == 1));
+        assert ((_children[0]->getType() == CONST_STRING));
     }
     else if (_name == "=") {
         if ( _children[0]->isReturnTypeStr() || _children[1]->isReturnTypeStr() ) {
             if (rLevel != 1) streqRLevel1 = 0;
             if (!_children[0]->isVarStr()) streqLCSV = 0;
             if (_children[0]->isVarStr() && _children[1]->isVarStr()) streqBothSV = 1;
+            if (_children[0]->isConstStr() && _children[1]->isConstStr()) streqBothSC = 1;
         }
         for (size_t i = 0, size = _children.size(); i < size; ++i)
             if (_children[i]->_name == "str.len") ++strlenEqCnt;
@@ -82,10 +105,11 @@ void PTNode::analyze(bool& iteDVarLegal, bool& iteCLevel1, bool& strinreRLevel1,
     else if (_name == "or") ornexist = 0;
     for (size_t i = 0, size = _children.size(); i < size; ++i)
         _children[i]->analyze(
-            iteDVarLegal,iteCLevel1,strinreRLevel1,strninreRLevel1,
+            iteDVarLegal,iteCLevel1,iteChildNotAnd,strinreRLevel1,strninreRLevel1,
             streqRLevel1,strneqRLevel1,strlenRLevel2,andCLevel2,ornexist,
             strinreLCSV,strninreLCSV,streqLCSV,strneqLCSV,strlenCnt,strlenEqCnt,
-            streqBothSV,strneqBothSV,strneqOneConst,cLevel+1,rLevel+1);
+            streqBothSV,strneqBothSV,strneqOneConst,streqBothSC,cLevel+1,rLevel+1,
+            strinreReConcateMT2,strConcateMT2,strinreReConcateCnt,strninreReConcateCnt,reConcateCnt);
 }
 
 bool PTNode::isVarStr()
@@ -194,21 +218,23 @@ void PTNode::writeCVC4PredVar()
         dgTypeMap.insert(Str2Type(_name,_type));
     }
     else {
+        //FIXME
     }
     
     Str2PTNodeListMap::iterator it = ptnodeListMap.find(_name);
-    if (it != ptnodeListMap.end()) {
-        PTNodeList& ptnodeList = it->second;
-        for (PTNodeList::iterator jt=ptnodeList.begin(); jt!=ptnodeList.end(); ++jt) {
-            if ((*jt)->_flag != gflag && ( (*jt)->_bflag == dg->getBFlag() || (*jt)->_level == 1 ) ) {
-                (*jt)->_flag = gflag;
-                string s = "(assert";
-                (*jt)->writeCVC4PredRoot(s);
-                s += ")";
-                cvc4PredList.push_back(s);
-            }
+    assert((it != ptnodeListMap.end()));
+    //if (it != ptnodeListMap.end()) {
+    PTNodeList& ptnodeList = it->second;
+    for (PTNodeList::iterator jt=ptnodeList.begin(); jt!=ptnodeList.end(); ++jt) {
+        if ((*jt)->_flag != gflag && ( (*jt)->_bflag == dg->getBFlag() || (*jt)->_level == 1 ) ) {
+            (*jt)->_flag = gflag;
+            string s = "(assert";
+            (*jt)->writeCVC4PredRoot(s);
+            s += ")";
+            cvc4PredList.push_back(s);
         }
     }
+    //}
 }
 
 void PTNode::writeCVC4PredRoot(string& s)
@@ -576,6 +602,8 @@ DGNode* PTAndNode::buildDG()
     #ifndef _NLOG_
         logFile << _name << " => return 0" << endl;
     #endif
+    for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->buildDG();
     return 0;
 }
 

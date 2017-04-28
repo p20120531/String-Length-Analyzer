@@ -54,16 +54,20 @@ void KaluzaMgr::read(const char* option,const char* fileName)
     else if (opt == "--whole") {
         size_t p1 = _file.find_first_of("/");
         size_t p2 = _file.find_last_of(".");
+        system("mkdir -p DG/");
         _path = "DG/" + _file.substr(p1+1,p2-p1-1) + "/";
+        cout << "GG"<< _path << endl;
     }
-    #ifndef _NDIR_
-        //cout << ">> create dir=" << _path << endl;
-        system(("mkdir -p "+_path).c_str());
-    #endif
-    #ifndef _NLOG_
-        _logFile.open((_path+"log").c_str());
-        splitLine(_logFile,"KaluzaMgr::read");
-    #endif
+    else {}
+    if (opt != "--analyze") {    
+        #ifndef _NDIR_
+            system(("mkdir -p "+_path).c_str());
+        #endif
+        #ifndef _NLOG_
+            _logFile.open((_path+"log").c_str());
+            splitLine(_logFile,"KaluzaMgr::read");
+        #endif
+    }
     ifstream file(fileName);
     if (file) {
         size_t lineCnt = 0,lCnt = 0,rCnt = 0;
@@ -107,14 +111,16 @@ void KaluzaMgr::read(const char* option,const char* fileName)
     }
     else
         cout << "fail open" << endl;
-    printTypeMap();
+    //printTypeMap();
     _pt->mergeNotEquivalence();
     _pt->buildPTNodeListMap();
-    _pt->printPTNodeListMap();
+    //_pt->printPTNodeListMap();
     _pt->setLevel();
-    _pt->print();
+    #ifndef _NLOG_
+        _pt->print();
+        _pt->printPTNodeListMap();
+    #endif
     /*
-    _pt->printStr2PTNodeListMap();
     _pt->print();
     */
     /*

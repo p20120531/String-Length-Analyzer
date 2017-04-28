@@ -30,6 +30,15 @@ void DG::printLengthVarList() const
     #endif
 }
 
+void DG::printAssertionList() const
+{
+    #ifndef _NLOG_
+    splitLine(logFile,"DG::printAssertionList");
+    _sink->findLeader()->printAssertionList();
+    #endif
+}
+
+
 void DG::merge() 
 {
     #ifndef _NLOG_

@@ -47,6 +47,7 @@ int main(int argc, char* argv[]) {
     
     string input(argv[1]);
     //AutOp
+    /*
     if (input == "0") {
         const char* c1 = "blif2vmt/literal_45.blif";
         const char* c2 = "blif2vmt/literal_45.vmt.1";
@@ -115,6 +116,14 @@ int main(int argc, char* argv[]) {
         kmgr->read(argv[2],argv[3]);
         kmgr->analyzePTASCII();
     }
+    */
+    if (input == "--intersect") {
+        Aut* a1 = new Aut(argv[2]);
+        Aut* a2 = new Aut(argv[3]);
+        Aut* a3 = new Aut();
+        a3->intersect(a1,a2);
+        a3->write(argv[3]);
+    }
     else if (input == "--buildDG") {
         kmgr->read(argv[2],argv[3]);
         kmgr->buildAndWriteDG();
@@ -125,6 +134,12 @@ int main(int argc, char* argv[]) {
     else if (input == "--readCmd") {
         autopmgr->readCmdFile(argv[2]);
     }
+    else if (input == "--analyze") {
+        kmgr->read("--analyze",argv[2]);
+        kmgr->analyzePT();
+    }
+    else
+        cout << "invalid option=" << input << endl;
     
 
     //cout << "at main"<< endl;

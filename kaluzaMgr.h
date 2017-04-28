@@ -6,7 +6,11 @@
 
 class KaluzaMgr{
     public :
-        KaluzaMgr       (): _pt(new PT("assert",_indent,_gflag)) {_indent=3;_gflag=0;}
+        KaluzaMgr       (): _pt(new PT("assert",_indent,_gflag)) {
+            _indent=3;_gflag=0; 
+            char escapeChar[] = {'\\','^','$','.','[',']','|','(',')','?','*','+','{','}','-'};
+            for (size_t i = 0; i < 15; ++i) _escapeSet.insert(escapeChar[i]);
+        }
         void            read(const char*,const char*);
         void            buildAndWriteDG();
         void            analyzePTASCII();
@@ -24,6 +28,7 @@ class KaluzaMgr{
         const size_t&   getGFlag() {return _gflag;}
         const vector<string>& getBVList() {return _bvList;}
         const vector<string>& getIVList() {return _ivList;}
+        const set<char>& getEscapeSet() {return _escapeSet;}
         ofstream&       getLogFile() {return _logFile;}
         void            closeLogFile() {_logFile.close();}
     private :
@@ -40,6 +45,7 @@ class KaluzaMgr{
         vector<string>  _bvList;
         vector<string>  _ivList;
         vector<string>  _svList;
+        set<char>       _escapeSet;
         size_t          _indent;
         size_t          _gflag;
         string          _file;

@@ -38,6 +38,7 @@ class PT {
         // for analyze
         bool               _iteDVarLegal;
         bool               _iteCLevel1;
+        bool               _iteChildNotAnd;
         bool               _strinreRLevel1;
         bool               _strninreRLevel1;
         bool               _streqRLevel1;
@@ -54,5 +55,13 @@ class PT {
         bool               _streqBothSV;
         bool               _strneqBothSV;
         bool               _strneqOneConst;
+        bool               _streqBothSC;
+
+        bool               _strinreReConcateMT2;
+        bool               _strConcateMT2;
+
+        size_t             _strinreReConcateCnt;
+        size_t             _strninreReConcateCnt;
+        size_t             _reConcateCnt;
 };
 #endif

@@ -160,9 +160,9 @@ void VmtNode::writeParam(ofstream& file)
 
 void VmtNode::renameStateVar(const size_t& delta)
 {
-    cout << "node=" << _name <<endl;
+    //cout << "node=" << _name <<endl;
     if (_flag == gflag) return;
-    cout << "node=" << _name << " unvisited"<<endl;
+    //cout << "node=" << _name << " unvisited"<<endl;
     _flag = gflag;
     if (_type == PARAM) {
         assert((_children.empty()));
@@ -235,13 +235,13 @@ void Aut::parse(const char* fileName)
                 VmtNode* newNode = 0;
                 if (*(tokenList[0].rbegin()) == 't') {
                     size_t num = stoi(tokenList[0].substr(1,tokenList[0].find_last_of(".")-1));
-                    cout << "n.next num=" << num << endl;
+                    //cout << "n.next num=" << num << endl;
                     newNode = new VmtNode(tokenList[0],LEN_N,num);
                     _snList[3].push_back(newNode);
                 }
                 else {
                     size_t num = stoi(tokenList[0].substr(1));
-                    cout << "n num=" << num << endl;
+                    //cout << "n num=" << num << endl;
                     newNode = new VmtNode(tokenList[0],LEN,num);
                     _snList[1].push_back(newNode);
                 }
@@ -382,6 +382,7 @@ void Aut::write(const char* fileName)
         _itoList[i]->_children[0]->write(file);
         file << ")\n";
     }
+    file.close();
 }
 
 void Aut::addlen(const string& lcvarCnt)
@@ -846,7 +847,7 @@ void Aut::vmtTokenize(const string& s,vector<string>& paramList, vector<string>&
 
 VmtNode* Aut::buildVmtNode(const string& s,size_t bpos,size_t epos,Str2VmtNodeMap& vmap)
 {
-    cout << s.substr(bpos,epos-bpos) << endl;
+    //cout << s.substr(bpos,epos-bpos) << endl;
     if (s[bpos] != '(') {
         string name = s.substr(bpos,epos-bpos);
         Str2VmtNodeMap::iterator it = vmap.find(name);
@@ -863,7 +864,7 @@ VmtNode* Aut::buildVmtNode(const string& s,size_t bpos,size_t epos,Str2VmtNodeMa
         while (s[i] != ' ') ++i;
         string root = s.substr(bpos+1,i-(bpos+1));
         if (root != "and" && root != "or" && root != "not" && root != "!" && root != "=" && root != "+" && root != "-" && root != "div" && root != ">=" && root != "<=" && root != "<" && root != ">" && root != "str.len") {
-            cout << root << endl;
+            //cout << root << endl;
             Str2VmtNodeMap::iterator it = vmap.find(root);
             assert((it != vmap.end()));
             VmtNode* pNode = new VmtNode(root,PARAM);
@@ -897,11 +898,11 @@ VmtNode* Aut::buildVmtNode(const string& s,size_t bpos,size_t epos,Str2VmtNodeMa
                 }
             }
             if (pNode->haveSameParam(it->second)) {
-                cout << "same" << endl;
+                //cout << "same" << endl;
                 return it->second;
             }
             else {
-                cout << "not same" << endl;
+                //cout << "not same" << endl;
                 return pNode;
             }
         }

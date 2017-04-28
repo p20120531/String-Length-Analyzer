@@ -1,0 +1,19 @@
+.model sigmawoepsilonstar
+.inputs i1 i2 i3 i4 i5 i6 i7 i8 s1 n1
+.outputs i o t
+.names s1 i
+0 1
+.names s1 o
+0 1
+.names i1 i2 i3 i4 i5 i6 i7 i8 s1 n1 t
+0000000001 1
+--------11 1
+1-------00 1
+01------00 1
+001-----00 1
+0001----00 1
+00001---00 1
+000001--00 1
+0000001-00 1
+0000000100 1
+.end

@@ -51,6 +51,7 @@ class DGNode {
         // Print Function
         void print (const size_t&,size_t)const;
         void printLengthVarList() const;
+        void printAssertionList() const;
         // Access Function
         const Type&    getType       ()                    {return _type;}
         const string&  getName       ()                    {return _name;}
@@ -100,6 +101,7 @@ class DG {
         // Print Function
         void print () const;
         void printLengthVarList() const;
+        void printAssertionList() const;
         // Access Function
         DGNode* getSinkNode() {return _sink;}
         const size_t& getBFlag() {return _bflag;}

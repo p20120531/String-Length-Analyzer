@@ -44,6 +44,7 @@ void PT::analyze()
     #endif
     _iteDVarLegal    = 1;
     _iteCLevel1      = 1;
+    _iteChildNotAnd  = 0;
     _strinreRLevel1  = 1;
     _strninreRLevel1 = 1;
     _streqRLevel1    = 1;
@@ -60,15 +61,25 @@ void PT::analyze()
     _streqBothSV     = 0;
     _strneqBothSV    = 0;
     _strneqOneConst  = 1;
+    _streqBothSC     = 0;
+    
+    _strinreReConcateMT2 = 0;
+    _strConcateMT2 = 0;
+
+    _strinreReConcateCnt = 0;
+    _strninreReConcateCnt = 0;
+    _reConcateCnt = 0;
+
     for (size_t i = 0, size = _root->_children.size(); i < size; ++i) {
         _root->_children[i]->analyze(
-            _iteDVarLegal,_iteCLevel1,_strinreRLevel1,_strninreRLevel1,
+            _iteDVarLegal,_iteCLevel1,_iteChildNotAnd,_strinreRLevel1,_strninreRLevel1,
             _streqRLevel1,_strneqRLevel1,_strlenRLevel2,_andCLevel2,_ornexist,
             _strinreLCSV,_strninreLCSV,_streqLCSV,_strneqLCSV,
-            _strlenCnt,_strlenEqCnt,_streqBothSV,_strneqBothSV,_strneqOneConst,1,1);
+            _strlenCnt,_strlenEqCnt,_streqBothSV,_strneqBothSV,_strneqOneConst,_streqBothSC,1,1,_strinreReConcateMT2,_strConcateMT2,_strinreReConcateCnt,_strninreReConcateCnt,_reConcateCnt);
     }
     cout << "   iteDVarLegal=" << _iteDVarLegal 
          << " iteCLevel1=" << _iteCLevel1 
+         << " iteChildNotAnd=" << _iteChildNotAnd 
          << " strinreRLevel1=" << _strinreRLevel1
          << " strninreRLevel1=" << _strninreRLevel1
          << " streqRLevel1=" << _streqRLevel1
@@ -79,14 +90,24 @@ void PT::analyze()
          << " strinreLCSV=" << _strinreLCSV
          << " strninreLCSV=" << _strninreLCSV
          << " streqLCSV=" << _streqLCSV
-         << " strneqLCSV=" << _strneqLCSV;
+         << " strneqLCSV=" << _strneqLCSV << endl;
     if (_strlenCnt == _strlenEqCnt)
-        cout << "strlenCnt==strlenEqCnt" << endl;
+        cout << "   strlenCnt==strlenEqCnt";
     else
-        cout << "strlenCnt!=strlenEqCnt" << endl;
+        cout << "   strlenCnt!=strlenEqCnt";
     cout << " streqBothSV=" << _streqBothSV
          << " strneqBothSV=" << _strneqBothSV 
-         << " strneqOneConst=" << _strneqOneConst << endl;
+         << " strneqOneConst=" << _strneqOneConst
+         << " streqBothSC=" << _streqBothSC << endl
+         << "   strinreReConcateMT2=" << _strinreReConcateMT2
+         << " strConcateMT2=" << _strConcateMT2
+         << " strinreReConcateCnt=" << _strinreReConcateCnt 
+         << " strninreReConcateCnt=" << _strninreReConcateCnt 
+         << " reConcateCnt=" << _reConcateCnt;
+    if (_strinreReConcateCnt + _strninreReConcateCnt == _reConcateCnt)
+        cout << " re.++ match" << endl;
+    else 
+        cout << " re.++ not match" << endl;
 }
 
 void PT::mergeNotEquivalence()
@@ -103,7 +124,7 @@ void PT::mergeNotEquivalence()
             if ((*it)->_name == "not") {
                 assert(((*it)->_children.size() == 1));
                 if ((*it)->_children[0]->_name == "str.in.re") {
-                    PTNode* newNode = new PTStrNotInReNode("str.notin.re");
+                    PTNode* newNode = new PTStrNotInReNode("str.nin.re");
                     newNode->_children = (*it)->_children[0]->_children;
                     cur->_children.erase(it);
                     --it;

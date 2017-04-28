@@ -2,6 +2,7 @@
 #include "kaluzaMgr.h"
 
 extern KaluzaMgr*    kmgr;
+static const set<char>& escapeSet = kmgr->getEscapeSet();
 static const size_t& gflag   = kmgr->getGFlag(); 
 static PT*&          pt      = kmgr->getPT();
 static DG*&          dg      = kmgr->getDG();
@@ -13,11 +14,25 @@ string DGNode::getRegex() const
         return ".*";
     else if(_type == CONST_STRING) {
         assert((_regex.at(0)=='\"' && _regex.at(_regex.size()-1)=='\"'));
-        return _regex.substr(1,_regex.size()-2);
+        string s = _regex.substr(1,_regex.size()-2);
+        return s;
+        /*
+        if (s == "") return "EPSILON";
+        else {
+            string ret = "";
+            for (size_t i=0,size=s.size(); i<size; ++i) {
+                if (escapeSet.find(s[i]) != escapeSet.end())
+                    ret += "\\" + s[i];
+                else 
+                    ret += s[i];
+            }
+            return ret;
+        }
+        */
     }
     else if(_type == AUT_COMPLE) {
         assert((_children.size() == 1));
-        return "\\~(" + _children[0]->getRegex() + ")";
+        return _children[0]->getRegex();
     }
     else if(_type == AUT_CONCATE) {
         string s;
@@ -119,6 +134,17 @@ void DGNode::printLengthVarList() const
         (*it)->findLeader()->printLengthVarList();
 }
 
+void DGNode::printAssertionList() const
+{
+    #ifndef _NLOG_
+        logFile << "DGNode: name=" << _name << endl;
+    #endif
+    for (PTNodePairList::const_iterator it=_assertionList.begin(); it!=_assertionList.end(); ++it)
+        (*it).second->print(3,0);
+    for (DGNodeList::const_iterator it=_children.begin(); it!=_children.end(); ++it)
+        (*it)->findLeader()->printAssertionList();
+}
+
 void DGNode::writeCVC4LeafNode(string& s)
 {
     if (_type == AUT_CONCATE) {
@@ -209,8 +235,13 @@ void DGNode::writeCVC4File()
         if (jt == bvStrSet.end()) {
             bvStrSet.insert((*it).second->getName());
             // FIXME
+            //string s = "(assert";
+            //(*it).first->writeCVC4PredRoot(s);
+            //s += ")";
             string s = "(assert " + (*it).second->getName() + ")";
             cvc4PredList.push_back(s);
+            (*it).second->setFlag(gflag);
+            (*it).second->writeCVC4PredVar();
             /*
             string s = "(assert";
             (*it).first->writeCVC4PredRoot(s);
@@ -239,7 +270,7 @@ void DGNode::writeCmdFile(ofstream& cmdFile,ofstream& autFile)
             cmdFile << "addlen " << _name << ".vmt " << _lengthVarCnt << endl;
             cmdFile << "write " << _name << "_l.vmt" << endl;
         }
-        autFile << _name << " " << getRegex() << endl;
+        autFile << _name << " \"/" << getRegex() << "/\"" << endl;
         return;
     }
     for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
@@ -271,9 +302,9 @@ void DGNode::merge()
     if (_flag != gflag) _flag = gflag;
     else {
         #ifndef _NLOG_
-        logFile << "[WARNING:DGNode::merge] this DG is NOT a DAG : at node " << _name << endl;
+        logFile << "[WARNING:DGNode::merge] this DG is NOT a Tree : at node " << _name << endl;
         #endif
-        cout    << "[WARNING:DGNode::merge] this DG is NOT a DAG : at node " << _name << endl;
+        cout    << "[WARNING:DGNode::merge] this DG is NOT a Tree : at node " << _name << endl;
     }
     
     if (_type == AUT_INTER) {

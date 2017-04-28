@@ -26,8 +26,7 @@ void KaluzaMgr::buildAndWriteDG()
             _logFile << "[handle " << cur->getName() << "]" << endl;
         #endif
         ++_gflag;
-        for (PTNodeList::iterator it=cur->_children.begin();it!=cur->_children.end();++it)
-            DGNode* newNode = (*it)->buildDG();
+        cur->buildDG();
         size_t bflag = _gflag;
         
         ++_gflag;
@@ -46,13 +45,16 @@ void KaluzaMgr::buildAndWriteDG()
                 _logFile << "found sink node = " << (*it)->getName() << endl;
                 _logFile << "\n>> processing DG " << dgIdx << endl;
             #endif
-            _dg->print();
+            //_dg->print();
             ++_gflag;
             _dg->merge();
-            //_dg->print();
-            //_dg->printLengthVarList();
+            #ifndef _NLOG_
+                _dg->print();
+                _dg->printLengthVarList();
+                _dg->printAssertionList();
+            #endif
             _dg->renameLengthVar();
-            _dg->print();
+            //_dg->print();
             ++_gflag;
             _dg->writeCVC4File(curimp);
             ++_gflag;

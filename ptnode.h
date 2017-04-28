@@ -38,7 +38,8 @@ class PTNode {
         void writeCVC4PredRoot(string&);
         virtual DGNode* buildDG() = 0;
         void analyzeASCII() const;
-        void analyze(bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,size_t&,size_t&,bool&,bool&,bool&,int,int) const;
+        //void analyze(bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,size_t&,size_t&,bool&,bool&,bool&,bool&,int,int,bool&,bool&,size_t&,size_t&,size_t&) const;
+        void analyze(bool& iteDVarLegal, bool& iteCLevel1, bool& iteChildNotAnd, bool& strinreRLevel1, bool& strninreRLevel1, bool& streqRLevel1, bool& strneqRLevel1, bool& strlenRLevel2, bool& andCLevel2, bool& ornexist, bool& strinreLCSV, bool& strninreLCSV, bool& streqLCSV, bool& strneqLCSV, size_t& strlenCnt, size_t& strlenEqCnt, bool& streqBothSV, bool& strneqBothSV, bool& strneqOneConst, bool& streqBothSC, int cLevel, int rLevel, bool& strinreReConcateMT2, bool& strConcateMT2, size_t& strinreReConcateCnt, size_t& strninreReConcateCnt, size_t& reConcateCnt) const;
         virtual void buildPTNodeListMap(PTNode*);
     protected:
         string          _name;

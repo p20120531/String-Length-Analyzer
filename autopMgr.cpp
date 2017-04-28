@@ -212,7 +212,7 @@ void AutOpMgr::readDefFile(const string& fileName)
         return;
     }
     while(getline(file,line)) {
-        cout << "line=" << line << endl;
+        //cout << "line=" << line << endl;
         size_t i = 0;
         while (line[i] != ' ') ++i;
         size_t j = ++i;
@@ -223,7 +223,7 @@ void AutOpMgr::readDefFile(const string& fileName)
         while (line[i] != ')') ++i;
         string typestr = line.substr(j,i-j);
         VmtNode* newNode = 0;
-        cout << "name=" << name << " type=" << typestr << endl;
+        //cout << "name=" << name << " type=" << typestr << endl;
         if (typestr == "Bool") {
             newNode = new VmtNode(name);
             _defBVList.push_back(newNode);
@@ -252,12 +252,12 @@ void AutOpMgr::readPredFile(const string& fileName)
     VmtNodeList plist;
     vector<string> slist;
     while(getline(file,line)) {
-        cout << "line=" << line << endl;
+        //cout << "line=" << line << endl;
         VmtNode* newNode = new VmtNode("p"+itos(++pCnt),NOPARAM);
         if (line[8] == '(') {
             if (*(line.rbegin()) == ')') {
                 string s = line.substr(8,line.size()-1-8);
-                cout << "regular=" << s << endl;
+                //cout << "regular=" << s << endl;
                 newNode->addChild(Aut::buildVmtNode(s,0,s.size(),_vmap));
                 _predList.push_back(newNode);
             }
@@ -269,7 +269,7 @@ void AutOpMgr::readPredFile(const string& fileName)
                 while (line[i] != ' ') --i;
                 string type = line.substr(i+1,j-(i+1));
                 
-                cout << "type=" << type << " lcvar=" << lcvar << endl;
+                //cout << "type=" << type << " lcvar=" << lcvar << endl;
 
                 i = 8;
                 size_t dCnt = 1;
@@ -280,7 +280,7 @@ void AutOpMgr::readPredFile(const string& fileName)
                 }
                 ++i;
                 string s = line.substr(8,i-8);
-                cout << "strlen=" << s << endl;
+                //cout << "strlen=" << s << endl;
                 VmtNode* tmpnode = Aut::buildVmtNode(s,0,s.size(),_vmap);
                 
                 if (type == "cstrlen") {
@@ -301,7 +301,7 @@ void AutOpMgr::readPredFile(const string& fileName)
             size_t i = 8;
             while (line[i] != ')') ++i;
             string name = line.substr(8,i-8);
-            cout << "var=" << name << endl;
+            //cout << "var=" << name << endl;
             Str2VmtNodeMap::iterator it=_vmap.find(name);
             assert((it!=_vmap.end()));
             newNode->addChild(it->second);
