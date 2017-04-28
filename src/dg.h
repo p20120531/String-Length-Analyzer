@@ -103,6 +103,7 @@ class DG {
         void printLengthVarList() const;
         void printAssertionList() const;
         // Access Function
+        bool isAssertion(const string&, string&);
         DGNode* getSinkNode() {return _sink;}
         const size_t& getBFlag() {return _bflag;}
         Str2TypeMap& getTypeMap() {return _typeMap;}

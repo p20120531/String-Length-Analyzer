@@ -1,0 +1,6 @@
+iteChildNotAnd=1
+/SMTLIB/sat/small/split.readable.smt2
+/SMTLIB/sat/big/big1.readable.smt2
+/SMTLIB/unsat/small/23232.corecstrs.readable.smt2
+/SMTLIB/sat/small/bettermatch1.readable.smt2
+/SMTLIB/sat/small/bettermatch2.readable.smt2

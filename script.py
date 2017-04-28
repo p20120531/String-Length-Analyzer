@@ -8,10 +8,12 @@ from os.path import isdir, isfile, join
 # Usage: python script.py [options]
 opt = sys.argv[1]
 
-#d1 = ['./SMTLIB/sat/small','./SMTLIB/sat/big','./SMTLIB/unsat/small','./SMTLIB/unsat/big']
-#d2 = ['./DG/sat/small','./DG/sat/big','./DG/unsat/small','./DG/unsat/big']
-d1 = ['./testing']
-d2 = d1
+smt2dgPath = './bin/smt2dg'
+
+d1 = ['./SMTLIB/sat/small','./SMTLIB/sat/big','./SMTLIB/unsat/small','./SMTLIB/unsat/big']
+d2 = ['./DG/sat/small','./DG/sat/big','./DG/unsat/small','./DG/unsat/big']
+#d1 = ['./testing']
+#d2 = d1
 files1 = []
 for i in range(len(d1)) :
     files1 += [join(d1[i],f) for f in listdir(d1[i]) if isfile(join(d1[i],f))]
@@ -25,14 +27,19 @@ validSet = set(['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p',
 
 if opt == '--analyze' :
     for f in files1:
-        call('./smt2dg --analyze %s' %(f),shell=True) 
+        call('%s --analyze %s' %(smt2dgPath,f),shell=True) 
+
+elif opt == '--resetDG' :
+    call('rm -rf ./DG',shell=True)
+    for d in d2 :
+        call('mkdir -p %s' %(d),shell=True)
 
 elif opt == '--buildDG' :
-    if len(sys.argv) == 1 :
+    if len(sys.argv) == 2 :
         for f in files1 :
-            call('./smt2dg --buildDG --whole %s' %(f),shell=True)
+            call('%s --buildDG --whole %s' %(smt2dgPath,f),shell=True)
     else :
-        call('./smt2dg --buildDG --single %s' %(sys.argv[2]),shell=True)
+        call('%s --buildDG --single %s' %(smt2dgPath,sys.argv[2]),shell=True)
 
 elif opt == '--filter' :
     frecord = open('./experiment/filter','w')
@@ -80,9 +87,9 @@ elif opt == '--regex2blif' :
                     call('./%s %s %s.blif' %(ePath,v[1],sp+v[0]),shell=True)
 
 elif opt == '--blif2vmt' :
-    epsilonPath = './special_regex/epsilon.vmt'
-    sigmaStarPath = './special_regex/sigmastar.vmt'
-    sigmaWithoutEpsilonStarPath = './special_regex/sigmawoepsilonstar.vmt'
+    epsilonPath = './experiment/special_regex/epsilon.vmt'
+    sigmaStarPath = './experiment/special_regex/sigmastar.vmt'
+    sigmaWithoutEpsilonStarPath = './experiment/special_regex/sigmawoepsilonstar.vmt'
     for f in files2 :
         #dirs2 = f[0:f.rfind('.')] + '/'
         d = f + '/'
@@ -100,18 +107,18 @@ elif opt == '--blif2vmt' :
                     elif v[1] == '\"//\"' :
                         call('cp %s %s.blif' %(epsilonPath,sp+v[0]),shell=True)
                     else :
-                        call('./smt2dg --blif2vmt %s.blif %s.vmt' %(sp+v[0],sp+v[0]),shell=True)
-                        call('./smt2dg --intersect %s %s.vmt' %(sigmaWithoutEpsilonStarPath,sp+v[0]),shell=True)
+                        call('%s --blif2vmt %s.blif %s.vmt' %(smt2dgPath,sp+v[0],sp+v[0]),shell=True)
+                        call('%s --intersect %s %s.vmt' %(smt2dgPath,sigmaWithoutEpsilonStarPath,sp+v[0]),shell=True)
 elif opt == '--readCmd' :
     for f in files2 :
         d = f + '/'
         subPath = [join(d,idx) for idx in listdir(d) if isdir(join(d,idx))]
         for sp in subPath :
             cmdFile = sp + '/cmd'
-            call('./smt2dg --readCmd %s' %(cmdFile),shell=True)
+            call('%s --readCmd %s' %(smt2dgPath,cmdFile),shell=True)
 
 elif opt == '--exp--cvc4' :
-    ePath = './cvc4-2017-03-20-x86_64-linux-opt'
+    ePath = './bin/cvc4-2017-03-20-x86_64-linux-opt'
     record = open('./experiment/cvc4.csv','w')
     for f in files2 :
         d = f + '/'
@@ -132,7 +139,7 @@ elif opt == '--exp--cvc4' :
                 record.write('%s,%.6f\n' %(sat,te-ts))
     record.close()
 elif opt == '--exp--norn' :
-    ePath = './norn/norn'
+    ePath = './bin/norn/norn'
     record = open('./experiment/norn.csv','w')
     for f in files :
         d = f + '/'
@@ -150,7 +157,7 @@ elif opt == '--exp--norn' :
                 record.write('%s,%.6f\n' %(sat,te-ts))
     record.close()
 elif opt == '--exp--z3' :
-    ePath = './z3-master/build/z3'
+    ePath = './bin/z3-master/build/z3'
     record = open('./experiment/z3.csv','w')
     for f in files :
         d = f + '/'
@@ -170,7 +177,7 @@ elif opt == '--exp--z3' :
                 record.write('%s,%.6f\n' %(sat,te-ts))
     record.close()
 elif opt == '--exp--ic3ia' :
-    ePath = './ic3ia/build/ic3ia'
+    ePath = './bin/ic3ia/build/ic3ia'
     record = open('./experiment/ic3ia.csv','w')
     for f in files :
         d = f + '/'

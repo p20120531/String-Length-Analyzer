@@ -141,21 +141,49 @@ void DG::writeCVC4File(const IMP& curimp)
         cvc4File << "(declare-fun " << *it << " () String)" << endl;
     for (vector<string>::iterator it=_cvc4StrList.begin(); it!=_cvc4StrList.end(); ++it)
         cvc4File << *it << endl;
-    for (vector<string>::iterator it=_cvc4PredList.begin(); it!=_cvc4PredList.end(); ++it) {
-        cvc4File << *it << endl;
-        predFile << *it << endl;
-    }
+    
+    // Handle Assertion Repetition
     if (curimp.first != 0) {
+        string s;
         if (curimp.second) {
-            cvc4File << "(assert " << curimp.first->getName() << ")" << endl;
-            predFile << "(assert " << curimp.first->getName() << ")" << endl;
+            s = "(assert " + curimp.first->getName() + ")";
         }
         else {
-            cvc4File << "(assert (not " << curimp.first->getName() << "))" << endl;
-            predFile << "(assert (not " << curimp.first->getName() << "))" << endl;
+            s = "(assert (not " + curimp.first->getName() + "))";
+        }
+        bool alreadyExist = 0;
+        for (vector<string>::iterator it=_cvc4PredList.begin(); it!=_cvc4PredList.end(); ++it) {
+            if (s == *it) {
+                alreadyExist = 1;
+                break;
+            }
+        }
+        if (!alreadyExist) {
+            _cvc4PredList.push_back(s);
+        }
+    }
+    set<string> ibvSet;
+    for (vector<string>::iterator it=_cvc4PredList.begin(); it!=_cvc4PredList.end(); ++it) {
+        string name;
+        if (isAssertion(*it,name)) {
+            if ((ibvSet.find(name) != ibvSet.end())) {
+                _cvc4PredList.erase(it);
+                --it;
+            }
+            else {
+                ibvSet.insert(name);
+                cvc4File << *it << endl;
+                predFile << *it << endl;
+            }
         }
     }
     cvc4File << "(check-sat)";
     cvc4File.close();
 }
-
+bool DG::isAssertion(const string& pred, string& name) {
+    size_t size = pred.size();
+    for (size_t i = 8; i < size; ++i)
+        if (pred[i] == '(') return 0;
+    name = pred.substr(8,size-1-8);
+    return 1;
+}
