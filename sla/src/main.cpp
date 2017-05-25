@@ -1,7 +1,7 @@
 #include "kaluzaMgr.h"
-#include "autopMgr.h"
+#include "autMgr.h"
 KaluzaMgr* kmgr   = new KaluzaMgr();
-AutOpMgr*  autopmgr = new AutOpMgr();
+AutMgr*  autmgr = new AutMgr();
 
 int main(int argc, char* argv[]) {
     //for (size_t i =0;i<50;++i)
@@ -22,9 +22,9 @@ int main(int argc, char* argv[]) {
     /*
     string opt(argv[1]);
     if (opt == "0")
-        autopmgr->blif2vmt(argv[2],argv[3]);
+        autmgr->blif2vmt(argv[2],argv[3]);
     else if(opt == "1")
-        autopmgr->readCmdFile(argv[2]);
+        autmgr->readCmdFile(argv[2]);
     */
     /*
     Aut* a1 = new Aut("easy/a.vmt");
@@ -35,11 +35,11 @@ int main(int argc, char* argv[]) {
     */
 
     /*
-    autopmgr->readDefFile(argv[1]);
+    autmgr->readDefFile(argv[1]);
     cout << endl;
-    autopmgr->readPredFile(argv[2]);
+    autmgr->readPredFile(argv[2]);
     cout << endl;
-    autopmgr->print();
+    autmgr->print();
     */
 
     //kmgr->closeLogFile();
@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
     if (input == "0") {
         const char* c1 = "blif2vmt/literal_45.blif";
         const char* c2 = "blif2vmt/literal_45.vmt.1";
-        autopmgr->blif2vmt(c1,c2);
+        autmgr->blif2vmt(c1,c2);
     }
     if (input == "1") {
         Aut* a1 = new Aut("easy/a.vmt");
@@ -109,9 +109,9 @@ int main(int argc, char* argv[]) {
         a1->write("easy/ab_concate.vmt.2");
     }
     else if (input == "10")
-        autopmgr->blif2vmt(argv[2],argv[3]);
+        autmgr->blif2vmt(argv[2],argv[3]);
     else if (input == "11")
-        autopmgr->readCmdFile(argv[2]);
+        autmgr->readCmdFile(argv[2]);
     else if (input == "12") {
         kmgr->read(argv[2],argv[3]);
         kmgr->analyzePTASCII();
@@ -129,21 +129,48 @@ int main(int argc, char* argv[]) {
         kmgr->buildAndWriteDG();
     }
     else if (input == "--blif2vmt") {
-        autopmgr->blif2vmt(argv[2],argv[3]);
+        autmgr->blif2vmt(argv[2],argv[3]);
     }
     else if (input == "--readCmd") {
-        autopmgr->readCmdFile(argv[2]);
+        autmgr->readCmdFile(argv[2]);
     }
     else if (input == "--analyze") {
-        kmgr->read("--analyze",argv[2]);
+        kmgr->read(argv[2],argv[3],1);
         kmgr->analyzePT();
+    }
+    else if (input == "0") {
+        cout << "addlen " << argv[2] << endl << "write " << argv[3] << endl;
+        Aut* a1 = new Aut(argv[2]);
+        a1->addlen("10");
+        a1->write(argv[3]);
+    }
+    else if (input == "1") {
+        cout << "read " << argv[2] << endl << "write "  << argv[3] << endl;
+        Aut* a1 = new Aut(argv[2]);
+        a1->write(argv[3]);
+    }
+    else if (input == "2") {
+        cout << "intersect " << argv[2] << " " << argv[3] << endl << "write " << argv[4] << endl;
+        Aut* a1 = new Aut(argv[2]);
+        Aut* a2 = new Aut(argv[3]);
+        Aut* a3 = new Aut();
+        a3->intersect(a1,a2);
+        a3->write(argv[4]);
+    }
+    else if (input == "3") {
+        cout << "concate " << argv[2] << " " << argv[3] << endl << "write " << argv[4] << endl;
+        Aut* a1 = new Aut(argv[2]);
+        Aut* a2 = new Aut(argv[3]);
+        Aut* a3 = new Aut();
+        a3->concate(a1,a2);
+        a3->write(argv[4]);
     }
     else
         cout << "invalid option=" << input << endl;
     
 
     //cout << "at main"<< endl;
-    //autopmgr->_epsilon->print(0);
+    //autmgr->_epsilon->print(0);
     //Aut* a2 = new Aut(argv[2]);
     //Aut* a3 = new Aut();
     //a3->intersect(a1,a2);

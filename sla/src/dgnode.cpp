@@ -2,7 +2,6 @@
 #include "kaluzaMgr.h"
 
 extern KaluzaMgr*    kmgr;
-static const set<char>& escapeSet = kmgr->getEscapeSet();
 static const size_t& gflag   = kmgr->getGFlag(); 
 static PT*&          pt      = kmgr->getPT();
 static DG*&          dg      = kmgr->getDG();
@@ -32,12 +31,12 @@ string DGNode::getRegex() const
     }
     else if(_type == AUT_COMPLE) {
         assert((_children.size() == 1));
-        return _children[0]->getRegex();
+        return "~(" + _children[0]->findLeader()->getRegex() + ")";
     }
     else if(_type == AUT_CONCATE) {
         string s;
         for (DGNodeList::const_iterator it=_children.begin();it!=_children.end();++it)
-            s += (*it)->getRegex();
+            s += (*it)->findLeader()->getRegex();
         return s;
     }
     else
@@ -181,16 +180,16 @@ void DGNode::writeCVC4File()
     typeMap.insert(Str2Type(_name,VAR_STRING));
     
     if (_type == AUT_CONCATE) 
-        cvc4StrList.push_back("(assert (= "+_name+" (str.++ "+_children[0]->_name+" "+_children[1]->_name+")))");
+        cvc4StrList.push_back("(assert (= "+_name+" (str.++ "+_children[0]->findLeader()->_name+" "+_children[1]->findLeader()->_name+")))");
     else if (_type == AUT_INTER) {
         assert((_children.size() == 2));
-        cvc4StrList.push_back("(assert (str.in.re "+_name+" (str.to.re "+_children[0]->_name+")))");
-        cvc4StrList.push_back("(assert (str.in.re "+_name+" (str.to.re "+_children[1]->_name+")))");
+        cvc4StrList.push_back("(assert (= "+_name+" "+_children[0]->findLeader()->_name+"))");
+        cvc4StrList.push_back("(assert (= "+_children[0]->findLeader()->_name+" "+_children[1]->findLeader()->_name+"))");
     }
     else if (_type == AUT_COMPLE) {
         assert((_children.size() == 1));
         string s = "(assert (not (str.in.re " + _name;
-        _children[0]->writeCVC4LeafNode(s);
+        _children[0]->findLeader()->writeCVC4LeafNode(s);
         s += ")))";
         cvc4StrList.push_back(s);
     }    
@@ -265,12 +264,26 @@ void DGNode::writeCmdFile(ofstream& cmdFile,ofstream& autFile)
 {
     assert((_flag != gflag)); // Not DAG
     _flag = gflag;
-    if(_type == VAR_STRING || _type == CONST_STRING || _type == AUT_COMPLE) {
-        if (_lengthVarCnt != -1) {
-            cmdFile << "addlen " << _name << ".vmt " << _lengthVarCnt << endl;
-            cmdFile << "write " << _name << "_l.vmt" << endl;
+    if (_type == VAR_STRING || _type == CONST_STRING || _type == AUT_COMPLE) {
+        if (this == dg->getSinkNode()) {
+            if (_lengthVarCnt != -1) {
+                cmdFile << "addlen " << _name << " " << _lengthVarCnt << endl;
+                // intermediate file for debug
+                cmdFile << "write " << _name << "_l" << endl;
+            }
+            else {
+                cmdFile << "read " << _name << endl;
+                // intermediate file for debug
+                cmdFile << "write " << _name << endl;
+            }
         }
-        autFile << _name << " \"/" << getRegex() << "/\"" << endl;
+        else {
+            if (_lengthVarCnt != -1) {
+                cmdFile << "addlen " << _name << " " << _lengthVarCnt << endl;
+                cmdFile << "write " << _name << "_l" << endl;
+            }
+        }
+        autFile << _name << " \"" << getRegex() << "\"" << endl;
         return;
     }
     for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
@@ -283,12 +296,11 @@ void DGNode::writeCmdFile(ofstream& cmdFile,ofstream& autFile)
     for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
         cmdFile << " " << (*it)->findLeader()->getName();
         if ((*it)->findLeader()->_lengthVarCnt != -1) cmdFile << "_l";
-        cmdFile << ".vmt";
     }
-    cmdFile << endl << "write " << _name << ".vmt" << endl;
+    cmdFile << endl << "write " << _name << endl;
     if (_lengthVarCnt != -1) {
-        cmdFile << "addlen " << _name << ".vmt " << _lengthVarCnt << endl;
-        cmdFile << "write " << _name << "_l.vmt" << endl;
+        cmdFile << "addlen " << _name << " " << _lengthVarCnt << endl;
+        cmdFile << "write " << _name << "_l" << endl;
     }
 }
 

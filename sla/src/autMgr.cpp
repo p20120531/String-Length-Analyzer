@@ -1,6 +1,6 @@
-#include "autopMgr.h"
+#include "autMgr.h"
 #include <cstdio>
-void AutOpMgr::blif2vmt(const char* inFileName, const char* outFileName)
+void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
 {
     string line;
     ifstream inFile(inFileName);
@@ -129,7 +129,7 @@ void AutOpMgr::blif2vmt(const char* inFileName, const char* outFileName)
     a->write(outFileName);
 }
 
-void AutOpMgr::initXSListAndEpsilon()
+void AutMgr::initXSListAndEpsilon()
 {
     _xsList.assign(4,VmtNodeList());
     for (size_t i = 0; i < 8; ++i) {
@@ -149,7 +149,7 @@ void AutOpMgr::initXSListAndEpsilon()
     }
 }
 
-void AutOpMgr::readCmdFile(const char* fileName)
+void AutMgr::readCmdFile(const char* fileName)
 {
     string line;
     ifstream file(fileName);
@@ -162,7 +162,7 @@ void AutOpMgr::readCmdFile(const char* fileName)
 
     string path(fileName);
     path = path.substr(0,path.find_last_of("/")) + "/";
-
+    cout << ">> dgDir = " << path << endl;
     Aut* cur = 0;
     Aut* a1 = 0;
     Aut* a2 = 0;
@@ -172,37 +172,55 @@ void AutOpMgr::readCmdFile(const char* fileName)
         str2tokens(line,tokenList);
         if (tokenList[0] == "intersect") {
             cout << "intersect " << tokenList[1] << " " << tokenList[2] << endl;
-            a1  = new Aut(path+tokenList[1]);
-            a2  = new Aut(path+tokenList[2]);
+            a1  = new Aut(path+tokenList[1]+".vmt");
+            a2  = new Aut(path+tokenList[2]+".vmt");
             cur = new Aut();
             cur->intersect(a1,a2);
         }
         else if (tokenList[0] == "concate") {
             cout << "concate " << tokenList[1] << " " << tokenList[2] << endl;
-            a1  = new Aut(path+tokenList[1]);
-            a2  = new Aut(path+tokenList[2]);
+            a1  = new Aut(path+tokenList[1]+".vmt");
+            a2  = new Aut(path+tokenList[2]+".vmt");
             cur = new Aut();
             cur->concate(a1,a2);
         }
         else if (tokenList[0] == "addlen") {
             cout << "addlen " << tokenList[1] << " " << tokenList[2] << endl;
-            cur = new Aut(path+tokenList[1]);
+            cur = new Aut(path+tokenList[1]+".vmt");
             cur->addlen(tokenList[2]);
+        }
+        else if (tokenList[0] == "read") {
+            cout << "read " << tokenList[1] << endl;
+            cur = new Aut(path+tokenList[1]+".vmt");
+        }
+        else if (tokenList[0] == "addpred") {
+            string defstr  = path + "def";
+            string predstr = path + "pred";
+            cout << "addpred def=" << defstr << " pred=" << predstr << endl;
+            readDefFile(defstr);
+            readPredFile(predstr);
+            mergeStringAndPred(cur);
         }
         else if (tokenList[0] == "write") {
             cout << "write " << tokenList[1] << endl;
-            cur->write(path+tokenList[1]);
+            cur->write(path+tokenList[1]+".vmt");
         }
+        else
+            cout << "[ERROR] invalid command=" << tokenList[0] << endl;
     }
+    /*
     string defstr = path + "def";
     string predstr = path + "pred";
+    cout << "defFile = " << defstr << endl << "predFile = " << predstr << endl;
     readDefFile(defstr);
     readPredFile(predstr);
     mergeStringAndPred(cur);
+    cout << path+"sink.vmt" << endl;
     cur->write(path+"sink.vmt");
+    */
 }
 
-void AutOpMgr::readDefFile(const string& fileName)
+void AutMgr::readDefFile(const string& fileName)
 {
     string line;
     ifstream file(fileName.c_str());
@@ -211,36 +229,56 @@ void AutOpMgr::readDefFile(const string& fileName)
         cout << "fail open file=" << fileName << endl;
         return;
     }
+    int tmpNxtCnt = -1;
     while(getline(file,line)) {
-        //cout << "line=" << line << endl;
+        cout << "line=" << line << endl;
         size_t i = 0;
         while (line[i] != ' ') ++i;
         size_t j = ++i;
         while (line[i] != ' ') ++i;
         string name = line.substr(j,i-j);
+        string nameNxt = name + ".next";
         i += 4;
         j = i;
         while (line[i] != ')') ++i;
         string typestr = line.substr(j,i-j);
-        VmtNode* newNode = 0;
-        //cout << "name=" << name << " type=" << typestr << endl;
+        cout << "name=" << name << "nameNxt=" << nameNxt <<" type=" << typestr << endl;
         if (typestr == "Bool") {
-            newNode = new VmtNode(name);
-            _defBVList.push_back(newNode);
-            _vmap.insert(Str2VmtNode(name,newNode));
+            VmtNode* newNode1 = new VmtNode(name);
+            VmtNode* newNode2 = new VmtNode(nameNxt);
+            _vmap.insert(Str2VmtNode(name,newNode1));
+            _vmap.insert(Str2VmtNode(nameNxt,newNode2));
+            _defBVList.push_back(newNode1);
+            _defBVList.push_back(newNode2);
+            string s = "(! " + name + " :next " + nameNxt + ")";
+            VmtNode* newNode3 = new VmtNode("tmpNxt"+itos(++tmpNxtCnt));
+            newNode3->addChild(Aut::buildVmtNode(s,0,s.size(),_vmap));
+            _nxtList.push_back(newNode3);
         }
         else if(typestr == "Int") {
-            newNode = new VmtNode(name,LEN);
-            if (*(line.rbegin()) == ')')
-                _defIVList.push_back(newNode);
-            _vmap.insert(Str2VmtNode(name,newNode));
+            if (*(line.rbegin()) == ')') {
+                VmtNode* newNode1 = new VmtNode(name,LEN);
+                VmtNode* newNode2 = new VmtNode(nameNxt,LEN_N);
+                _vmap.insert(Str2VmtNode(name,newNode1));
+                _vmap.insert(Str2VmtNode(nameNxt,newNode2));
+                _defIVList.push_back(newNode1);
+                _defIVList.push_back(newNode2);
+                string s = "(! " + name + " :next " + nameNxt + ")";
+                VmtNode* newNode3 = new VmtNode("tmpNxt"+itos(++tmpNxtCnt));
+                newNode3->addChild(Aut::buildVmtNode(s,0,s.size(),_vmap));
+                _nxtList.push_back(newNode3);
+            }
+            else {
+                VmtNode* newNode1 = new VmtNode(name,LEN);
+                _vmap.insert(Str2VmtNode(name,newNode1));
+            }
         }
         else cout << "readDefFile::[WARNING] invalid type=" << typestr << endl;
     }
     file.close();
 }
 
-void AutOpMgr::readPredFile(const string& fileName)
+void AutMgr::readPredFile(const string& fileName)
 {
     string line;
     ifstream file(fileName.c_str());
@@ -314,7 +352,7 @@ void AutOpMgr::readPredFile(const string& fileName)
     file.close();
 }
 
-void AutOpMgr::print()
+void AutMgr::print()
 {        
     for (VmtNodeList::iterator it=_defBVList.begin(); it!=_defBVList.end(); ++it)
         (*it)->print(3);
@@ -322,17 +360,23 @@ void AutOpMgr::print()
     for (VmtNodeList::iterator it=_defIVList.begin(); it!=_defIVList.end(); ++it)
         (*it)->print(3);
     cout << endl;
+    for (VmtNodeList::iterator it=_nxtList.begin(); it!=_nxtList.end(); ++it)
+        (*it)->print(3);
+    cout << endl;
     for (VmtNodeList::iterator it=_predList.begin(); it!=_predList.end(); ++it)
         (*it)->print(3);
 }
 
-void AutOpMgr::mergeStringAndPred(Aut* a)
+void AutMgr::mergeStringAndPred(Aut* a)
 {
     for (size_t i=0,size=_defBVList.size(); i<size; ++i)
         a->_snList[3].push_back(_defBVList[i]);
     for (size_t i=0,size=_defIVList.size(); i<size; ++i)
         a->_snList[3].push_back(_defIVList[i]);
     
+    for (size_t i=0,size=_nxtList.size(); i<size; ++i)
+        a->_nxtList.push_back(_nxtList[i]);
+
     VmtNode* oNode = a->getO();
     VmtNode* newNode1 = new VmtNode("tmp1");
     VmtNode* and1 = new VmtNode("and");

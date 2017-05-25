@@ -1,12 +1,12 @@
-#include "autopMgr.h"
+#include "autMgr.h"
 #include <map>
 //#define _NPARAM_
 
-extern AutOpMgr* autopmgr;
-static vector<VmtNodeList> xsList = autopmgr->_xsList;
-static VmtNode* epsilon = autopmgr->_epsilon;
-static size_t stateBitNum = autopmgr->_stateBitNum;
-static size_t gflag = autopmgr->_gflag;
+extern AutMgr* autmgr;
+static vector<VmtNodeList> xsList = autmgr->_xsList;
+static VmtNode* epsilon = autmgr->_epsilon;
+static size_t stateBitNum = autmgr->_stateBitNum;
+static size_t gflag = autmgr->_gflag;
 
 void VmtNode::addChild(VmtNode* n)
 {
@@ -15,7 +15,12 @@ void VmtNode::addChild(VmtNode* n)
 
 void VmtNode::print(const size_t level) 
 {
-    cout << string(level,' ') << _name << endl;
+    cout << string(level*3,' ') << _name;
+    for (size_t i = 0; i < 6; ++i) {
+        for (VmtNodeSet::iterator it=_paraList[i].begin(); it!=_paraList[i].end(); ++it)
+            cout << " " << (*it)->_name;
+    }
+    cout << endl;
     for (size_t i=0,size=_children.size(); i<size; ++i) {
         _children[i]->print(level+1);
     }
@@ -87,6 +92,17 @@ bool VmtNode::haveSameParam(VmtNode* n)
             if (jt == _paraList[i].end()) return 0;
         }
     return 1;
+}
+
+void VmtNode::clearParam()
+{
+    if (_flag == gflag || _type == PARAM)  return;
+    _flag = gflag;
+    
+    for (size_t i = 0; i < 6; ++i)
+        _paraList[i].clear();
+    for (size_t i = 0,size = _children.size(); i < size; ++i)
+        _children[i]->clearParam();
 }
 
 void VmtNode::buildParam()
@@ -162,34 +178,53 @@ void VmtNode::renameStateVar(const size_t& delta)
 {
     //cout << "node=" << _name <<endl;
     if (_flag == gflag) return;
-    //cout << "node=" << _name << " unvisited"<<endl;
+    /*
+    cout << "node=" << _name << " unvisited"<<endl;
+    for (size_t i=0;i<6;++i){
+        for (VmtNodeSet::iterator it=_paraList[i].begin();it!=_paraList[i].end();++it)
+            cout << (*it)->getName() << endl;
+    }
+    */
     _flag = gflag;
     if (_type == PARAM) {
+        //cout << "_type == PARAM" << endl;
         assert((_children.empty()));
-        size_t n1 = (*_paraList[1].begin())->_num;
-        size_t n2 = (*_paraList[1].rbegin())->_num;
-        _paraList[1].clear();
-        assert((n2+delta) < stateBitNum);
-        for (size_t i=n1+delta; i<n2+delta+1; ++i)
-            _paraList[1].insert(xsList[1][i]);
-        
-        n1 = (*_paraList[4].begin())->_num;
-        n2 = (*_paraList[4].rbegin())->_num;
-        _paraList[4].clear();
-        assert((n2+delta) < stateBitNum);
-        for (size_t i=n1+delta; i<n2+delta+1; ++i)
-            _paraList[4].insert(xsList[3][i]);
+        assert((_paraList[0].empty()));
+        assert((_paraList[2].empty()));
+        assert((_paraList[3].empty()));
+        assert((_paraList[5].empty()));
+        if (!_paraList[1].empty()) {
+            size_t n1 = (*_paraList[1].begin())->_num;
+            size_t n2 = (*_paraList[1].rbegin())->_num;
+            _paraList[1].clear();
+            assert((n2+delta) < stateBitNum);
+            for (size_t i=n1+delta; i<n2+delta+1; ++i)
+                _paraList[1].insert(xsList[1][i]);
+        }
+        if (!_paraList[4].empty()) {
+            size_t n1 = (*_paraList[4].begin())->_num;
+            size_t n2 = (*_paraList[4].rbegin())->_num;
+            _paraList[4].clear();
+            assert((n2+delta) < stateBitNum);
+            for (size_t i=n1+delta; i<n2+delta+1; ++i)
+                _paraList[4].insert(xsList[3][i]);
+        }
         return;
     }
+
     for (size_t i=0,size=_children.size();i<size;++i) {
         _children[i]->renameStateVar(delta);
+        //cout << "node = " << _name << " children[" << i << "] = " << _children[i]->_name << endl;
+        size_t svar = _children[i]->_num + delta;
         if (_children[i]->_type == STATE) {
-            assert((_children[i]->_num + delta < stateBitNum));
-            _children[i] = xsList[1][_children[i]->_num+delta];
+            assert((svar < stateBitNum));
+            //cout << "renameSV " << _children[i]->_num << " -> " <<  xsList[1][svar]->_num << endl;
+            _children[i] = xsList[1][svar];
         }
         else if (_children[i]->_type == STATE_N) {
-            assert((_children[i]->_num + delta < stateBitNum));
-            _children[i] = xsList[3][_children[i]->_num+delta];
+            assert((svar < stateBitNum));
+            //cout << "renameSV " << _children[i]->_num << " -> " <<  xsList[3][svar]->_num << endl;
+            _children[i] = xsList[3][svar];
         }
     }
 }
@@ -201,6 +236,12 @@ void Aut::insertXSListAndEpsilon2vmap()
         for (size_t j = 0,size = xsList[i].size(); j < size; ++j)
             _vmap.insert(Str2VmtNode(xsList[i][j]->_name,xsList[i][j]));
     }
+}
+
+void Aut::print() const 
+{
+    for (size_t i = 0, s = _itoList.size(); i < s; ++i)
+        _itoList[i]->print(0);
 }
 
 void Aut::parse(const char* fileName)
@@ -318,6 +359,7 @@ void Aut::write(const string& fileName)
 void Aut::write(const char* fileName)
 {
     ofstream file(fileName);
+    clearParam();
     buildParam();
     ++gflag;
 
@@ -435,8 +477,9 @@ void Aut::addlen(const string& lcvarCnt)
 
 void Aut::intersect(Aut* a1,Aut* a2)
 {
+    //cout << "aut2 renameSV delta=" << a1->_stateVarCnt << endl;
     a2->renameStateVar(a1->_stateVarCnt);
-    
+    //a2->write("temp");
     _stateVarCnt = a1->_stateVarCnt + a2->_stateVarCnt;
     
     Str2VmtNodeMap vmap;
@@ -724,6 +767,11 @@ void Aut::concate(Aut* a1,Aut* a2)
     renameDef();
 }
 
+void Aut::replace(Aut* a1, Aut* a2, Aut* a3)
+{
+    renameDef();
+}
+
 VmtNode* Aut::getI()
 {
     return _itoList[0]->_children[0]->_children[0];
@@ -772,6 +820,8 @@ void Aut::renameStateVar(const size_t& delta)
     _snList[0].clear();
     _snList[2].clear();
     for (size_t i = delta; i < _stateVarCnt+delta; ++i) {
+        //cout << "add " << xsList[1][i]->getName() << endl;
+        //cout << "add " << xsList[3][i]->getName() << endl;
         _snList[0].push_back(xsList[1][i]);
         _snList[2].push_back(xsList[3][i]);
     }
@@ -927,6 +977,18 @@ VmtNode* Aut::buildVmtNode(const string& s,size_t bpos,size_t epos,Str2VmtNodeMa
         }
         return newNode;
     }
+}
+
+void Aut::clearParam()
+{
+    ++gflag;
+    for (size_t i = 0; i < 3; ++i)
+        _itoList[i]->clearParam();
+    for (size_t i = 0,size = _imdList.size(); i < size; ++i)
+        if (_imdList[i]->_flag != gflag) {
+            cout << "clearParam::[WARNING] non-ito-fanin node=" << _imdList[i]->_name << endl;
+            _imdList[i]->clearParam();
+        }
 }
 
 void Aut::buildParam()

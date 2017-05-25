@@ -10,7 +10,7 @@ DG::DG (DGNode* sink,size_t& indent,size_t& gflag,const size_t& bflag,const stri
     _idx = idx;
     stringstream ss;
     ss << _idx;
-    _path = path + ss.str() + "/";
+    _path = path + "/" + ss.str() + "/";
     system(("mkdir -p "+_path).c_str());
 }
 
@@ -66,21 +66,7 @@ void DG::writeCmdFile ()
     ofstream cmdFile(cmdstr.c_str());
     ofstream autFile(autstr.c_str());
     _sink->findLeader()->writeCmdFile(cmdFile,autFile);
-    //for (size_t i=0, size=lcList.size(); i<size; ++i)
-        //cmdFile << "\n" << lcList.at(i);
-    /*
-    for (Str2TypeMap::const_iterator it=intVarMap.begin();it!=intVarMap.end();++it)
-        defFile << "(declare-fun " << it->first << " () Int)\n";
-    size_t cnt = 0;
-    _sink->lcTraversal(_intVarMap,cnt);
-    size_t intermediateCnt = 0;
-    for (PTNodeList::const_iterator it=lcptList.begin();it!=lcptList.end();++it) {
-        lcFile  << "(define-fun LC" << intermediateCnt++ << " () Bool";
-        (*it)->lcTraversal(lcFile,_intVarMap);
-        lcFile  << ")\n";
-    }
-    _sink->writeCmdFile(_intVarMap,cmdFile,autFile);
-    */
+    cmdFile << "addpred" << endl << "write sink" << endl;
     cmdFile.close();
     autFile.close();
 }
@@ -162,6 +148,14 @@ void DG::writeCVC4File(const IMP& curimp)
             _cvc4PredList.push_back(s);
         }
     }
+    
+    /*
+    for (vector<string>::iterator it=_cvc4PredList.begin(); it!=_cvc4PredList.end(); ++it) {
+        cvc4File << *it << endl;
+        predFile << *it << endl;
+    }
+    */
+    
     set<string> ibvSet;
     for (vector<string>::iterator it=_cvc4PredList.begin(); it!=_cvc4PredList.end(); ++it) {
         string name;
@@ -176,7 +170,12 @@ void DG::writeCVC4File(const IMP& curimp)
                 predFile << *it << endl;
             }
         }
+        else {
+            cvc4File << *it << endl;
+            predFile << *it << endl;
+        }
     }
+    
     cvc4File << "(check-sat)";
     cvc4File.close();
 }

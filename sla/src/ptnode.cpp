@@ -167,33 +167,6 @@ void PTNode::setLevel(size_t level)
     }
 }
 
-void PTNode::lcTraversal(ofstream& outFile,const Str2UintMap& dgIntVarMap) const
-{
-    if (_children.empty()) {
-        outFile << " " << _name;
-        return;
-    }
-        
-    if (_name == "!=") {
-        assert((_children.size() == 1));
-        outFile << " (not (=";
-        _children[0]->lcTraversal(outFile,dgIntVarMap);
-        outFile << "))";
-    }
-    else if (_name == "str.len") {
-        assert((_children.size() == 1));
-        Str2UintMap::const_iterator it=dgIntVarMap.find(_children[0]->_name);
-        assert((it!=dgIntVarMap.end()));
-        outFile << " n" << it->second;
-    }
-    else {
-        outFile << " (" << _name;
-        for (PTNodeList::const_iterator it=_children.begin();it!=_children.end();++it)
-            (*it)->lcTraversal(outFile,dgIntVarMap);
-        outFile << ")";
-    }
-}
-
 void PTNode::writeCVC4PredVar()
 {
     assert((_type == VAR_BOOL || _type == VAR_INT));
@@ -230,6 +203,8 @@ void PTNode::writeCVC4PredVar()
             (*jt)->_flag = gflag;
             string s = "(assert";
             (*jt)->writeCVC4PredRoot(s);
+            // check if this predicate including invalid operator
+            if (s[0] == 'd' && s[1] == 'i' && s[2] == 'v') continue;
             s += ")";
             cvc4PredList.push_back(s);
         }
@@ -244,6 +219,10 @@ void PTNode::writeCVC4PredRoot(string& s)
     if (_name == "!=") s += "not (=";
     else               s += _name;
     for (PTNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
+        // eliminate predicate including div
+        if (_name == "div") {
+            s = "div";
+        }
         const Type& type = (*it)->_type;
         if (type == VAR_INT || type == VAR_BOOL) {
             s += " " + (*it)->_name;

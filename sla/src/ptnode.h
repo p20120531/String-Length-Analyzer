@@ -33,7 +33,6 @@ class PTNode {
         bool isConstStr();
         bool isStrComparison();
 
-        void lcTraversal(ofstream&,const Str2UintMap&) const;
         void writeCVC4PredVar();
         void writeCVC4PredRoot(string&);
         virtual DGNode* buildDG() = 0;

@@ -104,7 +104,7 @@ class DG {
         void printAssertionList() const;
         // Access Function
         bool isAssertion(const string&, string&);
-        DGNode* getSinkNode() {return _sink;}
+        DGNode* getSinkNode() {return _sink->findLeader();}
         const size_t& getBFlag() {return _bflag;}
         Str2TypeMap& getTypeMap() {return _typeMap;}
         Str2UintMap& getLengthVarCntMap() {return _lengthVarCntMap;}
@@ -115,7 +115,7 @@ class DG {
         set<string>& getBVPredSet() {return _bvPredSet;}
         set<string>& getIVPredSet() {return _ivPredSet;}
         // Modify Function
-        void setSinkNode(DGNode* sink) {_sink = sink;}
+        //void setSinkNode(DGNode* sink) {_sink = sink;}
         void merge();
         void renameLengthVar();
         void writeCmdFile();
