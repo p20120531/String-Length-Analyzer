@@ -1,5 +1,273 @@
 #include "autMgr.h"
 #include <cstdio>
+//#define AUTMGR_NDEBUG
+
+void Aut::dot2blif(const char* inFileName, const char* outFileName)
+{
+    TGraph* tgraph = new TGraph(fileName);
+    tgraph->write(outFileName);
+}
+
+string AutMgr::Uint2bitString(const size_t& n,const size_t& stateBitNum)
+{
+    string bitstr (Aut::stateBitNum,'0');
+    size_t tmp = n,j = Aut::stateBitNum;
+    while (tmp % 2 != 0 || tmp / 2 != 0) {
+        --j;
+        if (tmp % 2 != 0) bitstr[j] = '1';
+        tmp /= 2;
+    }
+    return bitstr;
+}
+
+void AutMgr::writeCompleTransition(ofstream& file, const vector<string>& alphabetList, const string& s1, const string& s2, const size_t idx)
+{
+    for (size_t j = 0; j < 256; ++j) {
+        if (j != epsilonEncode && j != leftEncode && j != rightEncode && j != idx)
+            file << "\n" << alphabetList[j] << s1 << s2 << " 1";
+    }
+}
+
+void AutMgr::regex2blif_r(const vector<string>& alphabetList, const string& target, const string& fileName)
+{
+    // TODO : Only support string literal or complement of string literal
+    string regex(target);
+    #ifndef AUTMGR_NDEBUG
+        cout << "[regex2blif] regex=" << regex << endl
+             << "             file=" << fileName << endl;
+    #endif
+    assert((regex[0] == '\"') && (*(regex.rbegin()) == '\"'));
+    regex = regex.substr(1,regex.size()-2);
+    if (regex == ".*" || regex == "~(.*)" || regex == "" || regex == "~()")
+        return;
+    ofstream file(fileName.c_str());
+    /*
+    if (regex == ".*") {
+        file << ".model sigma_star"
+             << "\n.inputs";
+        for (size_t i = 1; i <= 8; ++i) file << " i" << i;
+        file << " s1 n1";
+        file << "\n.outputs i o t";
+        
+        // initial state
+        file << "\n.names s1 i"
+             << "\n0 1";
+        
+        // accepting state
+        file << "\n\n.names s1 o"
+             << "\n0 1";
+        
+        // transition function
+        file << "\n\n.names";
+        for (size_t i = 1; i <= 8; ++i) file << " i" << i;
+        file << " s1 n1 t";
+        writeCompleTransition(file,alphabetList,"0","0");
+    }
+    else if (regex == "~(.*)") {
+        file << ".model empty_set"
+             << "\n.inputs";
+        for (size_t i = 1; i <= 8; ++i) file << " i" << i;
+        file << " s1 n1";
+        file << "\n.outputs i o t";
+        
+        // initial state
+        file << "\n.names s1 i"
+             << "\n0 1";
+        
+        // accepting state
+        file << "\n\n.names s1 o";
+        
+        // transition function
+        file << "\n\n.names";
+        for (size_t i = 1; i <= 8; ++i) file << " i" << i;
+        file << " s1 n1 t";
+    }
+    else if (regex == "") {
+        file << ".model epsilon"
+             << "\n.inputs";
+        for (size_t i = 1; i <= 8; ++i) file << " i" << i;
+        file << " s1 n1";
+        file << "\n.outputs i o t";
+        
+        // initial state
+        file << "\n.names s1 i"
+             << "\n0 1";
+        
+        // accepting state
+        file << "\n\n.names s1 o"
+             << "\n0 1";
+        
+        // transition function
+        file << "\n\n.names";
+        for (size_t i = 1; i <= 8; ++i) file << " i" << i;
+        file << " s1 n1 t";
+    }
+    else if (regex == "~()") {
+        file << ".model sigma_plus"
+             << "\n.inputs";
+        for (size_t i = 1; i <= 8; ++i) file << " i" << i;
+        file << " s1 n1";
+        file << "\n.outputs i o t";
+        
+        // initial state
+        file << "\n.names s1 i"
+             << "\n0 1";
+        
+        // accepting state
+        file << "\n\n.names s1 o"
+             << "\n1 1";
+        
+        // transition function
+        file << "\n\n.names";
+        for (size_t i = 1; i <= 8; ++i) file << " i" << i;
+        file << " s1 n1 t";
+        writeCompleTransition(file,alphabetList,"0","1");
+        writeCompleTransition(file,alphabetList,"1","1");
+    }
+    */
+    if (regex[0] == '~' && regex[1] == '(' && (*regex.rbegin()) == ')') {
+        regex = regex.substr(2,regex.size()-3);
+        size_t stateBitNum = 0, maxState = regex.size() + 1;
+        while (maxState % 2 != 0 || maxState / 2 != 0) {
+            ++stateBitNum;
+            maxState /= 2;
+        }
+        vector<string> stateList;
+        for (size_t i = 0, maxState = regex.size() + 1; i <= maxState; ++i)
+            stateList.push_back(Uint2bitString(i,stateBitNum));
+        
+        #ifndef AUTMGR_NDEBUG
+            cout << "stateBitNum=" << stateBitNum << endl
+                 << "stateList\n";
+            for (size_t i = 0, size = stateList.size(); i < size; ++i)
+                cout << stateList[i] << endl;
+            cout << "regex=" << regex << endl;
+            for (size_t i = 0, size = regex.size(); i < size; ++i)
+                cout << regex[i] << "->" << int(regex[i]) << endl;
+        #endif
+
+        file << ".model ~(" << regex << ")"
+             << "\n.inputs";
+        for (size_t i = 1; i <= 8; ++i)           file << " i" << i;
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " s" << i;
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " n" << i;
+        file << "\n.outputs i o t";
+        
+        // initial state
+        file << "\n.names";
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " s" << i;
+        file << " i\n" << stateList[0] << " 1\n";
+        
+        // accepting state
+        file << "\n.names";
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " s" << i;
+        file << " o";
+        for (size_t i = 0, size = stateList.size(); i < size; ++i)
+            if (i != size-2) {
+                file << "\n" << stateList[i] << " 1";
+            }
+
+        // transition function
+        const string& live = *(stateList.rbegin());
+        file << "\n\n.names";
+        for (size_t i = 1; i <= 8; ++i)           file << " i" << i;
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " s" << i;
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " n" << i;
+        file << " t";
+        for (size_t i = 0,size = regex.size(); i < size; ++i) {
+            size_t idx = int(regex[i]);
+            file << "\n" << alphabetList[idx] << stateList[i] << stateList[i+1] << " 1";
+            writeCompleTransition(file,alphabetList,stateList[i],live,idx);
+            file << "\n";
+        }
+        size_t pos = stateList.size() - 2;
+        writeCompleTransition(file,alphabetList,stateList[pos],live);
+        writeCompleTransition(file,alphabetList,live,live);
+    }
+    else {
+        size_t stateBitNum = 0, maxState = regex.size();
+        while (maxState % 2 != 0 || maxState / 2 != 0) {
+            ++stateBitNum;
+            maxState /= 2;
+        }
+        vector<string> stateList;
+        for (size_t i = 0, maxState = regex.size(); i <= maxState; ++i)
+            stateList.push_back(Uint2bitString(i,stateBitNum));
+        
+        #ifndef AUTMGR_NDEBUG
+            cout << "stateBitNum=" << stateBitNum << endl
+                 << "stateList\n";
+            for (size_t i = 0, size = stateList.size(); i < size; ++i)
+                cout << stateList[i] << endl;
+            cout << "regex=" << regex << endl;
+            for (size_t i = 0, size = regex.size(); i < size; ++i)
+                cout << regex[i] << "->" << int(regex[i]) << endl;
+        #endif
+
+        file << ".model " << regex
+             << "\n.inputs";
+        for (size_t i = 1; i <= 8; ++i)           file << " i" << i;
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " s" << i;
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " n" << i;
+        file << "\n.outputs i o t";
+        
+        // initial state
+        file << "\n.names";
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " s" << i;
+        file << " i\n" << stateList[0] << " 1\n";
+        
+        // accepting state
+        file << "\n.names";
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " s" << i;
+        file << " o\n" << *(stateList.rbegin()) << " 1\n";
+        
+        // transition function
+        file << "\n.names";
+        for (size_t i = 1; i <= 8; ++i)           file << " i" << i;
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " s" << i;
+        for (size_t i = 1; i <= stateBitNum; ++i) file << " n" << i;
+        file << " t";
+        for (size_t i = 0,size = regex.size(); i < size; ++i) {
+            size_t idx = int(regex[i]);
+            file << "\n" << alphabetList[idx] << stateList[i] << stateList[i+1] << " 1";
+        }
+    }
+    file << "\n\n.end";
+    file.close();
+}
+
+void AutMgr::regex2blif(const char* autFileName)
+{
+    string line;
+    ifstream autFile(autFileName);
+
+    if (!autFile) {
+        cout << "fail open file=" << autFileName << endl;
+        return;
+    }
+    
+    string path(autFileName);
+    path = path.substr(0,path.find_last_of("/")) + "/";
+    cout << "[regex2blif] DG=" << path << endl;
+    
+    // initialize alphabet list
+    vector<string> alphabetList;
+    for (size_t i = 0; i < 256; ++i)
+        alphabetList.push_back(bitset<8>(i).to_string());
+        
+    vector<string> tokenList;
+    while(getline(autFile,line)) {
+        tokenList.clear();
+        str2tokens(line,tokenList);
+        #ifndef AUTMGR_NDEBUG
+        cout << "----------" << endl;
+        for (size_t i = 0, size = tokenList.size(); i < size; ++i)
+            cout << tokenList[i] << endl;
+        #endif
+        regex2blif_r(alphabetList,tokenList[1],path+tokenList[0]+".blif");
+    }
+}
+
 void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
 {
     string line;
@@ -18,8 +286,7 @@ void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
     a->_vmap.insert(Str2VmtNode("o",oNode));
     a->_vmap.insert(Str2VmtNode("t",tNode));
     
-    int sCnt = -1, dCnt = -1;
-    size_t stateCnt = 0;
+    size_t stateCnt = 0, sCnt = 0, dCnt = 0;
     VmtNodeList iot;
     iot.push_back(iNode);
     iot.push_back(oNode);
@@ -32,42 +299,33 @@ void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
         str2tokens(line,tokenList);
         if (tokenList[0] == ".inputs") {
             // in blif : i=input s=current state n=next state
-            for (size_t i = 9,size = tokenList.size(); i < size; ++i) {
+            a->_stateVarNum = 0;
+            for (size_t i = 0, size = tokenList.size(); i < size; ++i) {
                 if (tokenList[i][0] == 's')
-                    ++stateCnt;
+                    ++a->_stateVarNum;
             }
-            assert((stateCnt <= _stateBitNum));
-            a->_stateVarCnt = stateCnt;
-            for (size_t i = 0; i < stateCnt; ++i) {
-                a->_snList[0].push_back(_xsList[1][i]);
-                a->_snList[2].push_back(_xsList[3][i]);
+            if ( a->_stateVarNum >= Aut::stateBitNum )
+                Aut::expandVarList(STATE);
+            for (size_t i = 0; i < a->_stateVarNum; ++i) {
+                a->_state[0].push_back(Aut::state[0][i]);
+                a->_state[1].push_back(Aut::state[1][i]);
             }
-            for (size_t i = 0; i < 8; ++i) {
-                string nstr = itos(i);
-                string s = "(! x" + nstr + " :next x" + nstr + ".next)";
-                VmtNode* newNode = new VmtNode("d"+itos(++dCnt));
-                newNode->addChild(Aut::buildVmtNode(s,0,s.size(),a->_vmap));
-                a->_nxtList.push_back(newNode);
-            }
-            for (size_t i = 0; i < stateCnt; ++i) {
-                string nstr = itos(i);
-                string s = "(! s" + nstr + " :next s" + nstr + ".next)";
-                VmtNode* newNode = new VmtNode("d"+itos(++dCnt));
-                newNode->addChild(Aut::buildVmtNode(s,0,s.size(),a->_vmap));
-                a->_nxtList.push_back(newNode);
-            }
+            for (size_t i = 0; i < 8; ++i)
+                a->defineFun( "d" + itos(dCnt++), "(! x" + itos(i) + " :next x" + itos(i) + ".next", a->_nxtList);
+            for (size_t i = 0; i < a->_stateVarNum; ++i)
+                a->defineFun( "d" + itos(dCnt++), "(! s" + itos(i) + " :next s" + itos(i) + ".next)", a->_nxtList);
         }
         else if (tokenList[0] == ".names" || tokenList[0] == ".end") {
-            if (sCnt != -1) {
+            if (sCnt != 0) {
                 if (cubeList.size() > 1) {
                     VmtNode* newNode = new VmtNode("or");
                     newNode->_children = cubeList;
-                    iot[sCnt]->addChild(newNode);
-                    for (size_t i=0,size=cubeList.size();i<size;++i)
+                    iot[sCnt-1]->addChild(newNode);
+                    for (size_t i = 0, size = cubeList.size(); i < size; ++i)
                         a->_imdList.push_back(cubeList[i]);
                 }
                 else {
-                    iot[sCnt]->_children = cubeList[0]->_children;
+                    iot[sCnt-1]->_children = cubeList[0]->_children;
                 }
                 cubeList.clear();
             }
@@ -100,10 +358,11 @@ void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
                     }
                 }
             }
-            s+= ")";
-            VmtNode* newNode = new VmtNode("d"+itos(++dCnt));
+            s += ")";
+            /*VmtNode* newNode = new VmtNode("d"+itos(++dCnt));
             newNode->addChild(Aut::buildVmtNode(s,0,s.size(),a->_vmap));
-            cubeList.push_back(newNode);
+            cubeList.push_back(newNode);*/
+            a->defineFun( "d" + itos(dCnt++), s, cubeList);
         }
         else {
             cout << "[WARNING] ignored input=\"" << line << "\"" << endl;
@@ -113,7 +372,7 @@ void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
     a->_imdList.push_back(iNode);
     a->_imdList.push_back(oNode);
     a->_imdList.push_back(tNode);
-    VmtNode* INode = new VmtNode("I");
+    /*VmtNode* INode = new VmtNode("I");
     VmtNode* TNode = new VmtNode("T");
     VmtNode* ONode = new VmtNode("O");
     string si = "(! i :init true)";
@@ -124,29 +383,12 @@ void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
     ONode->addChild(Aut::buildVmtNode(so,0,so.size(),a->_vmap));
     a->_itoList.push_back(INode);
     a->_itoList.push_back(TNode);
-    a->_itoList.push_back(ONode);
+    a->_itoList.push_back(ONode);*/
+    a->defineFun( "I", "(! i :init true)"             , a->_itoList);
+    a->defineFun( "T", "(! t :trans true)"            , a->_itoList);
+    a->defineFun( "O", "(! (not o) :invar-property 0)", a->_itoList);
     //Write Output
     a->write(outFileName);
-}
-
-void AutMgr::initXSListAndEpsilon()
-{
-    _xsList.assign(4,VmtNodeList());
-    for (size_t i = 0; i < 8; ++i) {
-        _xsList[0].push_back(new VmtNode("x"+itos(i),INPUT,i));
-        _xsList[2].push_back(new VmtNode("x"+itos(i)+".next",INPUT_N,i));
-    }
-    for (size_t i = 0; i < _stateBitNum; ++i) {
-        _xsList[1].push_back(new VmtNode("s"+itos(i),STATE,i));
-        _xsList[3].push_back(new VmtNode("s"+itos(i)+".next",STATE_N,i));
-    }
-    _epsilon = new VmtNode("epsilon");
-    _epsilon->addChild(new VmtNode("and"));
-    for (size_t i = 0; i < 8; ++i) {
-        VmtNode* notNode = new VmtNode("not");
-        notNode->addChild(_xsList[0][i]);
-        _epsilon->_children[0]->addChild(notNode);
-    }
 }
 
 void AutMgr::readCmdFile(const char* fileName)
@@ -194,12 +436,13 @@ void AutMgr::readCmdFile(const char* fileName)
             cur = new Aut(path+tokenList[1]+".vmt");
         }
         else if (tokenList[0] == "addpred") {
-            string defstr  = path + "def";
+            //string defstr  = path + "def";
             string predstr = path + "pred";
-            cout << "addpred def=" << defstr << " pred=" << predstr << endl;
-            readDefFile(defstr);
-            readPredFile(predstr);
-            mergeStringAndPred(cur);
+            //cout << "addpred def=" << defstr << " pred=" << predstr << endl;
+            //readDefFile(defstr);
+            //readPredFile(predstr);
+            //mergeStringAndPred(cur);
+            cur->addpred(predstr);
         }
         else if (tokenList[0] == "write") {
             cout << "write " << tokenList[1] << endl;
@@ -218,192 +461,4 @@ void AutMgr::readCmdFile(const char* fileName)
     cout << path+"sink.vmt" << endl;
     cur->write(path+"sink.vmt");
     */
-}
-
-void AutMgr::readDefFile(const string& fileName)
-{
-    string line;
-    ifstream file(fileName.c_str());
-    
-    if (!file) {
-        cout << "fail open file=" << fileName << endl;
-        return;
-    }
-    int tmpNxtCnt = -1;
-    while(getline(file,line)) {
-        cout << "line=" << line << endl;
-        size_t i = 0;
-        while (line[i] != ' ') ++i;
-        size_t j = ++i;
-        while (line[i] != ' ') ++i;
-        string name = line.substr(j,i-j);
-        string nameNxt = name + ".next";
-        i += 4;
-        j = i;
-        while (line[i] != ')') ++i;
-        string typestr = line.substr(j,i-j);
-        cout << "name=" << name << "nameNxt=" << nameNxt <<" type=" << typestr << endl;
-        if (typestr == "Bool") {
-            VmtNode* newNode1 = new VmtNode(name);
-            VmtNode* newNode2 = new VmtNode(nameNxt);
-            _vmap.insert(Str2VmtNode(name,newNode1));
-            _vmap.insert(Str2VmtNode(nameNxt,newNode2));
-            _defBVList.push_back(newNode1);
-            _defBVList.push_back(newNode2);
-            string s = "(! " + name + " :next " + nameNxt + ")";
-            VmtNode* newNode3 = new VmtNode("tmpNxt"+itos(++tmpNxtCnt));
-            newNode3->addChild(Aut::buildVmtNode(s,0,s.size(),_vmap));
-            _nxtList.push_back(newNode3);
-        }
-        else if(typestr == "Int") {
-            if (*(line.rbegin()) == ')') {
-                VmtNode* newNode1 = new VmtNode(name,LEN);
-                VmtNode* newNode2 = new VmtNode(nameNxt,LEN_N);
-                _vmap.insert(Str2VmtNode(name,newNode1));
-                _vmap.insert(Str2VmtNode(nameNxt,newNode2));
-                _defIVList.push_back(newNode1);
-                _defIVList.push_back(newNode2);
-                string s = "(! " + name + " :next " + nameNxt + ")";
-                VmtNode* newNode3 = new VmtNode("tmpNxt"+itos(++tmpNxtCnt));
-                newNode3->addChild(Aut::buildVmtNode(s,0,s.size(),_vmap));
-                _nxtList.push_back(newNode3);
-            }
-            else {
-                VmtNode* newNode1 = new VmtNode(name,LEN);
-                _vmap.insert(Str2VmtNode(name,newNode1));
-            }
-        }
-        else cout << "readDefFile::[WARNING] invalid type=" << typestr << endl;
-    }
-    file.close();
-}
-
-void AutMgr::readPredFile(const string& fileName)
-{
-    string line;
-    ifstream file(fileName.c_str());
-    if (!file) {
-        cout << "fail open file=" << fileName << endl;
-        return;
-    }
-    int pCnt = -1;
-    VmtNodeList plist;
-    vector<string> slist;
-    while(getline(file,line)) {
-        //cout << "line=" << line << endl;
-        VmtNode* newNode = new VmtNode("p"+itos(++pCnt),NOPARAM);
-        if (line[8] == '(') {
-            if (*(line.rbegin()) == ')') {
-                string s = line.substr(8,line.size()-1-8);
-                //cout << "regular=" << s << endl;
-                newNode->addChild(Aut::buildVmtNode(s,0,s.size(),_vmap));
-                _predList.push_back(newNode);
-            }
-            else {
-                size_t i = line.size() - 1;
-                while (line[i] != ' ') --i;
-                string lcvar = line.substr(i+1);
-                size_t j = i--;
-                while (line[i] != ' ') --i;
-                string type = line.substr(i+1,j-(i+1));
-                
-                //cout << "type=" << type << " lcvar=" << lcvar << endl;
-
-                i = 8;
-                size_t dCnt = 1;
-                while (dCnt != 0) {
-                    ++i;
-                    if (line[i] == '(') ++dCnt;
-                    else if(line[i] == ')') --dCnt;
-                }
-                ++i;
-                string s = line.substr(8,i-8);
-                //cout << "strlen=" << s << endl;
-                VmtNode* tmpnode = Aut::buildVmtNode(s,0,s.size(),_vmap);
-                
-                if (type == "cstrlen") {
-                    string s1 = "(" + tmpnode->_name + " " + tmpnode->_children[0]->_name + " n" + lcvar + ")";
-                    newNode->addChild(Aut::buildVmtNode(s1,0,s1.size(),_vmap));
-                    _predList.push_back(newNode);
-                }
-                else if (type == "vstrlen") {
-                    slist.push_back("n"+lcvar);
-                    plist.push_back(tmpnode->_children[0]);
-                }
-                else {
-                    cout << "readPredFile::[WARNING] invalid type=" << type << endl;
-                }
-            }
-        }
-        else {
-            size_t i = 8;
-            while (line[i] != ')') ++i;
-            string name = line.substr(8,i-8);
-            //cout << "var=" << name << endl;
-            Str2VmtNodeMap::iterator it=_vmap.find(name);
-            assert((it!=_vmap.end()));
-            newNode->addChild(it->second);
-            _predList.push_back(newNode);
-        }
-    }
-    for (size_t i=0,size=plist.size(); i<size; ++i) {
-        plist[i]->_name = slist[i];
-    }
-    file.close();
-}
-
-void AutMgr::print()
-{        
-    for (VmtNodeList::iterator it=_defBVList.begin(); it!=_defBVList.end(); ++it)
-        (*it)->print(3);
-    cout << endl;
-    for (VmtNodeList::iterator it=_defIVList.begin(); it!=_defIVList.end(); ++it)
-        (*it)->print(3);
-    cout << endl;
-    for (VmtNodeList::iterator it=_nxtList.begin(); it!=_nxtList.end(); ++it)
-        (*it)->print(3);
-    cout << endl;
-    for (VmtNodeList::iterator it=_predList.begin(); it!=_predList.end(); ++it)
-        (*it)->print(3);
-}
-
-void AutMgr::mergeStringAndPred(Aut* a)
-{
-    for (size_t i=0,size=_defBVList.size(); i<size; ++i)
-        a->_snList[3].push_back(_defBVList[i]);
-    for (size_t i=0,size=_defIVList.size(); i<size; ++i)
-        a->_snList[3].push_back(_defIVList[i]);
-    
-    for (size_t i=0,size=_nxtList.size(); i<size; ++i)
-        a->_nxtList.push_back(_nxtList[i]);
-
-    VmtNode* oNode = a->getO();
-    VmtNode* newNode1 = new VmtNode("tmp1");
-    VmtNode* and1 = new VmtNode("and");
-    and1->addChild(oNode);
-    for (size_t i=0,size=_predList.size(); i<size; ++i) {
-        and1->addChild(_predList[i]);
-        a->_imdList.push_back(_predList[i]);
-    }
-    newNode1->addChild(and1);
-    a->_imdList.push_back(newNode1);
-    a->setO(newNode1);
-    
-    VmtNode* iNode = a->getI();
-    VmtNode* newNode2 = new VmtNode("tmp2");
-    VmtNode* and2 = new VmtNode("and");
-    and2->addChild(iNode);
-    int eCnt = -1;
-    for (size_t i=0,size=a->_snList[1].size(); i<size; ++i) {
-        VmtNode* newNode3 = new VmtNode("e"+itos(++eCnt),NOPARAM);
-        VmtNode* newNode4 = new VmtNode("=");
-        newNode4->addChild(a->_snList[1][i]);
-        newNode4->addChild(new VmtNode("0"));
-        newNode3->addChild(newNode4);
-        a->_imdList.push_back(newNode3);
-        and2->addChild(newNode3);
-    }
-    newNode2->addChild(and2);
-    a->_imdList.push_back(newNode2);
-    a->setI(newNode2);
 }

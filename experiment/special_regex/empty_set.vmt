@@ -28,9 +28,9 @@
 (define-fun d8 () Bool (! s0 :next s0.next))
 ;
 (define-fun d9 ((s0 Bool)) Bool (not s0))
-(define-fun d10 ((s0 Bool)) Bool (not s0))
+(define-fun d10 () Bool false)
 (define-fun d11 () Bool false)
 ;
 (define-fun I () Bool (! (d9 s0) :init true))
-(define-fun T () Bool (! d11 :trans true))
-(define-fun O () Bool (! (not (d10 s0)) :invar-property 0))
+(define-fun T () Bool (! d10 :trans true))
+(define-fun O () Bool (! (not d11) :invar-property 0))

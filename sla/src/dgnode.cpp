@@ -208,7 +208,8 @@ void DGNode::writeCVC4File()
     for (PTNodePairList::iterator it=_lengthVarList.begin(); it!=_lengthVarList.end(); ++it) {
         const Type& type = (*it).second->getType();
         if (type == CONST_INT) {
-            cvc4PredList.push_back("(assert (= "+(*it).second->getName()+" (str.len "+_name+"))) ; cstrlen "+itos(_lengthVarCnt));
+            cvc4PredList.push_back("(assert (= "+(*it).second->getName()+" (str.len "+_name+"))) ; len "+itos(_lengthVarCnt));
+            //cvc4PredList.push_back("(assert (= "+(*it).second->getName()+" (str.len "+_name+"))) ; cstrlen "+itos(_lengthVarCnt));
         }
         else {
             assert((type == VAR_INT));
@@ -217,7 +218,8 @@ void DGNode::writeCVC4File()
                 ivStrSet.insert((*it).second->getName());
                 string s = "(assert";
                 (*it).first->writeCVC4PredRoot(s);
-                s += ") ; vstrlen "+itos(_lengthVarCnt);
+                s += ") ; len "+itos(_lengthVarCnt);
+                //s += ") ; vstrlen "+itos(_lengthVarCnt);
                 cvc4PredList.push_back(s);
             }
             else {

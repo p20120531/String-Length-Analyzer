@@ -80,7 +80,7 @@ void DG::writeCVC4File(const IMP& curimp)
     string defstr  = _path + "def";
     string predstr = _path + "pred";
     ofstream cvc4File(cvc4str.c_str());
-    ofstream defFile(defstr.c_str());
+    //ofstream defFile(defstr.c_str());
     ofstream predFile(predstr.c_str());
 
     if (curimp.first != 0) {
@@ -108,21 +108,27 @@ void DG::writeCVC4File(const IMP& curimp)
     }
     for (vector<string>::iterator it=boolList.begin(); it!=boolList.end(); ++it) {
         cvc4File << "(declare-fun " << *it << " () Bool)" << endl;
-        defFile << "(declare-fun " << *it << " () Bool)" << endl;
+        //defFile << "(declare-fun " << *it << " () Bool)" << endl;
+        predFile << "(declare-fun " << *it << " () Bool)" << endl;
     }
     for (vector<string>::iterator it=intList.begin(); it!=intList.end(); ++it) {
         Str2UintMap::iterator jt=_lengthVarCntMap.find(*it);
-        cvc4File << "(declare-fun " << *it << " () Int)";
-        defFile << "(declare-fun " << *it << " () Int)";
-        if (jt != _lengthVarCntMap.end()) {
+        cvc4File << "(declare-fun " << *it << " () Int)" << endl;
+        //defFile << "(declare-fun " << *it << " () Int)";
+        predFile << "(declare-fun " << *it << " () Int)" << endl;
+        // append extra length variable information
+        /*if (jt != _lengthVarCntMap.end()) {
             cvc4File << " ; " << jt->second << endl;
-            defFile << " ; " << jt->second << endl;
+            //defFile << " ; " << jt->second << endl;
+            predFile << " ; " << jt->second << endl;
         }
         else { 
             cvc4File << endl;
-            defFile << endl;
-        }
+            //defFile << endl;
+            predFile << endl;
+        }*/
     }
+    predFile << ";" << endl;
     for (vector<string>::iterator it=strList.begin(); it!=strList.end(); ++it)
         cvc4File << "(declare-fun " << *it << " () String)" << endl;
     for (vector<string>::iterator it=_cvc4StrList.begin(); it!=_cvc4StrList.end(); ++it)

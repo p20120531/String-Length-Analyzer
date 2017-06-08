@@ -17,11 +17,10 @@ DPI                     = 200
 escapeCharSet           = {'!','"','#','$','%','&','\'','(',')','*','+',',',
                            '-','.','/',':',';','<','=','>','?','@','[','\\',
                            ']','^','_','`','{','|','}','~'}
-sigmaworeservedstar_dir = 'experiment/special_regex/sigmaworeservedstar.vmt'
-sigmastar_dir           = 'experiment/special_regex/sigmastar.vmt'
-comple_sigmastar_dir    = 'experiment/special_regex/comple_sigmastar.vmt'
+sigma_star_dir          = 'experiment/special_regex/sigma_star.vmt'
+empty_set_dir           = 'experiment/special_regex/empty_set.vmt'
 epsilon_dir             = 'experiment/special_regex/epsilon.vmt'
-comple_epsilon_dir      = 'experiment/special_regex/comple_epsilon.vmt'
+sigma_plus_dir          = 'experiment/special_regex/sigma_plus.vmt'
 ############################## Benchmark Directory ###########################
 benchmark_kaluza_dir    = ['benchmark/Kaluza/SMTLIB/sat/small'  ,
                            'benchmark/Kaluza/SMTLIB/sat/big'    ,
@@ -31,8 +30,8 @@ benchmark_kaluza_dir    = ['benchmark/Kaluza/SMTLIB/sat/small'  ,
 dg_kaluza_dir           = ['DG/Kaluza/sat/small'  ,'DG/Kaluza/sat/big',
                            'DG/Kaluza/unsat/small','DG/Kaluza/unsat/big']
 ############################## Binary Directory ##############################
-regex2blif_dir = 'bin/regex2blif/target/regex2blif-0.0.1-SNAPSHOT.jar'
 sla_dir        = 'bin/sla'
+abc70930_dir   = 'bin/abc70930'
 cvc4_dir       = 'bin/cvc4-2017-03-20-x86_64-linux-opt'
 norn_dir       = 'bin/norn/norn'
 z3_dir         = 'bin/z3-master/build/z3'
@@ -143,7 +142,7 @@ def buildMap(benchmark,scope) :
                     mapFile.write('\n%d,%s' %(dgCnt,f))
         elif scope == 'sample' :
             sampleSize,lines = 100,[]
-            strlenMapFile = open('experiment/Kaluza/all')
+            strlenMapFile = open('experiment/Kaluza/strlen')
             lines = strlenMapFile.read().splitlines()
             strlenMapFile.close()
             samples = np.random.choice(len(lines)-1,sampleSize,replace=False)
@@ -160,43 +159,13 @@ def buildMap(benchmark,scope) :
 # [  Arguments  ] dgFileList : list of dependency graph files
 ##############################################################################
 def regex2blif(dgFileList) :
-    exePath = regex2blif_dir
+    exePath = sla_dir
     cnt = 0
     for f in dgFileList :
         cnt += 1
         print 'cnt = %d' %(cnt)
-        autFile = open(join(f,'aut'))
-        lines = autFile.read().splitlines()
-        autFile.close()
-        for line in lines :
-            v = line.split()
-            isComple = False
-            if v[1][0] != '"' or v[1][-1] != '"' :
-                sys.exit('[ERROR::regex2blif] regex=%s not start or ended with "' %(v[1]))
-            if v[1] == '".*"' or v[1] == '"~(.*)"' or v[1] == '""' or v[1] == '"~()"' :
-                continue
-            name  = v[0]
-            regex = v[1][1:-1]
-            if regex[0] == '~' : 
-                isComple = True
-                if regex[1] != '(' or regex[-1] != ')' :
-                    sys.exit('[ERROR::regex2blif] comple regex=%s not start or ended with ()' %(regex))
-                regex = regex[2:-1]
-            escaped = ''
-            for i in range(len(regex)) :
-                if regex[i] in escapeCharSet :
-                    if regex[i] == '\\' or regex[i] == '"' or regex[i] == '\'' :
-                        print '[WARN::regex2blif] special escaped char=%s in file=%s' %(regex[i],join(f,name))
-                    escaped += '\\'
-                escaped += regex[i]
-            if isComple :
-                regex = '~\\("' + escaped + '"\\)'
-            else :
-                regex = '"' + escaped + '"'
-            print 'autName=%-30s regex= %s' %(join(f,name),regex)
-            call('java -jar %s -r %s -m %s -d %s.dot -o %s.blif' %(exePath,regex,name,join(f,name),join(f,name)),shell=True)
-            #call('java -jar %s -r %s -l FATAL -m %s -d %s.dot -o %s.blif' %(exePath,regex,name,join(f,name),join(f,name)),shell=True)
-    
+        call("%s --regex2blif %s" %(exePath,join(f,'aut')),shell=True)
+
 ##############################################################################
 # [Function Name] blif2vmt
 # [ Description ] convert blif file to vmt file
@@ -204,7 +173,6 @@ def regex2blif(dgFileList) :
 ##############################################################################
 def blif2vmt(dgFileList) :
     exePath = sla_dir
-    eliminator = sigmaworeservedstar_dir
     for f in dgFileList :
         autFile = open(join(f,'aut'))
         lines = autFile.read().splitlines()
@@ -213,14 +181,19 @@ def blif2vmt(dgFileList) :
             v = line.split()
             name = join(f,v[0])
             if v[1] == '".*"' or v[1] == '"~(.*)"' or v[1] == '""' or v[1] == '"~()"' :
-                if   v[1] == '".*"'    : d = sigmastar_dir
-                elif v[1] == '"~(.*)"' : d = comple_sigmastar_dir
+                if   v[1] == '".*"'    : d = sigma_star_dir
+                elif v[1] == '"~(.*)"' : d = empty_set_dir
                 elif v[1] == '""'      : d = epsilon_dir
-                else                   : d = comple_epsilon_dir
+                else                   : d = sigma_plus_dir
                 call('cp %s %s.vmt' %(d,name),shell=True)
             else :
+                abcCmdFile = open('abc_cmd','w')
+                abcCmdFile.write('read %s.blif' %(name))
+                abcCmdFile.write('\nespresso')
+                abcCmdFile.write('\nwrite %s.blif' %(name))
+                abcCmdFile.close()
+                call('%s -f abc_cmd' %(abc70930_dir),shell=True)
                 call('%s --blif2vmt %s.blif %s.vmt' %(exePath,name,name),shell=True)
-                call('%s --intersect %s %s.vmt' %(exePath,eliminator,name),shell=True)
 
 ##############################################################################
 # [Function Name] readCmd
@@ -489,7 +462,7 @@ def getData(filename,isIc3ia=False) :
         return idx,ret,time
 ##############################################################################
 
-if __name__ == '__main__' :
+def epoch() :
     init()
     #buildDG('Kaluza')
     #buildMap('Kaluza','all')
@@ -497,9 +470,10 @@ if __name__ == '__main__' :
     #buildMap('Kaluza','sample')
     
     dgIdxList,dgFileList = getSplitMap('experiment/Kaluza/sample')
-    regex2blif(dgFileList)
-    blif2vmt(dgFileList)
-    readCmd(dgFileList)
+    #regex2blif(dgFileList)
+    
+    #blif2vmt(dgFileList)
+    #readCmd(dgFileList)
     
     solvers = ['cvc4','norn','z3','ic3ia']
     
@@ -509,3 +483,11 @@ if __name__ == '__main__' :
     
     CCandPlot('Kaluza','sample')
 
+def single(fileName) :
+    dgFileList = [fileName]
+    regex2blif(dgFileList)
+    blif2vmt(dgFileList)
+    readCmd(dgFileList)
+
+if __name__ == '__main__' :
+    single(sys.argv[1])

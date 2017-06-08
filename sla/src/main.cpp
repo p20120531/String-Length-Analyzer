@@ -1,6 +1,6 @@
 #include "kaluzaMgr.h"
 #include "autMgr.h"
-KaluzaMgr* kmgr   = new KaluzaMgr();
+KaluzaMgr* kmgr = new KaluzaMgr();
 AutMgr*  autmgr = new AutMgr();
 
 int main(int argc, char* argv[]) {
@@ -47,66 +47,83 @@ int main(int argc, char* argv[]) {
     
     string input(argv[1]);
     //AutOp
-    /*
+    cout << "main.cpp" << endl;
+    //Aut* a1 = new Aut();
     if (input == "0") {
-        const char* c1 = "blif2vmt/literal_45.blif";
-        const char* c2 = "blif2vmt/literal_45.vmt.1";
+        const char* c1 = "debug/blif2vmt/literal_45.blif";
+        const char* c2 = "debug/blif2vmt/literal_45.vmt.1";
         autmgr->blif2vmt(c1,c2);
     }
-    if (input == "1") {
-        Aut* a1 = new Aut("easy/a.vmt");
-        a1->write("easy/a.vmt.1");
-        Aut* a2 = new Aut("easy/a.vmt.1");
-        a2->write("easy/a.vmt.2");
+    else if (input == "100") {
+        Aut* a1 = new Aut();
+        a1->test();
+    }
+    else if (input == "1") {
+        cout << "read a.vmt   write a.vmt.1\n"
+             << "read a.vmt.1 write a.vmt.2\n";
+        Aut* a1 = new Aut("debug/easy/a.vmt");
+        a1->write("debug/easy/a.vmt.1");
+        Aut* a2 = new Aut("debug/easy/a.vmt.1");
+        a2->write("debug/easy/a.vmt.2");
     }
     else if (input == "2") {
-        Aut* a1 = new Aut("easy/b.vmt");
-        a1->write("easy/b.vmt.1");
-        Aut* a2 = new Aut("easy/b.vmt.1");
-        a2->write("easy/b.vmt.2");
+        cout << "read b.vmt   write b.vmt.1\n"
+             << "read b.vmt.1 write b.vmt.2\n";
+        Aut* a1 = new Aut("debug/easy/b.vmt");
+        a1->write("debug/easy/b.vmt.1");
+        Aut* a2 = new Aut("debug/easy/b.vmt.1");
+        a2->write("debug/easy/b.vmt.2");
     }
     else if (input == "3") {
-        Aut* a1 = new Aut("easy/a_lc.vmt");
-        a1->write("easy/a_lc.vmt.1");
-        Aut* a2 = new Aut("easy/a_lc.vmt.1");
-        a2->write("easy/a_lc.vmt.2");
+        cout << "read a_lc.vmt   write a_lc.vmt.1\n"
+             << "read a_lc.vmt.1 write a_lc.vmt.2\n";
+        Aut* a1 = new Aut("debug/easy/a_lc.vmt");
+        a1->write("debug/easy/a_lc.vmt.1");
+        Aut* a2 = new Aut("debug/easy/a_lc.vmt.1");
+        a2->write("debug/easy/a_lc.vmt.2");
     }
     else if (input == "4") {
-        Aut* a1 = new Aut("easy/a.vmt.1");
-        a1->addlen("0");
-        a1->write("easy/a_lc.vmt.3");
+        cout << "read a.vmt.1\naddlen\nwrite a_lc.vmt.3\n";
+        Aut* a1 = new Aut("debug/easy/a.vmt.1");
+        a1->addlen("10");
+        a1->write("debug/easy/a_lc.vmt.3");
     }
     else if (input == "5") {
-        Aut* a1 = new Aut("easy/a.vmt");
-        Aut* a2 = new Aut("easy/b.vmt");
+        cout << "read a.vmt b.vmt\nintersect ab_inter.vmt.1\n";
+        Aut* a1 = new Aut("debug/easy/a.vmt");
+        Aut* a2 = new Aut("debug/easy/b.vmt");
         Aut* a3 = new Aut();
         a3->intersect(a1,a2);
-        a3->write("easy/ab_inter.vmt.1");
+        a3->write("debug/easy/ab_inter.vmt.1");
     }
     else if (input == "6") {
-        Aut* a1 = new Aut("easy/a.vmt.1");
-        Aut* a2 = new Aut("easy/b.vmt.1");
+        cout << "read a.vmt.1 b.vmt.1\nintersect ab_inter.vmt.2\n";
+        Aut* a1 = new Aut("debug/easy/a.vmt.1");
+        Aut* a2 = new Aut("debug/easy/b.vmt.1");
         Aut* a3 = new Aut();
         a3->intersect(a1,a2);
-        a3->write("easy/ab_inter.vmt.2");
+        a3->write("debug/easy/ab_inter.vmt.2");
     }
     else if (input == "7") {
-        Aut* a1 = new Aut("easy/a.vmt");
-        Aut* a2 = new Aut("easy/b.vmt");
+        cout << "read a.vmt b.vmt\nconcate ab_concate.vmt.1\n";
+        Aut* a1 = new Aut("debug/easy/a.vmt");
+        Aut* a2 = new Aut("debug/easy/b.vmt");
         Aut* a3 = new Aut();
         a3->concate(a1,a2);
-        a3->write("easy/ab_concate.vmt.1");
+        a3->write("debug/easy/ab_concate.vmt.1");
     }
     else if (input == "8") {
-        Aut* a1 = new Aut("easy/ab_concate.vmt.1");
-        Aut* a2 = new Aut("easy/a.vmt");
+        cout << "read ab_concate.vmt.1 a.vmt\nconcate aba_concate.vmt.1\n";
+        Aut* a1 = new Aut("debug/easy/ab_concate.vmt.1");
+        Aut* a2 = new Aut("debug/easy/a.vmt");
         Aut* a3 = new Aut();
         a3->concate(a1,a2);
-        a3->write("easy/aba_concate.vmt.1");
+        a3->write("debug/easy/aba_concate.vmt.1");
     }
     else if (input == "9") {
-        Aut* a1 = new Aut("easy/ab_concate.vmt.1");
-        a1->write("easy/ab_concate.vmt.2");
+        cout << "read ab_concate.vmt.1\nwrite ab_concate.vmt.2\n";
+        Aut* a1 = new Aut("debug/easy/ab_concate.vmt.1");
+        a1->write("debug/easy/ab_concate.vmt.2");
     }
     else if (input == "10")
         autmgr->blif2vmt(argv[2],argv[3]);
@@ -116,7 +133,8 @@ int main(int argc, char* argv[]) {
         kmgr->read(argv[2],argv[3]);
         kmgr->analyzePTASCII();
     }
-    */
+    // commands
+    /*
     if (input == "--intersect") {
         Aut* a1 = new Aut(argv[2]);
         Aut* a2 = new Aut(argv[3]);
@@ -127,6 +145,9 @@ int main(int argc, char* argv[]) {
     else if (input == "--buildDG") {
         kmgr->read(argv[2],argv[3]);
         kmgr->buildAndWriteDG();
+    }
+    else if (input == "--regex2blif") {
+        autmgr->regex2blif(argv[2]);
     }
     else if (input == "--blif2vmt") {
         autmgr->blif2vmt(argv[2],argv[3]);
@@ -167,7 +188,7 @@ int main(int argc, char* argv[]) {
     }
     else
         cout << "invalid option=" << input << endl;
-    
+    */
 
     //cout << "at main"<< endl;
     //autmgr->_epsilon->print(0);

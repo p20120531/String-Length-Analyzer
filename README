@@ -1,33 +1,125 @@
-SMTLIB Language   Parameter   Return Type   Automaton Operation
+############################### Command Usage ##################################
+Attention: 1. <fileName*> is a string literal without file extension (e.g., .blif .vmt)
+           2. <cFileName*> is a string literal without file extension (e.g., .blif .vmt)
+           3. <sFileName*> is a string literal without file extension (e.g., .blif .vmt)
+           4. <integer> must greater than or equal to zero
+           5. L(*) indicates the language recognized by the automaton describing by *
+           6. replace, indexof, notcontains, notprefixof_smt and notsuffixof_smt are supported
+              under the assumption that the complemented automaton is known 
+              due to the incapability of constructing complement of language
 
-str.in.re         X R         bool          intersect
-str.len           X           int           encode length constraint
-str.++            X1 ... Xn   string        concate
-str.replace       X Y Z       string        replace
-str.to.re         X           regex         the corresponding automaton
-re.++             R1 ... Rn   regex         concate
-re.union          R1 ... Rn   regex         union
-re.inter          R1 ... Rn   regex         intersect
-re.*              R           regex         Kleene star
-re.+              R           regex         plus
---------------------------------------------upon supported-------------
-str.contains      X Y         bool
-str.prefixof      X Y         bool
-str.suffixof      X Y         bool
-str.indexof       X Y N       int
-str.to.int        X           int
-str.to.u16        X           int
-str.to.u32        X           int
-str.substr        X N M       string
-int.to.str        N           string
-u16.to.str        N           string
-u32.to.str        N           string
-str.at            X N         string
-re.opt            R           regex
+usage: addlen            <fileName> <integer>
+                         add an integer variable to indicate the length of an automaton
+       fileName        : the name of the file describing an automaton
+       integer         : the index of the integer variable
 
-* XYZ for string variable , R for regular expression , NM for integer variable
+usage: intersect         <fileName1> <fileName2>
+                         construct the intersection of two automata
+       fileName        : the name of the file describing an automaton
+
+usage: concate           <fileName1> <fileName2>
+                         construct the concatenation of two automata
+       fileName        : the name of the file describing an automaton
+
+usage: replace           <fileName1> <fileName2> <fileName3> <cFileName>
+                         language-to-language replace corresponding to Rep(A1,A2,A3) in paper
+       fileName        : the name of the file describing an automaton
+       cFileName       : the name of the file describing a complmented automaton
+
+usage: contains          <fileName1> <fileName2>
+                         construct the intersection of L(fileName1) and .*L(fileName2).*
+       fileName        : the name of the file describing an automaton
+
+usage: notcontains       <fileName> <cFileName>
+                         construct the intersection of L(fileName1) and L(cFileName)
+       fileName        : the name of the file describing an automaton
+       cFileName       : the name of the file describing a complemented automaton
+
+usage: indexof           <fileName> <sFileName> <cFileName> <integer1> <integer2>
+       fileName        : the name of the file describing an automaton
+       sFileName       : the name of the file describing an automaton recognizing a string literal
+       cFileName       : the name of the file describing a complemented automaton
+       integer1        : the index of the integer variable indicating the not-less-than position (WARNING)
+       integer2        : the index of the integer variable indicating the resultant position
+
+usage: substr            <fileName> <integer1> <integer2>
+       fileName        : the name of the file describing an automaton
+       integer1        : the index of the integer variable indicating the beginning position
+       integer2        : the index of the integer variable indicating the pass-the-end position (WARNING)
+
+usage: prefixof_smt      <fileName1> <fileName2>
+                         construct the intersection of L(fileName1).* and L(fileName2)
+       fileName        : the name of the file describing an automaton
+
+usage: suffixof_smt      <fileName1> <fileName2>
+                         construct the intersection of .*L(fileName1) and L(fileName2)
+       fileName        : the name of the file describing an automaton
+
+usage: notprefixof_smt   <cFileName> <fileName>
+                         construct the intersection of L(cFileName) and L(fileName)
+       fileName        : the name of the file describing an automaton
+       cFileName       : the name of the file describing a complemented automaton
+
+usage: notsuffixof_smt   <cFileName> <fileName>
+                         construct the intersection of L(cFileName) and L(fileName)
+       fileName        : the name of the file describing an automaton
+       cFileName       : the name of the file describing a complemented automaton
+
+usage: read              <fileName>
+                         read an automaton
+       fileName        : the name of the file describing an automaton
+
+usage: write             <fileName>
+                         write the current automaton to fileName
+       fileName        : the name of the file describing an automaton
+
+usage: addpred           <fileName> 
+                         add the declaration and definition of the predicates described by fileName into current automaton
+       fileName        : the name of the smt2 predicate file
+
+############################### Dependency Graph File Description ##################################
+Attention: A complete dependency graph including the following files
+
+name        : cmd
+description : command file
+format      : [commands]
+              <write sink>
+
+name        : aut
+description : record the correspondence of each leaf automaton in command file and its equivalent regex
+format      : [fileName regex]
+notice      : character not in [0-9a-zA-Z] must be escaped if it is supposed to be just a character
+              
+              ex:  "abc"
+                   "\?a\-b"
+                   "(ab)*&(bc)*"
+                   "ab|bc|ef"
+                   ~\(".*ab.*"\)
+
+name        : pred
+description : predicates in smt2 format
+format      : [declare-fun]
+              <;>
+              [assert]
+notice      : for str.len , str.indexof , str.substr additional info. must be appended
+              for the string variable appears in str.len , str.indexof , str.substr, there is no need to declare
+
+              ex:  (= 0 (str.len T0_2)) ; len 0
+                   -> Int variable indexed 0 represent the length of T0_2
+                  
+                   (= v3 (str.indexof v1 "<" 0)) ; indexof 0 1
+                   -> Int variable indexed 0 represent the not-less-than position
+                      Int variable indexed 1 represent the resultant position
+                  
+                   (str.substr v1 0 v3) ; substr 2 3
+                   -> Int variable indexed 2 represent the beginning position
+                      Int variable indexed 3 represent the pass-the-end position
+
+name        : sink.smt2
+description : the smt2 file equivalent to the dependency graph
+format      : smt2
 
 using 8-bit to encode ASCII as alphabet
 reserve 0000 0000 epsilon 
-        0000 0001 <
-        0000 0010 >
+        1111 1110 <
+        1111 1111 >

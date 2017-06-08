@@ -1,7 +1,7 @@
 CC = g++
 CFLAGS = -g3
-all: main.o kaluzaMgrRead.o kaluzaMgrDG.o pt.o ptnode.o dg.o dgnode.o utility.o autMgr.o aut.o
-	$(CC) $(CFLAGS) main.o kaluzaMgrRead.o kaluzaMgrDG.o pt.o ptnode.o dg.o dgnode.o utility.o autMgr.o aut.o -o ../../bin/sla
+all: main.o kaluzaMgrRead.o kaluzaMgrDG.o pt.o ptnode.o dg.o dgnode.o utility.o autMgr.o aut.o vmtnode.o
+	$(CC) $(CFLAGS) main.o kaluzaMgrRead.o kaluzaMgrDG.o pt.o ptnode.o dg.o dgnode.o utility.o autMgr.o aut.o vmtnode.o -o ../../bin/sla
 main.o: main.cpp
 	$(CC) $(CFLAGS) main.cpp -c
 kaluzaMgrRead.o: kaluzaMgrRead.cpp
@@ -22,5 +22,7 @@ autMgr.o: autMgr.cpp
 	$(CC) $(CFLAGS) autMgr.cpp -c
 aut.o: aut.cpp
 	$(CC) $(CFLAGS) aut.cpp -c
+vmtnode.o: vmtnode.cpp
+	$(CC) $(CFLAGS) vmtnode.cpp -c
 clean:
 	rm *.o ../../bin/sla
