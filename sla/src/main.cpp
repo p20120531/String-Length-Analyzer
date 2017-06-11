@@ -133,6 +133,11 @@ int main(int argc, char* argv[]) {
         kmgr->read(argv[2],argv[3]);
         kmgr->analyzePTASCII();
     }
+    else if (input == "13") {
+        autmgr->dot2blif("test0.dot","test0.blif");
+    }
+    else if(input == "14")
+        autmgr->dot2blif("test1.dot","test1.blif");
     // commands
     /*
     if (input == "--intersect") {

@@ -1,30 +1,155 @@
 #include "autMgr.h"
 
+void TGEdge::print() const 
+{
+    cout << _sIdx << " -> "<< _eIdx << " ";
+    if (_labels.size() == 2)
+        cout << _labels[0] << " - " << _labels[1] << endl;
+    else {
+        assert( (_labels.size() == 1) );
+        cout << _labels[0] << endl;
+    }
+}
+
+void TGEdge::write(const CubeMap& downCubeMap, const CubeMap& rangeCubeMap, const vector<string>& stateBitStringList, ofstream& file)
+{
+    file << "\n# " << _sIdx << " -> "<< _eIdx << " ";
+    if (_labels.size() == 2)
+        file << _labels[0] << " - " << _labels[1] << endl;
+    else {
+        assert( (_labels.size() == 1) );
+        file << _labels[0] << endl;
+    }
+    _tBitString = stateBitStringList[_sIdx] + stateBitStringList[_eIdx] + " 1\n";
+    if (_labels.size() == 2) {
+        if (_labels[0] == 0) {
+            if (_labels[1] == 65535) {
+                file << "0" << downCubeMap.find(65535)->second << _tBitString;
+                writeExtraBitSpace(rangeCubeMap,file);
+            }
+            else {
+                CubeMap::const_iterator it = downCubeMap.lower_bound(_labels[1]);
+                if (it->first == _labels[1])
+                    file << "0" << it->second << _tBitString;
+                else {
+                    assert( (_labels[1] > 0) );
+                    assert( (it->first > _labels[1]) );
+                    file << "0" << (--it)->second << _tBitString;
+                    writeRangeMinterm("0",it->first+1,_labels[1],file);
+                }
+            }
+        }
+        else {
+            if (_labels[1] == 65535) {
+                CubeMap::const_iterator it = rangeCubeMap.lower_bound(_labels[0]);
+                if (it->first/2 + 1 == _labels[0]) {
+                    for (; it != rangeCubeMap.end(); ++it)
+                        file << "0" << it->second << _tBitString;
+                }
+                else {
+                    writeRangeMinterm("0",_labels[0],it->first,file);
+                    for (++it; it != rangeCubeMap.end(); ++it)
+                        file << "0" << it->second << _tBitString;
+                }
+                writeExtraBitSpace(rangeCubeMap,file);
+            }
+            else {
+                CubeMap::const_iterator it0 = rangeCubeMap.lower_bound(_labels[0]);
+                CubeMap::const_iterator it1 = rangeCubeMap.lower_bound(_labels[1]);
+                if (it0->first/2 + 1 != _labels[0]) {
+                    writeRangeMinterm("0",_labels[0],it0->first,file);
+                    ++it0;
+                }
+                if (it1->first == _labels[1]) ++it1;
+                else {
+                    writeRangeMinterm("0",it1->first/2+1,_labels[1],file);
+                }
+                for (; it0 != it1; ++it0)
+                    file << "0" << it0->second << _tBitString;
+            }
+        }
+    }
+    else {
+        assert( _labels.size() == 1 );
+        file << "0" << Uint2BitString(_labels[0],INPUT_BIT_NUM) << _tBitString;
+    }
+}
+
+void TGEdge::writeExtraBitSpace(const CubeMap& rangeCubeMap, ofstream& file)
+{
+    CubeMap::const_iterator it = rangeCubeMap.lower_bound(MAX_SPECIAL_ALPHABET_ENCODE);
+    if (it->first == MAX_SPECIAL_ALPHABET_ENCODE) {
+        for (++it; it != rangeCubeMap.end(); ++it)
+            file << "1" << it->second << _tBitString;
+    }
+    else {
+        assert( (it->first > MAX_SPECIAL_ALPHABET_ENCODE) );
+        for (size_t i = MAX_SPECIAL_ALPHABET_ENCODE+1; i <= it->first; ++i)
+            file << "1" << Uint2BitString(i,INPUT_BIT_NUM) << _tBitString;
+        for (++it; it != rangeCubeMap.end(); ++it)
+            file << "1" << it->second << _tBitString;
+    }
+}
+
+void TGEdge::writeRangeMinterm(const string& extraBit, const size_t& m1, const size_t& m2, ofstream& file)
+{
+    for (size_t i = m1; i <= m2; ++i)
+        file << extraBit << Uint2BitString(i,INPUT_BIT_NUM) << _tBitString;
+}
+
 void TGraph::init()
 {
-    // initialize alphabet list
-    for (size_t i = 0; i < 256; ++i)
-        _alphabetList.push_back(bitset<8>(i).to_string());
+    cout << "inputBitNum     = " << INPUT_BIT_NUM << endl
+         << "initStateBitNum = " << INIT_STATE_BIT_NUM << endl
+         << "initLvarNum     = " << INIT_LVAR_NUM << endl
+         << "epsilon         = " << EPSILON_ENCODE << endl
+         << "left            = " << LEFT_ANGLE_BRACKET_ENCODE << endl
+         << "right           = " << RIGHT_ANGLE_BRACKET_ENCODE << endl;
+    _numbers.insert('0');
+    _numbers.insert('1');
+    _numbers.insert('2');
+    _numbers.insert('3');
+    _numbers.insert('4');
+    _numbers.insert('5');
+    _numbers.insert('6');
+    _numbers.insert('7');
+    _numbers.insert('8');
+    _numbers.insert('9');
     
-}
+    _h2dMap.insert(pair<char,size_t>('0',0));
+    _h2dMap.insert(pair<char,size_t>('1',1));
+    _h2dMap.insert(pair<char,size_t>('2',2));
+    _h2dMap.insert(pair<char,size_t>('3',3));
+    _h2dMap.insert(pair<char,size_t>('4',4));
+    _h2dMap.insert(pair<char,size_t>('5',5));
+    _h2dMap.insert(pair<char,size_t>('6',6));
+    _h2dMap.insert(pair<char,size_t>('7',7));
+    _h2dMap.insert(pair<char,size_t>('8',8));
+    _h2dMap.insert(pair<char,size_t>('9',9));
+    _h2dMap.insert(pair<char,size_t>('a',10));
+    _h2dMap.insert(pair<char,size_t>('b',11));
+    _h2dMap.insert(pair<char,size_t>('c',12));
+    _h2dMap.insert(pair<char,size_t>('d',13));
+    _h2dMap.insert(pair<char,size_t>('e',14));
+    _h2dMap.insert(pair<char,size_t>('f',15));
 
-string TGraph::Uint2bitString(const size_t& n,const size_t& stateBitNum)
-{
-    string bitstr (Aut::stateBitNum,'0');
-    size_t tmp = n,j = Aut::stateBitNum;
-    while (tmp % 2 != 0 || tmp / 2 != 0) {
-        --j;
-        if (tmp % 2 != 0) bitstr[j] = '1';
-        tmp /= 2;
+    size_t prod = 2;
+    string bitstr (INPUT_BIT_NUM,'0');
+    for (int i = 15; i >= 0; --i) {
+        bitstr[i] = '-';
+        _downCubeMap.insert(pair<size_t,string>(prod-1,bitstr));
+        prod *= 2;
     }
-    return bitstr;
-}
 
-void TGraph::writeCompleTransition(ofstream& file, const vector<string>& alphabetList, const string& s1, const string& s2, const size_t idx)
-{
-    for (size_t j = 0; j < 256; ++j) {
-        if (j != epsilonEncode && j != leftEncode && j != rightEncode && j != idx)
-            file << "\n" << alphabetList[j] << s1 << s2 << " 1";
+    bitstr = string(INPUT_BIT_NUM,'0');
+    bitstr[15] = '-';
+    _rangeCubeMap.insert(pair<size_t,string>(1,bitstr));
+    prod = 4;
+    for (int i = 14; i >= 0; --i) {
+        bitstr[i+1] = '-';
+        bitstr[i]   = '1';
+        _rangeCubeMap.insert(pair<size_t,string>(prod-1,bitstr));
+        prod *= 2;
     }
 }
 
@@ -43,38 +168,97 @@ void TGraph::parse(const char* fileName)
     while (getline(file,line)) {
         tokenList.clear();
         str2tokens(line,tokenList);
-        if (line[0] == "initial" && line[1] == "->") {
-            _init = new TGNode(itos(line[2]),1,0);
-        }
-        else if (_nSet.find(line[0][0]) != _nSet.end()) {
-            if (line[1] == "->") {
-                size_t sIdx = stoi(line[0]);
-                size_t eIdx = stoi(line[2]);
-                size_t label0, label1;
-                parseLabels(line[3], label0, label1);
-                _tList.push_back(new TGEdge(sIdx,eIdx,label0,label1));
+        /*cout << "line=" << line << endl;
+        for (size_t i = 0, size = tokenList.size(); i < size; ++i)
+            cout << tokenList[i] << " ";
+        cout << endl;*/
+        if (tokenList[0] == "initial" && tokenList[1] == "->")
+            _initStateIdx = stoi(tokenList[2]);
+        else if (_numbers.find(tokenList[0][0]) != _numbers.end()) {
+            if (tokenList[1] == "->") {
+                size_t sIdx = stoi(tokenList[0]);
+                size_t eIdx = stoi(tokenList[2]);
+                TGEdge* edge = new TGEdge(sIdx,eIdx);
+                parseLabels(tokenList[3], edge->_labels);
+                _tList.push_back(edge);
             }
             else {
-                assert( (line[1][0] == "[" && *(line[1].rbegin()) == "]") );
-                size_t idx = stoi(line[0]);
+                assert( (   tokenList[1][0] == '[' && 
+                        ( *(tokenList[1].rbegin()) == ']'||
+                          *(tokenList[1].rbegin()) == ';') ));
+                size_t idx = stoi(tokenList[0]);
                 if (idx > maxStateIdx) maxStateIdx = idx;
-                if (isAccepting(line[1])) oSet.insert(idx);
+                if (isAccepting(tokenList[1])) oSet.insert(idx);
             }
         }
         
     }
     file.close();
+    
+    _stateBitNum = 0;
     size_t tmp = maxStateIdx;
     while (tmp % 2 != 0 || tmp / 2 != 0) {
         ++_stateBitNum;
         tmp /= 2;
     }
-    for (size_t i = 0; i <= maxState; ++i)
-        stateList.push_back(Uint2bitString(i,stateBitNum));
+
+    for (size_t i = 0; i <= maxStateIdx; ++i)
+        _stateBitStringList.push_back(Uint2BitString(i,_stateBitNum));
 
     for (set<size_t>::iterator it = oSet.begin(); it != oSet.end(); ++it)
         _oList.push_back(*it);
     
+}
+
+void TGraph::write(const char* fileName)
+{
+    write(string(fileName));
+}
+
+void TGraph::write(const string& fileName)
+{
+    ofstream file(fileName.c_str());
+
+    file << ".model " << fileName.substr(0,fileName.find_last_of('.'))
+         << "\n.inputs";
+    for (size_t i = 0; i < INPUT_BIT_NUM + 1; ++i) file << " x" << i;
+    for (size_t i = 0; i < _stateBitNum; ++i) file << " s" << i;
+    for (size_t i = 0; i < _stateBitNum; ++i) file << " n" << i;
+    file << "\n.outputs i o t";
+
+    // initial state
+    file << "\n.names";
+    for (size_t i = 0; i < _stateBitNum; ++i) file << " s" << i;
+    file << " i\n" << _stateBitStringList[_initStateIdx] << " 1\n";
+
+    // accpeting states
+    file << "\n.names";
+    for (size_t i = 0; i < _stateBitNum; ++i) file << " s" << i;
+    file << " o\n";
+    for (size_t i = 0, size = _oList.size(); i < size; ++i)
+        file << _stateBitStringList[_oList[i]] << " 1\n";
+    // transition function
+    file << "\n.names";
+    for (size_t i = 0; i < INPUT_BIT_NUM + 1; ++i) file << " x" << i;
+    for (size_t i = 0; i < _stateBitNum; ++i) file << " s" << i;
+    for (size_t i = 0; i < _stateBitNum; ++i) file << " n" << i;
+    file << " t\n";
+    for (size_t i = 0, size = _tList.size(); i < size; ++i) 
+        _tList[i]->write(_downCubeMap,_rangeCubeMap,_stateBitStringList,file);
+    
+    file << "\n.end";
+    file.close();
+}
+
+void TGraph::print() const
+{
+    cout << "initial\n" << _initStateIdx << endl;
+    cout << "accpeting\n";
+    for (size_t i = 0, size = _oList.size(); i < size; ++i)
+        cout << _oList[i] << endl;
+    cout << "transition\n";
+    for (size_t i = 0, size = _tList.size(); i < size; ++i)
+        _tList[i]->print();
 }
 
 bool TGraph::isAccepting(const string& line)
@@ -89,7 +273,7 @@ bool TGraph::isAccepting(const string& line)
     else                  return 1;
 }
 
-void TGraph::parseLabels(const string& line, size_t& label0, size_t& label1)
+void TGraph::parseLabels(const string& line, vector<size_t>& labels)
 {
     size_t i = 0;
     while (line[i] != '\"') ++i;
@@ -103,51 +287,29 @@ void TGraph::parseLabels(const string& line, size_t& label0, size_t& label1)
         ++i;
     }
     if (isRange) {
-        string2Index(line.substr(j,i-j),label0);
+        labels.push_back(label2UTF16(line.substr(j,i-j)));
         j = ++i;
         while (line[i] != '\"') ++i;
-        string2Index(line.substr(j,i-j),label1);
+        labels.push_back(label2UTF16(line.substr(j,i-j)));
     }
     else {
-        string s = line.substr(j,i-j);
-        string2Index(s,label0);
-        label1 = 256;
+        labels.push_back(label2UTF16(line.substr(j,i-j)));
     }
 }
 
 //TODO
-void TGraph::string2Index(const string& s, size_t& label)
+size_t TGraph::label2UTF16(const string& s)
 {
-    if (s[0] == '\\') 
-        label = _h2bMap[s.substr(4,2)];
+    if (s[0] == '\\') {
+        size_t prod = 1, sum = 0;
+        for (size_t i = 5; i >= 2; --i) {
+            sum += prod * _h2dMap[s[i]];
+            prod *= 16;
+        }
+        return sum;
+    }
     else {
         assert( (s.size() == 1) );
-        label = size_t(s[0]);
+        return size_t(s[0]);
     }
-}
-void TGraph::write(const char* fileName)
-{
-    ofstream file(fileNmae.c_str());
-
-    file << "model " << fileName
-         << "\n.inputs";
-    for (size_t i = 0; i < _inputBitNum; ++i) file << " i" << i;
-    for (size_t i = 0; i < _stateBitNum; ++i) file << " s" << i;
-    for (size_t i = 0; i < _stateBitNum; ++i) file << " n" << i;
-    file << "\n.outputs i o t";
-
-    // initial state
-    file << "\n.names";
-    for (size_t i = 0; i < _stateBitNum; ++i) file << " s" << i;
-    file << " i\n" << 
-
-    // accpeting states
-
-    // transition function
-
-    file.close();
-}
-
-void TGraph::print() const
-{
 }

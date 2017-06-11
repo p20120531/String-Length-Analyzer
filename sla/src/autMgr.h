@@ -1,5 +1,12 @@
 #ifndef _AUT_MGR_
 #define _AUT_MGR_
+#define INPUT_BIT_NUM 16
+#define INIT_STATE_BIT_NUM 4
+#define INIT_LVAR_NUM 4
+#define EPSILON_ENCODE 0
+#define LEFT_ANGLE_BRACKET_ENCODE 1
+#define RIGHT_ANGLE_BRACKET_ENCODE 2
+#define MAX_SPECIAL_ALPHABET_ENCODE 2
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -25,6 +32,7 @@ enum VmtType {
 typedef vector<TGEdge*>       TGEdgeList;
 typedef vector<VmtNode*>      VmtNodeList;
 typedef set<VmtNode*>         VmtNodeSet;
+typedef map<size_t,string>    CubeMap;
 typedef vector<VmtNodeSet>    ParaSetList;
 typedef vector<VmtNodeList>   VarList;
 typedef pair<string,VmtNode*> Str2VmtNode;
@@ -34,38 +42,42 @@ class TGEdge{
     friend class AutMgr;
     friend class TGraph;
     public:
-        TGEdge(const size_t& sIdx, const size_t& eIdx, const size_t& label0, const size_t& label1): _sIdx(sIdx), _eIdx(eIdx), _label0(label0), _label1(label1) {}
+        TGEdge(const size_t& sIdx, const size_t& eIdx): _sIdx(sIdx), _eIdx(eIdx) {}
+        void print() const;
+        void write(const CubeMap&, const CubeMap&, const vector<string>&, ofstream&);
+        void writeExtraBitSpace(const CubeMap&,ofstream&);
+        void writeRangeMinterm(const string&, const size_t&, const size_t&, ofstream&);
     private:
-        size_t _sIdx;
-        size_t _eIdx;
-        size_t _label0;
-        size_t _label1;
+        size_t         _sIdx;
+        size_t         _eIdx;
+        string         _tBitString;
+        vector<size_t> _labels;
 };
 
 class TGraph{
     friend class AutMgr;
     public:
-        TGraph(const char* fileName): _inputBitNum(8),_epsilonEncode(0),_leftEncode(254),_rightEncode(255){parse(fileName);}
+        TGraph(const char* fileName) {init();parse(fileName);}
         // I/O
-        parse(const char*);
-        write(const char*);
-        print() const;
+        void parse(const char*);
+        void write(const char*);
+        void write(const string&);
+        void print() const;
     private:
         void init();
         bool isAccepting(const string&);
-        void parseLabels(const string&, size_t&, size_t&);
-        const size_t  _inputBitNum;
-        const size_t  _epsilonEncode;
-        const size_t  _leftEncode;
-        const size_t  _rightEncode;
-        vecotr<size_t> _alphabetList;
-        vector<string> _stateBitStr;
-        map<string,string> _h2bMap;
-        size_t     _stateBitNum;
-        size_t     _initIdx;
-        vector<size_t> _oList;
-        TGEdgeList _tList;
-        set<char>  _nSet;
+        void parseLabels(const string&, vector<size_t>&);
+        size_t label2UTF16(const string&);
+        
+        set<char>          _numbers;
+        map<char,size_t>   _h2dMap;
+        CubeMap            _downCubeMap;
+        CubeMap            _rangeCubeMap;
+        vector<string>     _stateBitStringList;
+        size_t             _stateBitNum;
+        size_t             _initStateIdx;
+        vector<size_t>     _oList;
+        TGEdgeList         _tList;
 };
 
 class VmtNode{
@@ -199,7 +211,7 @@ class AutMgr{
                  << "rightEncode="   << rightEncode   << endl;
         }
         // Converter
-        void dot2blif(const char*);
+        void dot2blif(const char*,const char*);
         void regex2blif(const char*);
         void blif2vmt(const char*,const char*);
         // Automata Operation
@@ -207,7 +219,6 @@ class AutMgr{
         size_t& getGFlag() {return _gflag;}
     private:
         // Converter
-        string Uint2bitString(const size_t& ,const size_t&);
         void writeCompleTransition(ofstream&, const vector<string>&, const string&, const string&, const size_t idx=0);
         void regex2blif_r(const vector<string>&, const string&, const string&);
         // Data Member

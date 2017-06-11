@@ -2,22 +2,12 @@
 #include <cstdio>
 //#define AUTMGR_NDEBUG
 
-void Aut::dot2blif(const char* inFileName, const char* outFileName)
+void AutMgr::dot2blif(const char* inFileName, const char* outFileName)
 {
-    TGraph* tgraph = new TGraph(fileName);
+    cout << "dot2blif\n";
+    TGraph* tgraph = new TGraph(inFileName);
+    tgraph->print();
     tgraph->write(outFileName);
-}
-
-string AutMgr::Uint2bitString(const size_t& n,const size_t& stateBitNum)
-{
-    string bitstr (Aut::stateBitNum,'0');
-    size_t tmp = n,j = Aut::stateBitNum;
-    while (tmp % 2 != 0 || tmp / 2 != 0) {
-        --j;
-        if (tmp % 2 != 0) bitstr[j] = '1';
-        tmp /= 2;
-    }
-    return bitstr;
 }
 
 void AutMgr::writeCompleTransition(ofstream& file, const vector<string>& alphabetList, const string& s1, const string& s2, const size_t idx)
@@ -134,7 +124,7 @@ void AutMgr::regex2blif_r(const vector<string>& alphabetList, const string& targ
         }
         vector<string> stateList;
         for (size_t i = 0, maxState = regex.size() + 1; i <= maxState; ++i)
-            stateList.push_back(Uint2bitString(i,stateBitNum));
+            stateList.push_back(Uint2BitString(i,stateBitNum));
         
         #ifndef AUTMGR_NDEBUG
             cout << "stateBitNum=" << stateBitNum << endl
@@ -192,7 +182,7 @@ void AutMgr::regex2blif_r(const vector<string>& alphabetList, const string& targ
         }
         vector<string> stateList;
         for (size_t i = 0, maxState = regex.size(); i <= maxState; ++i)
-            stateList.push_back(Uint2bitString(i,stateBitNum));
+            stateList.push_back(Uint2BitString(i,stateBitNum));
         
         #ifndef AUTMGR_NDEBUG
             cout << "stateBitNum=" << stateBitNum << endl

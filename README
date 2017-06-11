@@ -119,7 +119,21 @@ name        : sink.smt2
 description : the smt2 file equivalent to the dependency graph
 format      : smt2
 
-using 8-bit to encode ASCII as alphabet
-reserve 0000 0000 epsilon 
-        1111 1110 <
-        1111 1111 >
+using UTF-16 as alphabet
+append 1 more bit to represent special alphabet
+1 0000 0000 0000 0000 epsilon
+1 0000 0000 0000 0001 <
+1 0000 0000 0000 0002 >
+
+blif file
+input:      x0(MSB) - x16(LSB)
+state:      s0 - sk
+next state: n0 - nk
+
+vmt file
+input: current: x0(MSB)      - x16(LSB)
+       next   : x0.next(MSB) - x16.next(LSB)
+state: current: s0      - sk
+       next   : s0.next - sk.next
+lvar : current: n0      - nk
+       next   : n0.next - nk.next
