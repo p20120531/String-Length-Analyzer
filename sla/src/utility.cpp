@@ -59,10 +59,10 @@ void str2tokens(const string& s, vector<string>& tokenList)
     }
 }
 
-string Uint2BitString(const size_t& n, const size_t& stateBitNum)
+string Uint2BitString(const size_t& n, const size_t& bitNum)
 {
-    string bitstr (stateBitNum,'0');
-    size_t tmp = n, j = stateBitNum;
+    string bitstr (bitNum,'0');
+    size_t tmp = n, j = bitNum;
     while (tmp % 2 != 0 || tmp / 2 != 0) {
         --j;
         if (tmp % 2 != 0) bitstr[j] = '1';

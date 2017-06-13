@@ -1,6 +1,6 @@
 #ifndef _AUT_MGR_
 #define _AUT_MGR_
-#define INPUT_BIT_NUM 16
+#define INPUT_ENCODE_BIT_NUM 16
 #define INIT_STATE_BIT_NUM 4
 #define INIT_LVAR_NUM 4
 #define EPSILON_ENCODE 0
@@ -14,6 +14,7 @@
 #include <set>
 #include <assert.h>
 #include <bitset>
+#include <cstdio>
 #include "utility.h"
 using namespace std;
 
@@ -27,6 +28,10 @@ class AutMgr;
 // NOPARAM : no need to specify _paraList
 enum VmtType {
     INPUT, INPUT_N, STATE, STATE_N, LEN, LEN_N, PARAM, NOPARAM, OTHER
+};
+
+enum AType {
+    EPSILON, LEFT_ANGLE, RIGHT_ANGLE
 };
 
 typedef vector<TGEdge*>       TGEdgeList;
@@ -116,10 +121,12 @@ class Aut{
     friend class AutMgr;
     public :
         Aut(){
-            init();
             cout << "Aut()"<< endl;
+            init();
             printVarList();
-            printEpsilon();
+            //printSpecialAlphabet(EPSILON);
+            //printSpecialAlphabet(LEFT_ANGLE);
+            //printSpecialAlphabet(RIGHT_ANGLE);
         }
         Aut(const char* fileName){ 
             init();
@@ -131,9 +138,9 @@ class Aut{
         }
         // Static Member Function
         // static member function cannot have const qualifier (don't have this)
-        static VmtNode* initEpsilon();
+        static VmtNode* initSpecialAlphabet(const AType&);
         static VarList  initVarList(const VmtType&);
-        static void     printEpsilon();
+        static void     printSpecialAlphabet(const AType&);
         static void     printVarList();
         // Non-Static Member Function
         // I/O
@@ -142,12 +149,15 @@ class Aut{
         void            parse(const char*);
         void            write(const char*);
         void            write(const string&);
+        void            writeDefineFun(VmtNode*,ofstream&);
         // Operations
         void            addlen(const string&);
         void            intersect(Aut*,Aut*);
         void            concate(Aut*,Aut*);
         void            replace(Aut*,Aut*,Aut*,Aut*);
+        void            mark();
         void            addpred(const string&);
+        string          CSNSEquiv(const VmtType&);
     private:
         // Static Member
         static void     expandVarList(const VmtType&);
@@ -166,16 +176,19 @@ class Aut{
         static VarList  state;
         static VarList  lvar;
         static VmtNode* epsilon;
+        static VmtNode* leftAngle;
+        static VmtNode* rightAngle;
         // Non-Static Member Function
         void            init();
         void            clearParam();
         void            buildParam();
         void            renameDef();
         void            shiftStateVar(const size_t&);
-        void            parseDef(const string&, size_t&, Str2VmtNodeMap&);
+        void            parseDef(const string&, Str2VmtNodeMap&);
         void            parsePred(const string&, size_t&, Str2VmtNodeMap&);
         void            defineFun(const string&, const string&, VmtNodeList&);
         void            defineFun(const string&, const string&, VmtNodeList&, Str2VmtNodeMap&);
+        void            defineFun(const string&, const VmtType&, const string&, VmtNodeList&, Str2VmtNodeMap&);
         void            defineFun(const string&, const string&, VmtNodeList&, void (Aut::*)(VmtNode*));
         void            renameITO(const string&, VmtNode*);
         void            renameITOs2Aut(Aut*,Aut*);
@@ -193,7 +206,6 @@ class Aut{
         VarList         _lvar;
         VarList         _predBV;
         VarList         _predIV;
-        VmtNodeList     _nxtList;
         VmtNodeList     _imdList;
         VmtNodeList     _itoList;
         VmtNodeList     _predList;
@@ -203,28 +215,17 @@ class Aut{
 
 class AutMgr{
     public :
-        AutMgr():epsilonEncode(0),leftEncode(254),rightEncode(255)
-        {   
-            _gflag = 0;
-            cout << "epsilonEncode=" << epsilonEncode << " "
-                 << "leftEncode="    << leftEncode    << " "
-                 << "rightEncode="   << rightEncode   << endl;
-        }
+        AutMgr() {_gflag = 0;}
         // Converter
         void dot2blif(const char*,const char*);
-        void regex2blif(const char*);
         void blif2vmt(const char*,const char*);
         // Automata Operation
         void readCmdFile(const char*);
         size_t& getGFlag() {return _gflag;}
     private:
         // Converter
-        void writeCompleTransition(ofstream&, const vector<string>&, const string&, const string&, const size_t idx=0);
-        void regex2blif_r(const vector<string>&, const string&, const string&);
+        void parseCubeList(Aut*, const string&, const vector<string>&, const VmtNodeList&, int&);
         // Data Member
-        const size_t  epsilonEncode;
-        const size_t  leftEncode;
-        const size_t  rightEncode;
         size_t        _gflag;
 };
 

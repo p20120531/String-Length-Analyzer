@@ -31,6 +31,7 @@ dg_kaluza_dir           = ['DG/Kaluza/sat/small'  ,'DG/Kaluza/sat/big',
                            'DG/Kaluza/unsat/small','DG/Kaluza/unsat/big']
 ############################## Binary Directory ##############################
 sla_dir        = 'bin/sla'
+regex2dot_dir  = 'bin/regex2blif/target/regex2blif-0.0.1-SNAPSHOT.jar'
 abc70930_dir   = 'bin/abc70930'
 cvc4_dir       = 'bin/cvc4-2017-03-20-x86_64-linux-opt'
 norn_dir       = 'bin/norn/norn'
@@ -55,6 +56,7 @@ def init() :
         for j in d4 :
             for k in d5 :
                 call('mkdir -p %s/%s/%s' %(i,j,k),shell=True)
+    p1 = []
 
 ##############################################################################
 # [Function Name] getDGFile
@@ -159,12 +161,27 @@ def buildMap(benchmark,scope) :
 # [  Arguments  ] dgFileList : list of dependency graph files
 ##############################################################################
 def regex2blif(dgFileList) :
-    exePath = sla_dir
     cnt = 0
     for f in dgFileList :
         cnt += 1
         print 'cnt = %d' %(cnt)
-        call("%s --regex2blif %s" %(exePath,join(f,'aut')),shell=True)
+        autFile = open(join(f,'aut'))
+        lines = autFile.read().splitlines()
+        autFile.close()
+        for line in lines :
+            v = line.split()
+            name = join(f,v[0])
+            if v[1] == '".*"' or v[1] == '"~(.*)"' or v[1] == '""' or v[1] == '"~()"' :
+                pass
+            else :
+                call('java -jar %s -r %s -d %s.dot -o garbage' %(regex2dot_dir,v[1],name),shell=True)
+                call('%s --dot2blif %s.dot %s.blif' %(sla_dir,name,name),shell=True)
+                abcCmdFile = open('abc_cmd','w')
+                abcCmdFile.write('read %s.blif' %(name))
+                abcCmdFile.write('\nespresso')
+                abcCmdFile.write('\nwrite %s.blif' %(name))
+                abcCmdFile.close()
+                call('%s -f abc_cmd' %(abc70930_dir),shell=True)
 
 ##############################################################################
 # [Function Name] blif2vmt
@@ -187,12 +204,6 @@ def blif2vmt(dgFileList) :
                 else                   : d = sigma_plus_dir
                 call('cp %s %s.vmt' %(d,name),shell=True)
             else :
-                abcCmdFile = open('abc_cmd','w')
-                abcCmdFile.write('read %s.blif' %(name))
-                abcCmdFile.write('\nespresso')
-                abcCmdFile.write('\nwrite %s.blif' %(name))
-                abcCmdFile.close()
-                call('%s -f abc_cmd' %(abc70930_dir),shell=True)
                 call('%s --blif2vmt %s.blif %s.vmt' %(exePath,name,name),shell=True)
 
 ##############################################################################

@@ -25,7 +25,6 @@ void TGEdge::write(const CubeMap& downCubeMap, const CubeMap& rangeCubeMap, cons
         if (_labels[0] == 0) {
             if (_labels[1] == 65535) {
                 file << "0" << downCubeMap.find(65535)->second << _tBitString;
-                writeExtraBitSpace(rangeCubeMap,file);
             }
             else {
                 CubeMap::const_iterator it = downCubeMap.lower_bound(_labels[1]);
@@ -51,7 +50,6 @@ void TGEdge::write(const CubeMap& downCubeMap, const CubeMap& rangeCubeMap, cons
                     for (++it; it != rangeCubeMap.end(); ++it)
                         file << "0" << it->second << _tBitString;
                 }
-                writeExtraBitSpace(rangeCubeMap,file);
             }
             else {
                 CubeMap::const_iterator it0 = rangeCubeMap.lower_bound(_labels[0]);
@@ -71,7 +69,7 @@ void TGEdge::write(const CubeMap& downCubeMap, const CubeMap& rangeCubeMap, cons
     }
     else {
         assert( _labels.size() == 1 );
-        file << "0" << Uint2BitString(_labels[0],INPUT_BIT_NUM) << _tBitString;
+        file << "0" << Uint2BitString(_labels[0],INPUT_ENCODE_BIT_NUM) << _tBitString;
     }
 }
 
@@ -85,7 +83,7 @@ void TGEdge::writeExtraBitSpace(const CubeMap& rangeCubeMap, ofstream& file)
     else {
         assert( (it->first > MAX_SPECIAL_ALPHABET_ENCODE) );
         for (size_t i = MAX_SPECIAL_ALPHABET_ENCODE+1; i <= it->first; ++i)
-            file << "1" << Uint2BitString(i,INPUT_BIT_NUM) << _tBitString;
+            file << "1" << Uint2BitString(i,INPUT_ENCODE_BIT_NUM) << _tBitString;
         for (++it; it != rangeCubeMap.end(); ++it)
             file << "1" << it->second << _tBitString;
     }
@@ -94,12 +92,12 @@ void TGEdge::writeExtraBitSpace(const CubeMap& rangeCubeMap, ofstream& file)
 void TGEdge::writeRangeMinterm(const string& extraBit, const size_t& m1, const size_t& m2, ofstream& file)
 {
     for (size_t i = m1; i <= m2; ++i)
-        file << extraBit << Uint2BitString(i,INPUT_BIT_NUM) << _tBitString;
+        file << extraBit << Uint2BitString(i,INPUT_ENCODE_BIT_NUM) << _tBitString;
 }
 
 void TGraph::init()
 {
-    cout << "inputBitNum     = " << INPUT_BIT_NUM << endl
+    cout << "inputBitNum     = " << INPUT_ENCODE_BIT_NUM << endl
          << "initStateBitNum = " << INIT_STATE_BIT_NUM << endl
          << "initLvarNum     = " << INIT_LVAR_NUM << endl
          << "epsilon         = " << EPSILON_ENCODE << endl
@@ -134,14 +132,14 @@ void TGraph::init()
     _h2dMap.insert(pair<char,size_t>('f',15));
 
     size_t prod = 2;
-    string bitstr (INPUT_BIT_NUM,'0');
+    string bitstr (INPUT_ENCODE_BIT_NUM,'0');
     for (int i = 15; i >= 0; --i) {
         bitstr[i] = '-';
         _downCubeMap.insert(pair<size_t,string>(prod-1,bitstr));
         prod *= 2;
     }
 
-    bitstr = string(INPUT_BIT_NUM,'0');
+    bitstr = string(INPUT_ENCODE_BIT_NUM,'0');
     bitstr[15] = '-';
     _rangeCubeMap.insert(pair<size_t,string>(1,bitstr));
     prod = 4;
@@ -221,7 +219,7 @@ void TGraph::write(const string& fileName)
 
     file << ".model " << fileName.substr(0,fileName.find_last_of('.'))
          << "\n.inputs";
-    for (size_t i = 0; i < INPUT_BIT_NUM + 1; ++i) file << " x" << i;
+    for (size_t i = 0; i < INPUT_ENCODE_BIT_NUM + 1; ++i) file << " x" << i;
     for (size_t i = 0; i < _stateBitNum; ++i) file << " s" << i;
     for (size_t i = 0; i < _stateBitNum; ++i) file << " n" << i;
     file << "\n.outputs i o t";
@@ -239,7 +237,7 @@ void TGraph::write(const string& fileName)
         file << _stateBitStringList[_oList[i]] << " 1\n";
     // transition function
     file << "\n.names";
-    for (size_t i = 0; i < INPUT_BIT_NUM + 1; ++i) file << " x" << i;
+    for (size_t i = 0; i < INPUT_ENCODE_BIT_NUM + 1; ++i) file << " x" << i;
     for (size_t i = 0; i < _stateBitNum; ++i) file << " s" << i;
     for (size_t i = 0; i < _stateBitNum; ++i) file << " n" << i;
     file << " t\n";

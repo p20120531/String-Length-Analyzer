@@ -47,6 +47,7 @@ int main(int argc, char* argv[]) {
     
     string input(argv[1]);
     //AutOp
+    /*
     cout << "main.cpp" << endl;
     //Aut* a1 = new Aut();
     if (input == "0") {
@@ -138,8 +139,8 @@ int main(int argc, char* argv[]) {
     }
     else if(input == "14")
         autmgr->dot2blif("test1.dot","test1.blif");
+    */
     // commands
-    /*
     if (input == "--intersect") {
         Aut* a1 = new Aut(argv[2]);
         Aut* a2 = new Aut(argv[3]);
@@ -151,8 +152,8 @@ int main(int argc, char* argv[]) {
         kmgr->read(argv[2],argv[3]);
         kmgr->buildAndWriteDG();
     }
-    else if (input == "--regex2blif") {
-        autmgr->regex2blif(argv[2]);
+    else if (input == "--dot2blif") {
+        autmgr->dot2blif(argv[2],argv[3]);
     }
     else if (input == "--blif2vmt") {
         autmgr->blif2vmt(argv[2],argv[3]);
@@ -193,7 +194,6 @@ int main(int argc, char* argv[]) {
     }
     else
         cout << "invalid option=" << input << endl;
-    */
 
     //cout << "at main"<< endl;
     //autmgr->_epsilon->print(0);

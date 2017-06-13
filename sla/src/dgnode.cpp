@@ -285,7 +285,7 @@ void DGNode::writeCmdFile(ofstream& cmdFile,ofstream& autFile)
                 cmdFile << "write " << _name << "_l" << endl;
             }
         }
-        autFile << _name << " \"" << getRegex() << "\"" << endl;
+        autFile << _name << " " << kmgr->escape(getRegex()) << endl;
         return;
     }
     for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {

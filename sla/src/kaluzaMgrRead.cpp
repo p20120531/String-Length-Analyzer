@@ -1,4 +1,61 @@
 #include "kaluzaMgr.h"
+
+void KaluzaMgr::initEscapeSet()
+{
+    _escapeSet.insert('!');
+    //_escapeSet.insert('"');
+    _escapeSet.insert('#');
+    _escapeSet.insert('$');
+    _escapeSet.insert('%');
+    _escapeSet.insert('&');
+    _escapeSet.insert('\'');
+    _escapeSet.insert('(');
+    _escapeSet.insert(')');
+    _escapeSet.insert('*');
+    _escapeSet.insert('+');
+    _escapeSet.insert(',');
+    _escapeSet.insert('-');
+    _escapeSet.insert('.');
+    _escapeSet.insert('/');
+    _escapeSet.insert(':');
+    _escapeSet.insert(';');
+    _escapeSet.insert('<');
+    _escapeSet.insert('=');
+    _escapeSet.insert('>');
+    _escapeSet.insert('?');
+    _escapeSet.insert('@');
+    _escapeSet.insert('[');
+    _escapeSet.insert('\\');
+    _escapeSet.insert(']');
+    _escapeSet.insert('^');
+    _escapeSet.insert('_');
+    _escapeSet.insert('`');
+    _escapeSet.insert('{');
+    _escapeSet.insert('|');
+    _escapeSet.insert('}');
+    _escapeSet.insert('~');
+}
+
+string KaluzaMgr::escape(string regex)
+{
+    if (regex == ".*" || regex == "~(.*)" || regex == "" || regex == "~()") 
+        return "\"" + regex + "\"";
+    bool isComple = 0;
+    if (regex[0] == '~' && regex[1] == '(' && *(regex.rbegin()) == ')' ) {
+        isComple = 1;
+        regex = regex.substr(2,regex.size()-1);
+    }
+    string escaped;
+    for (size_t i = 0, size = regex.size(); i < size; ++i) {
+        assert( (regex[i] != '"') );
+        if (_escapeSet.find(regex[i]) != _escapeSet.end())
+            escaped += '\\';
+        escaped += regex[i];
+    }
+    if (isComple) return "~\\(\"" + escaped + "\"\\)";
+    else          return "\"" + regex + "\"";
+}
+
 void KaluzaMgr::printTypeMap()
 {
     #ifndef _NLOG_
