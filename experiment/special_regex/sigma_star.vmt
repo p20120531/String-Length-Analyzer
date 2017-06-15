@@ -54,8 +54,8 @@
 (define-fun nxt16 () Bool (! x16 :next x16.next))
 (define-fun nxt17 () Bool (! s0 :next s0.next))
 ;
-(define-fun i ((s0 Bool)) Bool (and (not s0)))
-(define-fun o ((s0 Bool)) Bool (and (not s0)))
+(define-fun i ((s0 Bool)) Bool (not s0))
+(define-fun o ((s0 Bool)) Bool (not s0))
 (define-fun t ((s0 Bool) (s0.next Bool)) Bool (and (not s0) (not s0.next)))
 ;
 (define-fun I () Bool (! (i s0) :init true))

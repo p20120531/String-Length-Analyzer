@@ -1,0 +1,5 @@
+intersect A1 A2
+write D1
+suffixof_smt D1 A3
+addpred pred
+write sink

@@ -16,6 +16,9 @@
 #include <bitset>
 #include <cstdio>
 #include "utility.h"
+#define VMTNODE_NDEBUG
+#define AUT_NDEBUG
+#define AUTMGR_NDEBUG
 using namespace std;
 
 class TGEdge;
@@ -24,10 +27,10 @@ class VmtNode;
 class Aut;
 class AutMgr;
 
-// PARAM   : has _paraList different from _source
-// NOPARAM : no need to specify _paraList
+// PARAM   : has _paramList different from _source
+// NOPARAM : no need to specify _paramList
 enum VmtType {
-    INPUT, INPUT_N, STATE, STATE_N, LEN, LEN_N, PARAM, NOPARAM, OTHER
+    INPUT, INPUT_N, STATE, STATE_N, LEN, LEN_N, PARAM, NOPARAM, EXIST, OTHER
 };
 
 enum AType {
@@ -38,7 +41,7 @@ typedef vector<TGEdge*>       TGEdgeList;
 typedef vector<VmtNode*>      VmtNodeList;
 typedef set<VmtNode*>         VmtNodeSet;
 typedef map<size_t,string>    CubeMap;
-typedef vector<VmtNodeSet>    ParaSetList;
+typedef vector<VmtNodeSet>    ParamSetList;
 typedef vector<VmtNodeList>   VarList;
 typedef pair<string,VmtNode*> Str2VmtNode;
 typedef map<string,VmtNode*>  Str2VmtNodeMap;
@@ -90,9 +93,9 @@ class VmtNode{
     friend class AutMgr;
     public:
         VmtNode (const string& name,const VmtType& type=OTHER,const size_t& idx=0): _name(name) 
-            {_paraList.assign(6,VmtNodeSet()); _type = type; _idx = idx; _source=0; _flag = 0;}
+            {_paramList.assign(6,VmtNodeSet()); _type = type; _idx = idx; _source=0; _flag = 0;}
         VmtNode (const string& name, VmtNode* source) : _name(name), _source(source)
-            {_paraList.assign(6,VmtNodeSet()); _type = OTHER; _idx = 0; _flag = 0;}
+            {_paramList.assign(6,VmtNodeSet()); _type = PARAM; _idx = 0; _flag = 0;}
         void        print(const size_t);
         void        write(ofstream&);
         const       string& getName()            {return _name;}
@@ -107,13 +110,13 @@ class VmtNode{
         void        buildParam();
         void        writeParam(ofstream&);
         void        shiftStateVar(const size_t&);
-        string      _name;
-        size_t      _idx;
-        VmtType     _type;
-        VmtNodeList _children;
-        VmtNode*    _source;   // used for _type == PARAM
-        ParaSetList _paraList; // input/state/lvar
-        size_t      _flag;
+        string       _name;
+        size_t       _idx;
+        VmtType      _type;
+        VmtNodeList  _children;
+        VmtNode*     _source;   // used for _type == PARAM
+        ParamSetList _paramList; // input/state/lvar
+        size_t       _flag;
 };
 
 class Aut{
@@ -154,8 +157,12 @@ class Aut{
         void            addlen(const string&);
         void            intersect(Aut*,Aut*);
         void            concate(Aut*,Aut*);
-        void            replace(Aut*,Aut*,Aut*,Aut*);
-        void            mark();
+        void            replace(Aut*,Aut*,const size_t&);
+        void            replace_A4(Aut*,Aut*);
+        size_t          mark();
+        void            prefix(const string&);
+        void            suffix(const string&);
+        void            substr(const string&, const string&);
         void            addpred(const string&);
         string          CSNSEquiv(const VmtType&);
     private:
@@ -172,9 +179,11 @@ class Aut{
         static size_t   inputBitNum;
         static size_t   stateBitNum;
         static size_t   lvarNum;
+        static size_t   evarNum;
         static VarList  input;
         static VarList  state;
         static VarList  lvar;
+        static VarList  evar;
         static VmtNode* epsilon;
         static VmtNode* leftAngle;
         static VmtNode* rightAngle;
@@ -190,11 +199,15 @@ class Aut{
         void            defineFun(const string&, const string&, VmtNodeList&, Str2VmtNodeMap&);
         void            defineFun(const string&, const VmtType&, const string&, VmtNodeList&, Str2VmtNodeMap&);
         void            defineFun(const string&, const string&, VmtNodeList&, void (Aut::*)(VmtNode*));
+        void            addParamNode(const string&, VmtNode*, const VmtNodeList&);
+        void            addParamNode(const string&, VmtNode*, Aut*, const size_t&, const bool&);
         void            renameITO(const string&, VmtNode*);
+        void            renameITO1Aut();
         void            renameITOs2Aut(Aut*,Aut*);
         void            integrate(Aut*, Aut*);
         size_t          addStateVar(const size_t&);
         void            addLVar(const size_t&);
+        size_t          addEVar();
         VmtNode*        getI();
         VmtNode*        getO();
         VmtNode*        getT();
@@ -204,6 +217,7 @@ class Aut{
         // Non-Static Data Member
         VarList         _state;
         VarList         _lvar;
+        VarList         _evar;
         VarList         _predBV;
         VarList         _predIV;
         VmtNodeList     _imdList;

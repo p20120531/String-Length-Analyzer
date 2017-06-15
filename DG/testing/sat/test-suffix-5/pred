@@ -1,0 +1,3 @@
+;
+(assert (= i1 (str.len v1))) ; len 0
+(assert (< i1 2))

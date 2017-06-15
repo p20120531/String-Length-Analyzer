@@ -1,0 +1,7 @@
+intersect A1 A2
+write D1
+addlen D1 0
+write D2
+suffixof_smt D2 A3
+addpred pred
+write sink

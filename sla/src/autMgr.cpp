@@ -1,10 +1,9 @@
 #include "autMgr.h"
-//#define AUTMGR_NDEBUG
 
 void AutMgr::dot2blif(const char* inFileName, const char* outFileName)
 {
     #ifndef AUTMGR_NDEBUG
-        cout << ">> dot2blif:: inFile=" << inFileName << " outFile=" << outFileName << endl;
+        cout << ">> dot2blif::inFile=" << inFileName << " outFile=" << outFileName << endl;
     #endif
     TGraph* tgraph = new TGraph(inFileName);
     //tgraph->print();
@@ -140,72 +139,100 @@ void AutMgr::readCmdFile(const char* fileName)
         cout << "fail open file=" << fileName << endl;
         return;
     }
-
+    string sigma_star_dir = "experiment/special_regex/sigma_star.vmt";
+    string alphabet_dir   = "experiment/special_regex/alphabet.vmt";
     string path(fileName);
     path = path.substr(0,path.find_last_of("/")) + "/";
-    cout << ">> dgDir = " << path << endl;
+    cout << ">> readCmd::dgDir = " << path << endl;
     Aut* cur = 0;
-    Aut* a1 = 0;
-    Aut* a2 = 0;
     vector<string> tokenList;
     while(getline(file,line)) {
         tokenList.clear();
         str2tokens(line,tokenList);
-        if (tokenList[0] == "intersect" || tokenList[0] == "contains" || tokenList[0] == "notcontains") {
-            cout << "intersect " << tokenList[1] << " " << tokenList[2] << endl;
-            a1  = new Aut(path+tokenList[1]+".vmt");
-            a2  = new Aut(path+tokenList[2]+".vmt");
+        for (size_t i = 0, size = tokenList.size(); i < size; ++i)
+            cout << tokenList[i] << " ";
+        cout << endl;
+        if (tokenList[0] == "intersect" || tokenList[0] == "contains" || tokenList[0] == "notcontains" ||
+            tokenList[0] == "notprefixof_smt" || tokenList[0] == "notsuffixof_smt") {
+            Aut* a1  = new Aut( path + tokenList[1] + ".vmt" );
+            Aut* a2  = new Aut( path + tokenList[2] + ".vmt" );
             cur = new Aut();
             cur->intersect(a1,a2);
         }
+        else if (tokenList[0] == "prefixof_smt") {
+            Aut* a1 = new Aut( path + tokenList[1] + ".vmt" );
+            Aut* a2 = new Aut( path + tokenList[2] + ".vmt" );
+            Aut* a3 = new Aut( sigma_star_dir );
+            Aut* a4 = new Aut();
+            a4->concate(a1,a3);
+            cur = new Aut();
+            cur->intersect(a4,a2);
+        }
+        else if (tokenList[0] == "suffixof_smt"){
+            Aut* a1 = new Aut( path + tokenList[1] + ".vmt" );
+            Aut* a2 = new Aut( path + tokenList[2] + ".vmt" );
+            Aut* a3 = new Aut( sigma_star_dir );
+            Aut* a4 = new Aut();
+            a4->concate(a3,a1);
+            cur = new Aut();
+            cur->intersect(a4,a2);
+        }
         else if (tokenList[0] == "concate") {
-            cout << "concate " << tokenList[1] << " " << tokenList[2] << endl;
-            a1  = new Aut(path+tokenList[1]+".vmt");
-            a2  = new Aut(path+tokenList[2]+".vmt");
+            Aut* a1  = new Aut( path + tokenList[1] + ".vmt" );
+            Aut* a2  = new Aut( path + tokenList[2] + ".vmt" );
             cur = new Aut();
             cur->concate(a1,a2);
         }
         else if (tokenList[0] == "addlen") {
-            cout << "addlen " << tokenList[1] << " " << tokenList[2] << endl;
-            cur = new Aut(path+tokenList[1]+".vmt");
+            cur = new Aut( path + tokenList[1] + ".vmt" );
             cur->addlen(tokenList[2]);
         }
         else if (tokenList[0] == "replace") {
-            Aut* a1 = new Aut( path + tokenList[1] + ".vmt");
-            Aut* a2 = new Aut( path + tokenList[2] + ".vmt");
-            Aut* a3 = new Aut( path + tokenList[3] + ".vmt");
-            Aut* ah = new Aut( path + tokenList[4] + ".vmt");
-            a1->mark();
+            Aut* a1 = new Aut( path + tokenList[1] + ".vmt" );
+            Aut* a2 = new Aut( path + tokenList[2] + ".vmt" );
+            Aut* a3 = new Aut( path + tokenList[3] + ".vmt" );
+            Aut* ah = new Aut( path + tokenList[4] + ".vmt" );
+            size_t alpha = a1->mark();
             Aut* a4 = new Aut();
             a4->replace_A4(a2,ah);
             Aut* a5 = new Aut();
             a5->intersect(a1,a4);
             cur = new Aut();
-            cur->replace(a5,a3);
+            cur->replace(a5,a3,alpha);
+        }
+        else if (tokenList[0] == "substr") {
+            cur = new Aut( path + tokenList[1] + ".vmt" );
+            cur->substr(tokenList[2],tokenList[3]);
+        }
+        else if (tokenList[0] == "indexof") {
+            Aut* a1 = new Aut( path + tokenList[3] + ".vmt" );
+            Aut* a2 = new Aut( alphabet_dir );
+            Aut* a3 = new Aut();
+            a3->concate(a1,a2);
+            Aut* a4 = new Aut( sigma_star_dir );
+            a4->addlen(tokenList[4]);
+            Aut* a5 = new Aut( path + tokenList[2] + ".vmt" );
+            Aut* a6 = new Aut();
+            a6->concate(a4,a5);
+            Aut* a7 = new Aut();
+            a7->intersect(a6,a3);
+            Aut* a8 = new Aut( sigma_star_dir );
+            a8->addlen(tokenList[5]);
+            Aut* a9 = new Aut();
+            a9->concate(a8,a7);
+            Aut* a10 = new Aut( path + tokenList[1] + ".vmt" );
+            cur->intersect(a10,a9);
         }
         else if (tokenList[0] == "read") {
-            cout << "read " << tokenList[1] << endl;
-            cur = new Aut(path+tokenList[1]+".vmt");
+            cur = new Aut( path + tokenList[1] + ".vmt" );
         }
         else if (tokenList[0] == "addpred") {
-            string predstr = path + "pred";
-            cur->addpred(predstr);
+            cur->addpred( path + "pred" );
         }
         else if (tokenList[0] == "write") {
-            cout << "write " << tokenList[1] << endl;
-            cur->write(path+tokenList[1]+".vmt");
+            cur->write( path + tokenList[1] + ".vmt" );
         }
         else
             cout << "[ERROR] invalid command=" << tokenList[0] << endl;
     }
-    /*
-    string defstr = path + "def";
-    string predstr = path + "pred";
-    cout << "defFile = " << defstr << endl << "predFile = " << predstr << endl;
-    readDefFile(defstr);
-    readPredFile(predstr);
-    mergeStringAndPred(cur);
-    cout << path+"sink.vmt" << endl;
-    cur->write(path+"sink.vmt");
-    */
 }

@@ -36,7 +36,7 @@ void VmtNode::print(const size_t level)
 {
     cout << string(level*3,' ') << _name << " " << this << " " << getTypeStr() << " " << _flag;
     for (size_t i = 0; i < 6; ++i) {
-        for (VmtNodeSet::iterator it=_paraList[i].begin(); it!=_paraList[i].end(); ++it)
+        for (VmtNodeSet::iterator it=_paramList[i].begin(); it!=_paramList[i].end(); ++it)
             cout << " " << (*it)->_name;
     }
     cout << endl;
@@ -57,8 +57,9 @@ void VmtNode::write(ofstream& outFile)
             assert((_source->_flag == gflag));
             assert((hasParam()));
             outFile << "(" << _source->_name;
+            assert( (_paramList[3].empty()) );
             for (size_t i = 0; i < 6; ++i) {
-                for (VmtNodeSet::iterator it = _paraList[i].begin(); it != _paraList[i].end(); ++it) {
+                for (VmtNodeSet::iterator it = _paramList[i].begin(); it != _paramList[i].end(); ++it) {
                     outFile << " " << (*it)->_name;
                 }
             }
@@ -69,8 +70,9 @@ void VmtNode::write(ofstream& outFile)
                 cout << "        non-empty\n";
                 assert((hasParam()));
                 outFile << "(" << _name;
+                assert( (_paramList[3].empty()) );
                 for (size_t i = 0; i < 6; ++i) {
-                    for (VmtNodeSet::iterator it = _paraList[i].begin(); it != _paraList[i].end(); ++it) {
+                    for (VmtNodeSet::iterator it = _paramList[i].begin(); it != _paramList[i].end(); ++it) {
                         outFile << " " << (*it)->_name;
                     }
                 }
@@ -89,8 +91,9 @@ void VmtNode::write(ofstream& outFile)
         assert((_source->_flag == gflag));
         assert((hasParam()));
         outFile << "(" << _source->_name;
+        assert( (_paramList[3].empty()) );
         for (size_t i = 0; i < 6; ++i) {
-            for (VmtNodeSet::iterator it = _paraList[i].begin(); it != _paraList[i].end(); ++it) {
+            for (VmtNodeSet::iterator it = _paramList[i].begin(); it != _paramList[i].end(); ++it) {
                 outFile << " " << (*it)->_name;
             }
         }
@@ -123,7 +126,7 @@ void VmtNode::merge(VmtNodeSet& v1, const VmtNodeSet& v2)
 bool VmtNode::hasParam()
 {
     for (size_t i = 0; i < 6; ++i) {
-        if (!_paraList[i].empty())
+        if (!_paramList[i].empty())
             return 1;
     }
     return 0;
@@ -132,9 +135,9 @@ bool VmtNode::hasParam()
 bool VmtNode::haveSameParam(VmtNode* n)
 {
     for (size_t i = 0; i < 6; ++i)
-        for (VmtNodeSet::iterator it=n->_paraList[i].begin(); it!=n->_paraList[i].end(); ++it) {
-            VmtNodeSet::iterator jt = _paraList[i].find(*it);
-            if (jt == _paraList[i].end()) return 0;
+        for (VmtNodeSet::iterator it = n->_paramList[i].begin(); it != n->_paramList[i].end(); ++it) {
+            VmtNodeSet::iterator jt = _paramList[i].find(*it);
+            if (jt == _paramList[i].end()) return 0;
         }
     return 1;
 }
@@ -146,67 +149,53 @@ void VmtNode::addChild(VmtNode* n)
 
 void VmtNode::clearParam()
 {
-    cout << "clearParam " << _name << endl;
-    cout << "    _flag=" << _flag << endl;
-    cout << "    gflag=" << gflag << " " << &gflag << endl;
-    if (_flag == gflag) {
-        cout << "    visited\n";
-        return;
-    }
-    else if(_type == PARAM) {
-        cout << "    PARAM\n";
-        return;
-    }
-    else if(_type == NOPARAM) {
-        cout << "    NOPARAM\n";
-        return;
-    }
+    #ifndef VMTNODE_NDEBUG
+        cout << "VmtNode::clearParam " << _name;
+        if (_flag == gflag)        cout << " visited\n";
+        else if (_type == PARAM)   cout << " PARAM\n";
+        else if (_type == NOPARAM) cout << " NOPARAM\n";
+    #endif
+    if (_flag == gflag || _type == PARAM || _type == NOPARAM) return;
+    
     _flag = gflag;
     
     for (size_t i = 0; i < 6; ++i)
-        _paraList[i].clear();
-    for (size_t i = 0,size = _children.size(); i < size; ++i)
+        _paramList[i].clear();
+    for (size_t i = 0, size = _children.size(); i < size; ++i)
         _children[i]->clearParam();
 }
 
 void VmtNode::buildParam()
 {
-    cout << "buildParam " << _name << endl;
-    if (_flag == gflag) {
-        cout << "    visited\n";
-        return;
-    }
-    else if(_type == PARAM) {
-        cout << "    PARAM\n";
-        return;
-    }
-    else if(_type == NOPARAM) {
-        cout << "    NOPARAM\n";
-        return;
-    }
+    #ifndef VMTNODE_NDEBUG
+        cout << "VmtNode::buildParam " << _name;
+        if (_flag == gflag)        cout << " visited\n";
+        else if (_type == PARAM)   cout << " PARAM\n";
+        else if (_type == NOPARAM) cout << " NOPARAM\n";
+    #endif
+    if (_flag == gflag || _type == PARAM || _type == NOPARAM) return;
+    
     _flag = gflag;
     if (_children.empty()) {
+        assert( (_type >= 0 && _type <= 5) );
         switch (_type) {
             case INPUT   :
-                _paraList[0].insert(this);
+                _paramList[0].insert(this);
                 break;
             case STATE :
-                _paraList[1].insert(this);
+                _paramList[1].insert(this);
                 break;
             case LEN   :
-                _paraList[2].insert(this);
+                _paramList[2].insert(this);
                 break;
             case INPUT_N :
-                _paraList[3].insert(this);
+                _paramList[3].insert(this);
                 break;
             case STATE_N :
-                _paraList[4].insert(this);
+                _paramList[4].insert(this);
                 break;
             case LEN_N   :
-                _paraList[5].insert(this);
-                break;
-            default      :
-                cout << "[ERROR::VmtNode::buildParam] invalid type=" << _type << endl;
+                _paramList[5].insert(this);
                 break;
         }
     }
@@ -214,7 +203,7 @@ void VmtNode::buildParam()
         for (size_t i = 0, size = _children.size(); i < size; ++i) {
             _children[i]->buildParam();
             for (size_t j = 0; j < 6; ++j)
-                merge(_paraList[j],_children[i]->_paraList[j]);
+                merge(_paramList[j],_children[i]->_paramList[j]);
         }
     }
 }
@@ -222,8 +211,9 @@ void VmtNode::buildParam()
 void VmtNode::writeParam(ofstream& file)
 {
     bool isfirst = 1;
+    assert( (_paramList[3].empty()) );
     for (size_t j = 0; j < 6; ++j) {
-        for (VmtNodeSet::iterator it=_paraList[j].begin(); it != _paraList[j].end(); ++it) {
+        for (VmtNodeSet::iterator it = _paramList[j].begin(); it != _paramList[j].end(); ++it) {
             if (!isfirst) file << " ";
             isfirst = 0;
             file << "(" << (*it)->_name;
@@ -244,7 +234,7 @@ void VmtNode::shiftStateVar(const size_t& delta)
     /*
     cout << "node=" << _name << " unvisited"<<endl;
     for (size_t i=0;i<6;++i){
-        for (VmtNodeSet::iterator it=_paraList[i].begin();it!=_paraList[i].end();++it)
+        for (VmtNodeSet::iterator it=_paramList[i].begin();it!=_paramList[i].end();++it)
             cout << (*it)->getName() << endl;
     }
     */
@@ -253,14 +243,14 @@ void VmtNode::shiftStateVar(const size_t& delta)
         assert((_children.empty()));
         
         VmtNodeSet tmp;
-        for (VmtNodeSet::iterator it = _paraList[1].begin(); it != _paraList[1].end(); ++it)
+        for (VmtNodeSet::iterator it = _paramList[1].begin(); it != _paramList[1].end(); ++it)
             tmp.insert( Aut::state[0][ (*it)->_idx + delta ] );
-        _paraList[1] = tmp;
+        _paramList[1] = tmp;
         
         tmp.clear();
-        for (VmtNodeSet::iterator it = _paraList[4].begin(); it != _paraList[4].end(); ++it)
+        for (VmtNodeSet::iterator it = _paramList[4].begin(); it != _paramList[4].end(); ++it)
             tmp.insert( Aut::state[1][ (*it)->_idx + delta ] );
-        _paraList[4] = tmp;
+        _paramList[4] = tmp;
         return;
     }
 

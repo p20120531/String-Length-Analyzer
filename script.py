@@ -29,6 +29,7 @@ benchmark_kaluza_dir    = ['benchmark/Kaluza/SMTLIB/sat/small'  ,
 #dg_kaluza_dir           = ['DG/Kaluza/sat/small']
 dg_kaluza_dir           = ['DG/Kaluza/sat/small'  ,'DG/Kaluza/sat/big',
                            'DG/Kaluza/unsat/small','DG/Kaluza/unsat/big']
+dg_testing_dir          = ['DG/testing/sat', 'DG/testing/unsat']
 ############################## Binary Directory ##############################
 sla_dir        = 'bin/sla'
 regex2dot_dir  = 'bin/regex2blif/target/regex2blif-0.0.1-SNAPSHOT.jar'
@@ -56,12 +57,12 @@ def init() :
         for j in d4 :
             for k in d5 :
                 call('mkdir -p %s/%s/%s' %(i,j,k),shell=True)
-    p1 = []
+    call('mkdir -p experiment/testing/result',shell=True)
 
 ##############################################################################
 # [Function Name] getDGFile
 # [ Description ] return dependency graph files of the benchmark
-# [  Arguments  ] benchmark = ['Kaluza']
+# [  Arguments  ] benchmark = ['Kaluza','testing']
 ##############################################################################
 def getDGFile(benchmark) :
     if benchmark == 'Kaluza' :
@@ -71,6 +72,12 @@ def getDGFile(benchmark) :
             subpath = [join(d,sp) for sp in listdir(d) if isdir(join(d,sp))]
             for sp in subpath :
                 dgFile += [join(sp,idx) for idx in listdir(sp) if isdir(join(sp,idx))]
+        return dgFile
+    elif benchmark == 'testing' :
+        dgFile = []
+        dirs = dg_testing_dir
+        for d in dirs :
+            dgFile += [join(d,sp) for sp in listdir(d) if isdir(join(d,sp))]
         return dgFile
     else :
         sys.exit('[ERROR::getDGFile] invalid benchmark=%s' %(benchmark))
@@ -116,7 +123,7 @@ def buildDG(benchmark,argv=None) :
 ##############################################################################
 # [Function Name] buildMap
 # [ Description ] build id to name map of files
-# [  Arguments  ] benchmark = ['Kaluza']
+# [  Arguments  ] benchmark = ['Kaluza','testing']
 #                 scope = ['all','strlen','sample']
 ##############################################################################
 def buildMap(benchmark,scope) :
@@ -151,6 +158,15 @@ def buildMap(benchmark,scope) :
             samples.sort()
             for i in samples :
                 mapFile.write('\n%s' %(lines[i]))
+        mapFile.close()
+    elif benchmark == 'testing' :
+        if scope != 'all' : sys.exit('[ERROR::buildMap] benchmark=testing invalid scope=%s' %(scope))
+        mapFile = open('experiment/testing/all','w')
+        mapFile.write('id,name')
+        dgFile,dgCnt = getDGFile('testing'),0
+        for f in dgFile :
+            dgCnt += 1
+            mapFile.write('\n%d,%s' %(dgCnt,f))
         mapFile.close()
     else :
         sys.exit('[ERROR::buildMap] invalid benchmark=%s' %(benchmark))
@@ -220,13 +236,15 @@ def readCmd(dgFileList) :
 ##############################################################################
 # [Function Name] exp
 # [ Description ] experiment on different solvers
-# [  Arguments  ] benchmark  = ['Kaluza']
+# [  Arguments  ] benchmark  = ['Kaluza','testing']
 #                 scope      = ['all','strlen','sample']
 #                 dgIdxList  : idx list of dependency graph files
 #                 dgFileList : file list of dependency graph files
 #                 solverName = ['cvc4','norn','z3','ic3ia']
 ##############################################################################
 def exp(benchmark,scope,dgIdxList,dgFileList,solverName) :
+    if (benchmark == 'testing' && scope != 'all') : 
+        sys.exit('[ERROR::exp] benchmark=testing invalid scope=%s' %(scope))
     recordName,header = expParam(benchmark,scope,solverName)
     record = open(recordName,'w')
     record.write('%s' %(header))
@@ -245,7 +263,7 @@ def expParam(benchmark,scope,solverName) :
         recordName  += '/z3.csv'
     elif solverName == 'ic3ia':
         recordName  += '/ic3ia.csv'
-        header      =  'id,safe,time,step'
+        header      =  'id,sat,time,step'
     else :
         sys.exit('[ERROR::expParam] Invalid solver name=%s' %(solverName))
     return recordName,header
@@ -292,17 +310,17 @@ def expRecord(solverName,idx,dirName,record) :
         exePath     =  ic3ia_dir
         f = join(dirName,'sink.vmt')
         ts = time.time()
-        call('%s -w %s > out' %(exePath,f),shell=True)
+        call('%s -w -v 2 %s > out' %(exePath,f),shell=True)
         te = time.time()
         out = open('out')
         lines = out.read().splitlines()
         out.close()
-        if   lines[-1] == 'safe'   : safe = '1'
-        elif lines[-1] == 'unsafe' : safe = '0'
-        else                       : safe = 'x'
-        #TODO check time frame, now only for unsafe case
+        if   lines[-1] == 'safe'   : sat = '0'
+        elif lines[-1] == 'unsafe' : sat = '1'
+        else                       : sat = 'x'
+        #TODO safe <-> frame , unsafe <-> step
         step = 'x'
-        if safe == '0' :
+        if sat == '1' :
             for i in range(1,len(lines)+1) :
                 if lines[-i][0:2] == ';;' :
                     v = lines[-i].split()
@@ -311,14 +329,70 @@ def expRecord(solverName,idx,dirName,record) :
                     else :
                         step = v[2]
                     break
-        record.write('\n%s,%s,%.6f,%s' %(idx,safe,te-ts,step))
+        elif sat == '0' :
+            for i in range(len(lines)) :
+                if (lines[i][0:8] == 'fixpoint')
+                    v = lines[i].split()
+                    step = v[4]
+                    break
+        record.write('\n%s,%s,%.6f,%s' %(idx,sat,te-ts,step))
     else :
         sys.exit('[ERROR::expRecord] invalid solver name=%s' %(solverName))
 
 ##############################################################################
+# [Function Name] ConsistencyChecking
+# [ Description ] consistency checking
+# [  Arguments  ] benchmark  = ['Kaluza','testing']
+#                 scope      = ['all','strlen','sample']
+#                 solverList : list of solvers
+##############################################################################
+def ConsistencyChecking(solverList,benchmark,scope) :
+    if solverList[0] != 'ic3ia' : sys.exit('[ERROR::CC] first solver is not ic3ia')
+    rstr = 'experiment/%s/result/%s' %(benchmark,scope)
+    data = []
+    for solver in solverList :
+        isIc3ia = False
+        if solver == 'ic3ia' : isIc3ia = True
+        data.append(getData('%s/%s.csv' %(rstr,solver),isIc3ia))
+
+    # Consistency Checking
+    logFile = open('%s/log' %(rstr),'w')
+    for i in range(1,len(data)) :
+        if len(data[0][0]) != len(data[i][0]) :
+            logFile.write('number of cases not match\n')
+            logFile.close()
+            sys.exit("[ERROR::CC] number of cases not match")
+    logFile.write('number of cases match\n')
+    
+    errFree = True
+    for i in range(len(data)) :
+        for j in range(len(data[i][1])) :
+            if data[i][1][j] == 'x' :
+                errFree = False
+                logFile.write('case:%-6s ERROR\n' %(data[i][0][j]))
+    if not errFree :
+        logFile.close()
+        sys.exit('[ERROR::CC] some cases have ERROR')
+
+    allConsistent = True
+    for i in range(1,len(data)) :
+        for j in range(len(data[i][1])) :
+            if data[0][1][j] != data[i][1][j] :
+                allConsistent = False
+                logFile.write('case:%-6s inconsistent\n' %(data[i][0][j]))
+
+    if allConsistent :
+        logFile.write('all cases consistent')
+    else :
+        logFile.close()
+        sys.exit("[ERROR::CCandPlot] some cases inconsistent")
+    
+    logFile.close()
+
+##############################################################################
 # [Function Name] CCandPlot
 # [ Description ] consistency checking and plot
-# [  Arguments  ] benchmark = ['Kaluza']
+# [  Arguments  ] benchmark = ['Kaluza','testing']
 #                 scope     = ['all','strlen','sample']
 ##############################################################################
 def CCandPlot(benchmark,scope) :
@@ -456,7 +530,7 @@ def plotCumTime(rstr,data,mode) :
     plt.savefig('%s/%s_wonorn.jpg' %(rstr,name),dpi=DPI)
 
 def getData(filename,isIc3ia=False) :
-    idx,ret,time = [],[],[]
+    idx,sat,time = [],[],[]
     if isIc3ia : step = []
     with open(filename,'r') as  csvfile :
         csvreader = csv.reader(csvfile)
@@ -464,35 +538,53 @@ def getData(filename,isIc3ia=False) :
         for row in  csvreader :
             #print row
             idx.append(row[0])
-            ret.append(row[1])
+            sat.append(row[1])
             time.append(row[2])
             if isIc3ia : step.append(row[3])
     if isIc3ia :
-        return idx,ret,time,step
+        return idx,sat,time,step
     else :
-        return idx,ret,time
+        return idx,sat,time
 ##############################################################################
 
-def epoch() :
-    init()
-    #buildDG('Kaluza')
-    #buildMap('Kaluza','all')
-    #buildMap('Kaluza','strlen')
-    #buildMap('Kaluza','sample')
-    
+def build() :
+    buildDG('Kaluza')
+    buildMap('Kaluza','all')
+    buildMap('Kaluza','strlen')
+    buildMap('testing','all')
+
+def clear() :
+    call('rm -rf DG/Kaluza')
+    call('rm -rf experiment/Kaluza', shell=True)
+    call('rm -rf experiment/testing', shell=True)
+
+def kaluzaSample() :
+    call('rm experiment/Kaluza/sample', shell=True)
+    call('rm -rf experiment/Kaluza/result/sample', shell=True)
+    buildMap('Kaluza','sample')
     dgIdxList,dgFileList = getSplitMap('experiment/Kaluza/sample')
-    #regex2blif(dgFileList)
-    
-    #blif2vmt(dgFileList)
-    #readCmd(dgFileList)
-    
-    solvers = ['cvc4','norn','z3','ic3ia']
-    
-    #solvers = ['norn']
+    solvers = ['ic3ia','cvc4','norn','z3']
     for solver in solvers :
-        exp('Kaluza','sample',dgIdxList,dgFileList,solver)
+        exp('Kaluza','strlen',dgIdxList,dgFileList,solver)
+    ConsistencyChecking('Kaluza','strlen',solvers)
     
-    CCandPlot('Kaluza','sample')
+def epoch(benchmark,enable_norn=False) :
+    if benchmark == 'Kaluza' :
+        f = 'experiment/Kaluza/strlen'
+        scope = 'strlen'
+    elif benchmark == 'testing' :
+        f = 'experiment/testing/all'
+        scope = 'all'
+    if enable_norn : solvers = ['ic3ia','cvc4','z3','norn']
+    else           : solvers = ['ic3ia','cvc4','z3']
+    dgIdxList,dgFileList = getSplitMap(f)
+    regex2blif(dgFileList)
+    blif2vmt(dgFileList)
+    readCmd(dgFileList)
+    solvers = ['ic3ia','cvc4','norn','z3']
+    for solver in solvers :
+        exp(benchmark,scope,dgIdxList,dgFileList,solver)
+    ConsistencyChecking(bemchmark,scope,solvers)
 
 def single(fileName) :
     dgFileList = [fileName]
@@ -501,4 +593,10 @@ def single(fileName) :
     readCmd(dgFileList)
 
 if __name__ == '__main__' :
-    single(sys.argv[1])
+    init()
+    if sys.argv[1] == 'build' : build()
+    elif sys.argv[1] == 'clear' : clear()
+    elif sys.argv[1] == 'resample' : kaluzaSample()
+    elif sys.argv[1] == 'kaluza' : epoch('Kaluza')
+    elif sys.argv[1] == 'testing' : epoch('testing')
+    else : print 'invalid option=%s' %(sys.argv[1])

@@ -1,0 +1,7 @@
+addlen A1 0
+write D1
+intersect A1 A2
+write D2
+contains D2 A3
+addpred pred
+write sink
