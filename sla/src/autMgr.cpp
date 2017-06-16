@@ -20,9 +20,7 @@ void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
         cout << "fail open file=" << inFileName << endl;
         return;
     }
-    #ifndef AUTMGR_NDEBUG
-        cout << ">> blif2vmt:: inFile=" << inFileName << " outFile=" << outFileName << endl;
-    #endif
+    cout << ">> blif2vmt:: inFile=" << inFileName << " outFile=" << outFileName << endl;
     
     int sCnt = -1, stateVarNum = 0;
     vector<vector<string> > iotCubeList (3,vector<string>());
@@ -42,7 +40,7 @@ void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
                     tokenList.push_back(extraTokens[i]);
             }
             #ifndef AUTMGR_NDEBUG
-                cout << "tokenList:";
+                cout << "[AutMgr::blif2vmt] tokenList:";
                 for (size_t i = 0, size = tokenList.size(); i < size; ++i)
                     cout << " " << tokenList[i];
                 cout << endl;
@@ -56,8 +54,8 @@ void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
             }
         }
         else if (line[0] == '0' || line[0] == '1' || line[0] == '-') {
-            #ifndef AUTMGR_DEBUG
-                cout << "tokenList: " << tokenList[0] << " " << tokenList[1] << endl;
+            #ifndef AUTMGR_NDEBUG
+                cout << "[AutMgr::blif2vmt] tokenList: " << tokenList[0] << " " << tokenList[1] << endl;
             #endif
             iotCubeList[sCnt].push_back(tokenList[0]);
         }
@@ -89,44 +87,61 @@ void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
     a->defineFun( "T", "(! t :trans true)"            , a->_itoList);
     a->defineFun( "O", "(! (not o) :invar-property 0)", a->_itoList);
     //Write Output
+    a->print();
     a->write(outFileName);
 }
 
 void AutMgr::parseCubeList(Aut* a, const string& name, const vector<string>& cubeList, const VmtNodeList& pList, int& dCnt)
 {
-    /*
-    cout << pList.size() << endl;
-    for (size_t i = 0, size = pList.size(); i < size; ++i) cout << pList[i]->_name << " ";
-    cout << "-----" << endl;
-    for (size_t i = 0, size = cubeList.size(); i < size; ++i) cout << cubeList[i] << endl;
-    cout << "-----" << endl;*/
+    #ifndef AUTMGR_NDEBUG
+        cout << "[AutMgr::parseCubeList] name=" << name << " len(cubeList)=" << cubeList.size() << " dCnt=" << dCnt << endl;
+    #endif
+    if (cubeList.empty()) {
+        a->defineFun( name, "false", a->_imdList);
+        return;
+    }
     assert( (pList.size() == cubeList[0].size()) );
     if (cubeList.size() == 1) {
-        string s = "(and";
-        for (size_t i = 0, size = cubeList[0].size(); i < size; ++i) {
-            if (cubeList[0][i] == '1') 
-                s += " " + pList[i]->_name;
-            else if (cubeList[0][i] == '0') 
-                s += " (not " + pList[i]->_name + ")";
-        }
-        s += ")";
-        a->defineFun( name, s, a->_imdList);
+        string body = cube2vmt(cubeList[0], pList);
+        #ifndef AUTMGR_NDEBUG
+            cout << "[AutMgr::parseCubeList] dCnt=" << dCnt << " body=" << body << endl;
+        #endif
+        a->defineFun( name, body, a->_imdList);
     }
     else {
         string ors = "(or";
         for (size_t i = 0, size = cubeList.size(); i < size; ++i) {
-            string s = "(and";
-            for (size_t j = 0, size1 = cubeList[i].size(); j < size1; ++j) {
-                if (cubeList[i][j] == '1') 
-                    s += " " + pList[j]->_name;
-                else if (cubeList[i][j] == '0') 
-                    s += " (not " + pList[j]->_name + ")";
-            }
-            a->defineFun( "d" + itos(++dCnt), s + ")", a->_imdList);
+            string body = cube2vmt(cubeList[i], pList);
+            #ifndef AUTMGR_NDEBUG
+                cout << "[AutMgr::parseCubeList] dCnt=" << dCnt << " body=" << s << endl;
+            #endif
+            a->defineFun( "d" + itos(++dCnt), body, a->_imdList);
             ors += " d" + itos(dCnt);
         }
-        a->defineFun( name, ors + ")", a->_imdList);
+        ors += ")";
+        a->defineFun( name, ors, a->_imdList);
     }
+}
+
+string AutMgr::cube2vmt(const string& cube, const VmtNodeList& pList)
+{
+    size_t varCnt = 0;
+    string s;
+    for (size_t i = 0, size = cube.size(); i < size; ++i) {
+        if (cube[i] == '1') {
+            ++varCnt;
+            s += " " + pList[i]->_name;
+        }
+        else if (cube[i] == '0') {
+            ++varCnt;
+            s += " (not " + pList[i]->_name + ")";
+        }
+    }
+    if (varCnt > 1)
+        s = "(and" + s + ")";
+    else
+        s = s.substr(1);
+    return s;
 }
 
 void AutMgr::readCmdFile(const char* fileName)

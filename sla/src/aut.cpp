@@ -43,7 +43,9 @@ VmtNode* Aut::initSpecialAlphabet(const AType& type)
                            break;
         default          : break;
     }
-    cout << "Aut::initSpecialAllphabet::" << name << endl;
+    #ifndef AUT_NDEBUG
+        cout << "Aut::initSpecialAllphabet::" << name << endl;
+    #endif
     VmtNode* n = new VmtNode(name);
     n->addChild(new VmtNode("and"));
     string bitstr = Uint2BitString(encode,inputBitNum);
@@ -88,7 +90,9 @@ VarList Aut::initVarList(const VmtType& type)
         case EXIST : 
             return v;
     }
-    cout << "Aut::initVarList::" << name << endl;
+    #ifndef AUT_NDEBUG
+        cout << "Aut::initVarList::" << name << endl;
+    #endif
     for (size_t i = 0; i < numOfVars; ++i) {
         v[0].push_back(new VmtNode(name+itos(i),type,i));
         v[1].push_back(new VmtNode(name+itos(i)+".next",nxtType,i));
@@ -257,17 +261,17 @@ VmtNode* Aut::buildVmtNode(const string& s, size_t bpos, size_t epos, Str2VmtNod
         while (s[i] != ' ') ++i;
         string root = s.substr(bpos+1,i-(bpos+1));
         if ( !isReservedString(root) ) {
-            //cout << root << endl;
             Str2VmtNodeMap::iterator it = vmap.find(root);
-            assert((it != vmap.end()));
+            assert((it != vmap.end())); // define-fun in topological order
             VmtNode* pNode = new VmtNode(root,it->second);
             while(s[i] != ')') {
                 size_t j = ++i;
                 while (s[i] != ' ' && s[i] != ')') ++i;
                 string param = s.substr(j,i-j);
                 Str2VmtNodeMap::iterator jt = vmap.find(param);
-                assert( (jt->second->_type >= 0 && jt->second->_type <= 5) );
-                switch (jt->second->_type) {
+                const VmtType& type = jt->second->_type;
+                assert( (type != 3 && type >= 0 && type <= 5) );
+                switch (type) {
                     case INPUT   :
                         pNode->_paramList[0].insert(jt->second);
                         break;
@@ -286,16 +290,15 @@ VmtNode* Aut::buildVmtNode(const string& s, size_t bpos, size_t epos, Str2VmtNod
                     case LEN_N   :
                         pNode->_paramList[5].insert(jt->second);
                         break;
-                    default      :
-                        break;
                 }
             }
             if (pNode->haveSameParam(it->second)) {
-                //cout << "same" << endl;
+                //cout << root << " same" << endl;
                 return it->second;
             }
             else {
-                //cout << "not same" << endl;
+                cout << "[Aut::buildVmtNode] ";
+                pNode->print(0);
                 return pNode;
             }
         }
@@ -372,6 +375,7 @@ void Aut::init()
     _stateVarNum = 0;
     _state.assign(2,VmtNodeList());
     _lvar.assign(2,VmtNodeList());
+    _evar.assign(2,VmtNodeList());
     _predBV.assign(2,VmtNodeList());
     _predIV.assign(2,VmtNodeList());
     // insert epsilon and input to map
@@ -387,35 +391,59 @@ void Aut::init()
 void Aut::clearParam()
 {
     ++gflag;
-    //cout << "Aut::clearParam::gflag=" << gflag << " " << &gflag << endl;
+    #ifndef AUT_NDEBUG
+        cout << "[Aut::clearParam] ++gflag=" << gflag << endl;
+    #endif
     for (size_t i = 0; i < 3; ++i)
-        _itoList[i]->clearParam();
+        _itoList[i]->clearParam(0);
     for (size_t i = 0, size = _imdList.size(); i < size; ++i)
         if (_imdList[i]->_flag != gflag) {
-            cout << "clearParam::node=" << _imdList[i]->_name << " type=" << _imdList[i]->getTypeStr() << endl;
-            _imdList[i]->clearParam();
+            cout << "[Aut::clearParam] unvisited node=" << _imdList[i]->_name << " " << _imdList[i] << " type=" << _imdList[i]->getTypeStr() << endl;
+            _imdList[i]->clearParam(0);
         }
 }
 
 void Aut::buildParam()
 {
     ++gflag;
-    //cout << "Aut::buildParam::gflag=" << gflag << endl;
+    #ifndef AUT_NDEBUG
+        cout << "[Aut::buildParam] ++gflag=" << gflag << endl;
+    #endif
     for (size_t i = 0; i < 3; ++i)
-        _itoList[i]->buildParam();
+        _itoList[i]->buildParam(0);
     for (size_t i = 0, size = _imdList.size(); i < size; ++i)
         if (_imdList[i]->_flag != gflag) {
-            cout << "buildParam::node=" << _imdList[i]->_name << " type=" << _imdList[i]->getTypeStr() << endl;
-            _imdList[i]->buildParam();
+            cout << "[Aut::buildParam] unvisited node=" << _imdList[i]->_name << " " << _imdList[i] << " type=" << _imdList[i]->getTypeStr() << endl;
+            _imdList[i]->buildParam(0);
         }
+}
+
+void Aut::collectPARAM()
+{
+    ++gflag;
+    for (size_t i = 0; i < 3; ++i)
+        _itoList[i]->collectPARAM(_PARAMList);
+    for (size_t i = 0, size = _imdList.size(); i < size; ++i)
+        _imdList[i]->collectPARAM(_PARAMList);
 }
 
 void Aut::renameDef()
 {
+    cout << "[Aut::renameDef]\n";
+    vector<string> PARAMname;
+    vector<string> PARAMsourcebefore;
+    for (size_t i = 0, size = _PARAMList.size(); i < size; ++i) {
+        PARAMname.push_back(_PARAMList[i]->_name);
+        PARAMsourcebefore.push_back(_PARAMList[i]->_source->_name);
+    }
     int dCnt = -1;
     for (size_t i = 0, size = _imdList.size(); i < size; ++i) {
         if (_imdList[i]->_name == "epsilon") continue;
         _imdList[i]->_name = "d" + itos(++dCnt);
+    }
+    for (size_t i = 0, size = _PARAMList.size(); i < size; ++i) {
+        assert( (PARAMname[i] == _PARAMList[i]->_name) );
+        cout << PARAMname[i] << " " << _PARAMList[i] << " " << PARAMsourcebefore[i] << " -> " << _PARAMList[i]->_source->_name << endl;
     }
 }
 
@@ -438,7 +466,9 @@ void Aut::shiftStateVar(const size_t& delta)
 
 void Aut::defineFun(const string& fname, const string& body, VmtNodeList& list)
 {
-    //cout << "defineFun " << fname << " " << body << endl;
+    #ifndef AUT_NDEBUG
+        cout << "[Aut::defineFun] name=" << fname << " body=" << body << endl;
+    #endif
     VmtNode* n = new VmtNode(fname);
     _vmap.insert(Str2VmtNode(fname,n));
     n->addChild(buildVmtNode(body,0,body.size(),_vmap));
@@ -473,6 +503,7 @@ void Aut::defineFun(const string& fname, const string& body, VmtNodeList& list, 
 void Aut::addParamNode(const string& name, VmtNode* source, const VmtNodeList& l)
 {
     VmtNode* n = new VmtNode(name,source);
+    _PARAMList.push_back(n);
     _vmap.insert(Str2VmtNode(name,n));
     for (size_t i = 0, size = l.size(); i < size; ++i)
         n->_paramList[4].insert(l[i]);
@@ -481,6 +512,7 @@ void Aut::addParamNode(const string& name, VmtNode* source, const VmtNodeList& l
 void Aut::addParamNode(const string& name, VmtNode* source, Aut* a, const size_t& encode, const bool& isExistential)
 {
     VmtNode* n = new VmtNode(name,source);
+    _PARAMList.push_back(n);
     _vmap.insert(Str2VmtNode(name,n));
     for (size_t i = 0, size = a->_state[0].size(); i < size; ++i) {
         n->_paramList[1].insert(a->_state[0][i]);
@@ -570,6 +602,15 @@ void Aut::integrate(Aut* a1, Aut* a2)
     for (size_t i = 0, size = a2->_imdList.size(); i < size; ++i)
         _imdList.push_back(a2->_imdList[i]);
     //TODO : merge _predBV _predIV _predList 
+
+    // merget _PARAMList
+    assert( (_PARAMList.empty()) );
+    for (size_t i = 0, size = a1->_PARAMList.size(); i < size; ++i)
+        for (size_t j = 0, size1 = a2->_PARAMList.size(); j < size1; ++j)
+            assert( (a1->_PARAMList[i] != a2->_PARAMList[j]) );
+    _PARAMList = a1->_PARAMList;
+    for (size_t i = 0, size = a2->_PARAMList.size(); i < size; ++i)
+        _PARAMList.push_back(a2->_PARAMList[i]);
 }
 
 size_t Aut::addStateVar(const size_t& num)
@@ -654,8 +695,26 @@ void Aut::setT(VmtNode* n)
 ***********************************************************************/
 void Aut::print() const 
 {
+    cout << "[Aut::print] itoList" << endl;
     for (size_t i = 0, s = _itoList.size(); i < s; ++i)
         _itoList[i]->print(0);
+    cout << "[Aut::print] imdList" << endl;
+    for (size_t i = 0, s = _imdList.size(); i < s; ++i)
+        _imdList[i]->print(0);
+}
+
+void Aut::printPARAMList() const
+{
+    cout << "[Aut::printPARAMList]\n";
+    for (size_t i = 0, size = _PARAMList.size(); i < size; ++i) {
+        VmtNode* n = _PARAMList[i];
+        assert( (n->_type == PARAM) );
+        cout << n->_name << " source=" << n->_source->_name << " params=";
+        for (size_t j = 0; j < 6; ++j)
+            for (VmtNodeSet::iterator it = n->_paramList[j].begin(); it != n->_paramList[j].end(); ++it)
+                cout << " " << (*it)->_name;
+        cout << endl;
+    }
 }
 
 void Aut::parse(const char* fileName)
@@ -692,14 +751,12 @@ void Aut::parse(const char* fileName)
                 if (*(tokenList[0].rbegin()) != 't') {
                     ++_stateVarNum;
                     size_t idx = stoi(tokenList[0].substr(1));
-                    cout << "s idx=" << idx << endl;
                     while (idx >= stateBitNum) expandVarList(STATE);
                     _vmap.insert(Str2VmtNode(state[0][idx]->_name,state[0][idx]));
                     _state[0].push_back(state[0][idx]);
                 }
                 else {
                     size_t idx = stoi(tokenList[0].substr(1,tokenList[0].find_last_of(".")-1));
-                    cout << "s.next idx=" << idx << endl;
                     while (idx >= stateBitNum) expandVarList(STATE);
                     _vmap.insert(Str2VmtNode(state[1][idx]->_name,state[1][idx]));
                     _state[1].push_back(state[1][idx]);
@@ -708,14 +765,12 @@ void Aut::parse(const char* fileName)
             else if (tokenList[0][0] == 'n'){
                 if (*(tokenList[0].rbegin()) != 't') {
                     size_t idx = stoi(tokenList[0].substr(1));
-                    cout << "n idx=" << idx << endl;
                     while (idx >= lvarNum) expandVarList(LEN);
                     _vmap.insert(Str2VmtNode(lvar[0][idx]->_name,lvar[0][idx]));
                     _lvar[0].push_back(lvar[0][idx]);
                 }
                 else {
                     size_t idx = stoi(tokenList[0].substr(1,tokenList[0].find_last_of(".")-1));
-                    cout << "n.next idx=" << idx << endl;
                     while (idx >= lvarNum) expandVarList(LEN);
                     _vmap.insert(Str2VmtNode(lvar[1][idx]->_name,lvar[1][idx]));
                     _lvar[1].push_back(lvar[1][idx]);
@@ -771,12 +826,13 @@ void Aut::parse(const char* fileName)
             }
             //cout << "n1=" << newNode1->_name << " n2=" << newNode2->_name << endl;
              _vmap.insert(Str2VmtNode(tokenList[0],newNode1));
-            if (sCnt == 2) _imdList.push_back(newNode1);
+            if      (sCnt == 2) _imdList.push_back(newNode1);
             else if (sCnt == 3) _itoList.push_back(newNode1);
         }
     }
     file.close();
-    print();
+    collectPARAM();
+    printPARAMList();
 }
 
 void Aut::write(const string& fileName)
@@ -787,68 +843,39 @@ void Aut::write(const string& fileName)
 void Aut::write(const char* fileName)
 {
     ofstream file(fileName);
-    //cout << "gflag=" << gflag << endl;
+    #ifndef AUT_NDEBUG
+        cout << "[Aut::write] gflag=" << gflag << endl;
+    #endif
     clearParam();
-    //cout << "gflag=" << gflag << endl;
+    #ifndef AUT_NDEBUG
+        cout << "[Aut::write] gflag=" << gflag << endl;
+    #endif
     buildParam();
-
-    for (size_t i = 0; i < inputBitNum; ++i)
-        file << "(declare-fun " << input[0][i]->_name << " () Bool)\n";
-    for (size_t i = 0; i < inputBitNum; ++i)
-        file << "(declare-fun " << input[1][i]->_name << " () Bool)\n";
-
-    for (size_t i = 0, size = _state[0].size(); i < size; ++i)
-        file << "(declare-fun " << _state[0][i]->_name << " () Bool)\n";
-    for (size_t i = 0, size = _state[1].size(); i < size; ++i)
-        file << "(declare-fun " << _state[1][i]->_name << " () Bool)\n";
-
-    for (size_t i = 0, size = _lvar[0].size(); i < size; ++i)
-        file << "(declare-fun " << _lvar[0][i]->_name << " () Int)\n";
-    for (size_t i = 0, size = _lvar[1].size(); i < size; ++i)
-        file << "(declare-fun " << _lvar[1][i]->_name << " () Int)\n";
     
-    for (size_t i = 0, size = _evar[0].size(); i < size; ++i)
-        file << "(declare-fun " << _evar[0][i]->_name << " () Bool)\n";
-    for (size_t i = 0, size = _evar[1].size(); i < size; ++i)
-        file << "(declare-fun " << _evar[1][i]->_name << " () Bool\n";
-    
-    for (size_t i = 0, size = _predBV[0].size(); i < size; ++i)
-        file << "(declare-fun " << _predBV[0][i]->_name << " () Bool)\n";
-    for (size_t i = 0, size = _predBV[1].size(); i < size; ++i)
-        file << "(declare-fun " << _predBV[1][i]->_name << " () Bool\n";
-    
-    for (size_t i = 0, size = _predIV[0].size(); i < size; ++i)
-        file << "(declare-fun " << _predIV[0][i]->_name << " () Int)\n";
-    for (size_t i = 0, size = _predIV[1].size(); i < size; ++i)
-        file << "(declare-fun " << _predIV[1][i]->_name << " () Int)\n";
+    writeDeclareFun(  input , 1, file );
+    writeDeclareFun( _state , 1, file );
+    writeDeclareFun( _lvar  , 0, file );
+    writeDeclareFun( _evar  , 1, file );
+    writeDeclareFun( _predBV, 1, file );
+    writeDeclareFun( _predIV, 0, file );
     
     file << ";\n";
     
     int nxtCnt = -1;
-    for (size_t i = 0; i < inputBitNum; ++i)
-        file << "(define-fun nxt" << ++nxtCnt << " () Bool " 
-             << "(! " << input[0][i]->_name << " :next " << input[1][i]->_name<< "))\n";
-    for (size_t i = 0, size = _state[0].size(); i < size; ++i)
-        file << "(define-fun nxt" << ++nxtCnt << " () Bool " 
-             << "(! " << _state[0][i]->_name << " :next " << _state[1][i]->_name<< "))\n";
-    for (size_t i = 0, size = _lvar[0].size(); i < size; ++i)
-        file << "(define-fun nxt" << ++nxtCnt << " () Bool " 
-             << "(! " << _lvar[0][i]->_name << " :next " << _lvar[1][i]->_name<< "))\n";
-    for (size_t i = 0, size = _evar[0].size(); i < size; ++i)
-        file << "(define-fun nxt" << ++nxtCnt << " () Bool " 
-             << "(! " << _evar[0][i]->_name << " :next " << _evar[1][i]->_name<< "))\n";
-    for (size_t i = 0, size = _predBV[0].size(); i < size; ++i)
-        file << "(define-fun nxt" << ++nxtCnt << " () Bool " 
-             << "(! " << _predBV[0][i]->_name << " :next " << _predBV[1][i]->_name<< "))\n";
-    for (size_t i = 0, size = _predIV[0].size(); i < size; ++i)
-        file << "(define-fun nxt" << ++nxtCnt << " () Bool " 
-             << "(! " << _predIV[0][i]->_name << " :next " << _predIV[1][i]->_name<< "))\n";
+    writeNextFun(  input , nxtCnt, file );
+    writeNextFun( _state , nxtCnt, file );
+    writeNextFun( _lvar  , nxtCnt, file );
+    writeNextFun( _evar  , nxtCnt, file );
+    writeNextFun( _predBV, nxtCnt, file );
+    writeNextFun( _predIV, nxtCnt, file );
     
     file << ";\n";
 
-    writeDefineFun(epsilon,file);
-    writeDefineFun(leftAngle,file);
-    writeDefineFun(rightAngle,file);
+    ++gflag;
+
+    writeDefineFun( epsilon   , file );
+    writeDefineFun( leftAngle , file );
+    writeDefineFun( rightAngle, file );
 
     for (size_t i = 0,size = _imdList.size(); i < size; ++i)
         writeDefineFun(_imdList[i],file);
@@ -861,13 +888,35 @@ void Aut::write(const char* fileName)
     file.close();
 }
 
+void Aut::writeDeclareFun(const VarList& varList, const bool& isBool, ofstream& file)
+{
+    string type = "Int";
+    if (isBool) type = "Bool";
+    size_t size = varList[0].size();
+    for (size_t i = 0; i < size; ++i)
+        file << "(declare-fun " << varList[0][i]->_name << " () " << type << ")\n";
+    for (size_t i = 0; i < size; ++i)
+        file << "(declare-fun " << varList[1][i]->_name << " () " << type << ")\n";
+}
+
+void Aut::writeNextFun(const VarList& varList, int& nxtCnt, ofstream& file)
+{
+    for (size_t i = 0, size = varList[0].size(); i < size; ++i)
+        file << "(define-fun nxt" << ++nxtCnt << " () Bool " 
+             << "(! " << varList[0][i]->_name << " :next " << varList[1][i]->_name<< "))\n";
+}
+
 void Aut::writeDefineFun(VmtNode* n, ofstream& file)
 {
+    #ifndef AUT_NDEBUG
+        cout << "[Aut::writeDefineFun] gflag=" << gflag << endl;
+        cout << "[Aut::writeDefineFun] " << n->_name << " " << n << " " << n->getTypeStr() << " " << n->_flag << endl;
+    #endif
     n->_flag = gflag;
     file << "(define-fun " << n->_name << " (";
     n->writeParam(file);
     file << ") Bool ";
-    n->_children[0]->write(file);
+    n->_children[0]->write(0,file);
     file << ")\n";
 }
 
@@ -893,7 +942,7 @@ void Aut::addlen(const string& lvarIdxStr)
     defineFun("tmp1", "(and (not epsilon) (= " + lvn + " (+ " + lv + " 1)))", _imdList);
     defineFun("tmp2", "(and epsilon (= " + lvn + " " + lv + "))", _imdList);
     defineFun("tmp3", "(and tmpT (or tmp1 tmp2))", _imdList, &Aut::setT);
-    //renameDef();
+    renameDef();
 }
 
 void Aut::intersect(Aut* a1, Aut* a2)
@@ -926,11 +975,12 @@ void Aut::intersect(Aut* a1, Aut* a2)
     defineFun("tmp5", "(and tmpO1 tmpO2)", _imdList);
     defineFun("O", "(! (not tmp5) :invar-property 0)", _itoList);
 
-    //renameDef();
+    renameDef();
 }
 
 void Aut::concate(Aut* a1,Aut* a2)
 {
+    cout << "[Aut::concate]\n";
     check(a1,a2);
     
     _stateVarNum = (a1->_stateVarNum > a2->_stateVarNum)? a1->_stateVarNum : a2->_stateVarNum;
@@ -945,28 +995,22 @@ void Aut::concate(Aut* a1,Aut* a2)
     renameITOs2Aut(a1,a2);
 
     // Initial
-    defineFun("tmp5", "(and (not " + sa + ") tmpI1)",_imdList);
-    defineFun("I", "(! tmp5 :init true)", _itoList);
+    defineFun( "tmp1", "(and (not " + sa + ") tmpI1)", _imdList);
+    defineFun( "I", "(! tmp1 :init true)", _itoList);
     
     // Transition
-    defineFun("tmp1", "(and (not " + sa + ") (not " + san + ") tmpT1" + a2->CSNSEquiv(LEN) + ")", _imdList);
-    defineFun("tmp2", "(and " + sa + " " + san + " tmpT2" + a1->CSNSEquiv(LEN) + ")", _imdList);
-
-    ParamSetList paramList (6,VmtNodeSet());
-    for (size_t i = 0, size = a2->_state[1].size(); i < size; ++i)
-        paramList[4].insert(a2->_state[1][i]);
-    addParamNode("I2_PARAM",a2->getI(),a2->_state[1]);
-
-    defineFun("tmp3", "(and epsilon (not " + sa + ") " + san + " tmpO1 I2_PARAM" + CSNSEquiv(LEN) + ")", _imdList);
-
-    defineFun("tmp4", "(or tmp1 tmp2 tmp3)", _imdList);
-    defineFun("T", "(! tmp4 :trans true)", _itoList);
+    addParamNode( "I2_PARAM", a2->getI(), a2->_state[1]);
+    defineFun( "tmp2", "(and (not " + sa + ") (not " + san + ") tmpT1" + a2->CSNSEquiv(LEN) + ")", _imdList);
+    defineFun( "tmp3", "(and " + sa + " " + san + " tmpT2" + a1->CSNSEquiv(LEN) + ")", _imdList);
+    defineFun( "tmp4", "(and epsilon (not " + sa + ") " + san + " tmpO1 I2_PARAM" + a1->CSNSEquiv(LEN) + a2->CSNSEquiv(LEN) + ")", _imdList);
+    defineFun( "tmp5", "(or tmp2 tmp3 tmp4)", _imdList);
+    defineFun( "T", "(! tmp5 :trans true)", _itoList);
 
     // Accepting
-    defineFun("tmp6", "(and " + sa + " tmpO2)", _imdList);
+    defineFun( "tmp6", "(and " + sa + " tmpO2)", _imdList);
     defineFun("O", "(! (not tmp6) :invar-property 0)", _itoList);
 
-    //renameDef();
+    renameDef();
 }
 
 size_t Aut::mark()
@@ -1336,11 +1380,11 @@ string Aut::CSNSEquiv(const VmtType& type)
     string ret;
     if (type == STATE) {
         for (size_t i = 0; i < _stateVarNum; ++i)
-            ret += " (=" + _state[0][i]->_name + " " + _state[1][i]->_name + ")";
+            ret += " (= " + _state[0][i]->_name + " " + _state[1][i]->_name + ")";
     }
     else {
         for (size_t i = 0, size = _lvar[0].size(); i < size; ++i)
-            ret += " (=" + _lvar[0][i]->_name + " " + _lvar[1][i]->_name + ")";
+            ret += " (= " + _lvar[0][i]->_name + " " + _lvar[1][i]->_name + ")";
     }
     return ret;
 }

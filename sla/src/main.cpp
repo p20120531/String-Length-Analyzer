@@ -184,7 +184,7 @@ int main(int argc, char* argv[]) {
         a3->intersect(a1,a2);
         a3->write(argv[4]);
     }
-    else if (input == "3") {
+    else if (input == "concate") {
         cout << "concate " << argv[2] << " " << argv[3] << endl << "write " << argv[4] << endl;
         Aut* a1 = new Aut(argv[2]);
         Aut* a2 = new Aut(argv[3]);

@@ -38,13 +38,16 @@ void KaluzaMgr::initEscapeSet()
 
 string KaluzaMgr::escape(string regex)
 {
-    if (regex == ".*" || regex == "~(.*)" || regex == "" || regex == "~()") 
-        return "\"" + regex + "\"";
+    //cout << "[KaluzaMgr::escape] origin regex=" << regex << endl;
+    if (regex == ".*" || regex == "") return "\"" + regex + "\"";
+    else if (regex == "~(.*)") return "~\\(\".*\"\\)";
+    else if (regex == "~()") return "~\\(\"\"\\)";
     bool isComple = 0;
     if (regex[0] == '~' && regex[1] == '(' && *(regex.rbegin()) == ')' ) {
         isComple = 1;
-        regex = regex.substr(2,regex.size()-1);
+        regex = regex.substr(2,regex.size()-3);
     }
+    //cout << "[KaluzaMgr::escape] trimed regex=" << regex << endl;
     string escaped;
     for (size_t i = 0, size = regex.size(); i < size; ++i) {
         assert( (regex[i] != '"') );
@@ -52,8 +55,9 @@ string KaluzaMgr::escape(string regex)
             escaped += '\\';
         escaped += regex[i];
     }
+    //cout << "[KaluzaMgr::escape] escaped regex=" << escaped << endl;
     if (isComple) return "~\\(\"" + escaped + "\"\\)";
-    else          return "\"" + regex + "\"";
+    else          return "\"" + escaped + "\"";
 }
 
 void KaluzaMgr::printTypeMap()

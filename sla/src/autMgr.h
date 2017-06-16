@@ -1,6 +1,13 @@
 #ifndef _AUT_MGR_
 #define _AUT_MGR_
-#define INPUT_ENCODE_BIT_NUM 16
+//#define UTF16_ENCODE
+#ifdef  UTF16_ENCODE
+    #define INPUT_ENCODE_BIT_NUM 16
+    #define MAX_ENCODE 65535
+#else
+    #define INPUT_ENCODE_BIT_NUM 7
+    #define MAX_ENCODE 127
+#endif
 #define INIT_STATE_BIT_NUM 4
 #define INIT_LVAR_NUM 4
 #define EPSILON_ENCODE 0
@@ -30,7 +37,7 @@ class AutMgr;
 // PARAM   : has _paramList different from _source
 // NOPARAM : no need to specify _paramList
 enum VmtType {
-    INPUT, INPUT_N, STATE, STATE_N, LEN, LEN_N, PARAM, NOPARAM, EXIST, OTHER
+    INPUT, STATE, LEN, INPUT_N, STATE_N, LEN_N, PARAM, NOPARAM, EXIST, OTHER
 };
 
 enum AType {
@@ -75,7 +82,7 @@ class TGraph{
         void init();
         bool isAccepting(const string&);
         void parseLabels(const string&, vector<size_t>&);
-        size_t label2UTF16(const string&);
+        size_t label2Decimal(const string&);
         
         set<char>          _numbers;
         map<char,size_t>   _h2dMap;
@@ -96,8 +103,8 @@ class VmtNode{
             {_paramList.assign(6,VmtNodeSet()); _type = type; _idx = idx; _source=0; _flag = 0;}
         VmtNode (const string& name, VmtNode* source) : _name(name), _source(source)
             {_paramList.assign(6,VmtNodeSet()); _type = PARAM; _idx = 0; _flag = 0;}
-        void        print(const size_t);
-        void        write(ofstream&);
+        void        print(const size_t&);
+        void        write(const size_t&,ofstream&);
         const       string& getName()            {return _name;}
         void        setType(const VmtType& type) {_type = type;}
         string      getTypeStr();
@@ -106,8 +113,9 @@ class VmtNode{
         bool        hasParam();
         bool        haveSameParam(VmtNode*);
         void        addChild(VmtNode*);
-        void        clearParam();
-        void        buildParam();
+        void        clearParam(const size_t&);
+        void        buildParam(const size_t&);
+        void        collectPARAM(VmtNodeList&);
         void        writeParam(ofstream&);
         void        shiftStateVar(const size_t&);
         string       _name;
@@ -124,9 +132,7 @@ class Aut{
     friend class AutMgr;
     public :
         Aut(){
-            cout << "Aut()"<< endl;
             init();
-            printVarList();
             //printSpecialAlphabet(EPSILON);
             //printSpecialAlphabet(LEFT_ANGLE);
             //printSpecialAlphabet(RIGHT_ANGLE);
@@ -149,9 +155,12 @@ class Aut{
         // I/O
         void            test();
         void            print() const;
+        void            printPARAMList() const;
         void            parse(const char*);
         void            write(const char*);
         void            write(const string&);
+        void            writeDeclareFun(const VarList&, const bool&, ofstream&);
+        void            writeNextFun(const VarList&, int&, ofstream&);
         void            writeDefineFun(VmtNode*,ofstream&);
         // Operations
         void            addlen(const string&);
@@ -191,6 +200,7 @@ class Aut{
         void            init();
         void            clearParam();
         void            buildParam();
+        void            collectPARAM();
         void            renameDef();
         void            shiftStateVar(const size_t&);
         void            parseDef(const string&, Str2VmtNodeMap&);
@@ -223,8 +233,10 @@ class Aut{
         VmtNodeList     _imdList;
         VmtNodeList     _itoList;
         VmtNodeList     _predList;
+        VmtNodeList     _PARAMList;
         Str2VmtNodeMap  _vmap;
         size_t          _stateVarNum;
+        string          _name;
 };
 
 class AutMgr{
@@ -238,7 +250,8 @@ class AutMgr{
         size_t& getGFlag() {return _gflag;}
     private:
         // Converter
-        void parseCubeList(Aut*, const string&, const vector<string>&, const VmtNodeList&, int&);
+        void   parseCubeList(Aut*, const string&, const vector<string>&, const VmtNodeList&, int&);
+        string cube2vmt(const string& cube, const VmtNodeList&);
         // Data Member
         size_t        _gflag;
 };

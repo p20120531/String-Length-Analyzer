@@ -1,2 +1,3 @@
+(declare-fun i1 () Int)
 ;
 (assert (= i1 (str.len v1))) ; len 0

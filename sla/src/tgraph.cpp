@@ -23,8 +23,8 @@ void TGEdge::write(const CubeMap& downCubeMap, const CubeMap& rangeCubeMap, cons
     _tBitString = stateBitStringList[_sIdx] + stateBitStringList[_eIdx] + " 1\n";
     if (_labels.size() == 2) {
         if (_labels[0] == 0) {
-            if (_labels[1] == 65535) {
-                file << "0" << downCubeMap.find(65535)->second << _tBitString;
+            if (_labels[1] == MAX_ENCODE) {
+                file << "0" << downCubeMap.find(MAX_ENCODE)->second << _tBitString;
             }
             else {
                 CubeMap::const_iterator it = downCubeMap.lower_bound(_labels[1]);
@@ -39,7 +39,7 @@ void TGEdge::write(const CubeMap& downCubeMap, const CubeMap& rangeCubeMap, cons
             }
         }
         else {
-            if (_labels[1] == 65535) {
+            if (_labels[1] == MAX_ENCODE) {
                 CubeMap::const_iterator it = rangeCubeMap.lower_bound(_labels[0]);
                 if (it->first/2 + 1 == _labels[0]) {
                     for (; it != rangeCubeMap.end(); ++it)
@@ -96,13 +96,15 @@ void TGEdge::writeRangeMinterm(const string& extraBit, const size_t& m1, const s
 }
 
 void TGraph::init()
-{
+{  
+    /*
     cout << "inputBitNum     = " << INPUT_ENCODE_BIT_NUM << endl
          << "initStateBitNum = " << INIT_STATE_BIT_NUM << endl
          << "initLvarNum     = " << INIT_LVAR_NUM << endl
          << "epsilon         = " << EPSILON_ENCODE << endl
          << "left            = " << LEFT_ANGLE_BRACKET_ENCODE << endl
          << "right           = " << RIGHT_ANGLE_BRACKET_ENCODE << endl;
+    */
     _numbers.insert('0');
     _numbers.insert('1');
     _numbers.insert('2');
@@ -133,17 +135,17 @@ void TGraph::init()
 
     size_t prod = 2;
     string bitstr (INPUT_ENCODE_BIT_NUM,'0');
-    for (int i = 15; i >= 0; --i) {
+    for (int i = INPUT_ENCODE_BIT_NUM-1; i >= 0; --i) {
         bitstr[i] = '-';
         _downCubeMap.insert(pair<size_t,string>(prod-1,bitstr));
         prod *= 2;
     }
 
     bitstr = string(INPUT_ENCODE_BIT_NUM,'0');
-    bitstr[15] = '-';
+    bitstr[INPUT_ENCODE_BIT_NUM-1] = '-';
     _rangeCubeMap.insert(pair<size_t,string>(1,bitstr));
     prod = 4;
-    for (int i = 14; i >= 0; --i) {
+    for (int i = INPUT_ENCODE_BIT_NUM-2; i >= 0; --i) {
         bitstr[i+1] = '-';
         bitstr[i]   = '1';
         _rangeCubeMap.insert(pair<size_t,string>(prod-1,bitstr));
@@ -166,10 +168,10 @@ void TGraph::parse(const char* fileName)
     while (getline(file,line)) {
         tokenList.clear();
         str2tokens(line,tokenList);
-        /*cout << "line=" << line << endl;
+        cout << "line=" << line << endl;
         for (size_t i = 0, size = tokenList.size(); i < size; ++i)
             cout << tokenList[i] << " ";
-        cout << endl;*/
+        cout << endl;
         if (tokenList[0] == "initial" && tokenList[1] == "->")
             _initStateIdx = stoi(tokenList[2]);
         else if (_numbers.find(tokenList[0][0]) != _numbers.end()) {
@@ -193,11 +195,15 @@ void TGraph::parse(const char* fileName)
     }
     file.close();
     
-    _stateBitNum = 0;
-    size_t tmp = maxStateIdx;
-    while (tmp % 2 != 0 || tmp / 2 != 0) {
-        ++_stateBitNum;
-        tmp /= 2;
+    if (maxStateIdx == 0)
+        _stateBitNum = 1;
+    else {
+        _stateBitNum = 0;
+        size_t tmp = maxStateIdx;
+        while (tmp % 2 != 0 || tmp / 2 != 0) {
+            ++_stateBitNum;
+            tmp /= 2;
+        }
     }
 
     for (size_t i = 0; i <= maxStateIdx; ++i)
@@ -205,7 +211,7 @@ void TGraph::parse(const char* fileName)
 
     for (set<size_t>::iterator it = oSet.begin(); it != oSet.end(); ++it)
         _oList.push_back(*it);
-    
+    print();
 }
 
 void TGraph::write(const char* fileName)
@@ -285,29 +291,36 @@ void TGraph::parseLabels(const string& line, vector<size_t>& labels)
         ++i;
     }
     if (isRange) {
-        labels.push_back(label2UTF16(line.substr(j,i-j)));
+        labels.push_back(label2Decimal(line.substr(j,i-j)));
         j = ++i;
         while (line[i] != '\"') ++i;
-        labels.push_back(label2UTF16(line.substr(j,i-j)));
+        labels.push_back(label2Decimal(line.substr(j,i-j)));
     }
     else {
-        labels.push_back(label2UTF16(line.substr(j,i-j)));
+        labels.push_back(label2Decimal(line.substr(j,i-j)));
     }
 }
 
 //TODO
-size_t TGraph::label2UTF16(const string& s)
+size_t TGraph::label2Decimal(const string& s)
 {
     if (s[0] == '\\') {
         size_t prod = 1, sum = 0;
-        for (size_t i = 5; i >= 2; --i) {
+        #ifdef UTF16_ENCODE
+            size_t ebpos = 2;
+        #else
+            size_t ebpos = 4;
+        #endif
+        for (size_t i = 5; i >= ebpos; --i) {
             sum += prod * _h2dMap[s[i]];
             prod *= 16;
         }
+        if (sum > MAX_ENCODE) sum = MAX_ENCODE;
         return sum;
     }
     else {
         assert( (s.size() == 1) );
+        assert( (size_t(s[0]) <= MAX_ENCODE));
         return size_t(s[0]);
     }
 }
