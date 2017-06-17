@@ -23,6 +23,7 @@
 #include <bitset>
 #include <cstdio>
 #include "utility.h"
+#define TGRAPH_NDEBUG
 #define VMTNODE_NDEBUG
 #define AUT_NDEBUG
 #define AUTMGR_NDEBUG
@@ -44,6 +45,10 @@ enum AType {
     EPSILON, LEFT_ANGLE, RIGHT_ANGLE
 };
 
+enum AutOpType {
+    ADDLEN, SUBSTR, INTERSECT, CONCATE, REPLACE, REPLACE_A4
+};
+
 typedef vector<TGEdge*>       TGEdgeList;
 typedef vector<VmtNode*>      VmtNodeList;
 typedef set<VmtNode*>         VmtNodeSet;
@@ -60,8 +65,7 @@ class TGEdge{
         TGEdge(const size_t& sIdx, const size_t& eIdx): _sIdx(sIdx), _eIdx(eIdx) {}
         void print() const;
         void write(const CubeMap&, const CubeMap&, const vector<string>&, ofstream&);
-        void writeExtraBitSpace(const CubeMap&,ofstream&);
-        void writeRangeMinterm(const string&, const size_t&, const size_t&, ofstream&);
+        void writeRangeMinterm(const size_t&, const size_t&, ofstream&);
     private:
         size_t         _sIdx;
         size_t         _eIdx;
@@ -145,6 +149,37 @@ class Aut{
             init();
             parse(fileName.c_str()); 
         }
+        Aut ( const string& fileName, const string& lvarIdxStr, const AutOpType& type ){
+            assert( (type == ADDLEN) );
+            init();
+            parse(fileName.c_str());
+            addlen(lvarIdxStr);
+        }
+        Aut ( const string& fileName, const string& n0, const string& n1, const AutOpType& type ) {
+            assert( (type == SUBSTR) );
+            init();
+            parse(fileName.c_str());
+            substr(n0,n1);
+        }
+        Aut ( Aut* a1, Aut* a2, const size_t& alpha, const AutOpType& type) {
+            assert( (type == REPLACE) );
+            init();
+            replace(a1,a2,alpha);
+        }
+        Aut ( Aut* a1, Aut* a2, const AutOpType& type ){
+            init();
+            if (type == INTERSECT) {
+                intersect(a1,a2);
+            }
+            else if (type == CONCATE) {
+                concate(a1,a2);
+            }
+            else {
+                assert( (type == REPLACE_A4) );
+                replace_A4(a1,a2);
+            }
+        }
+
         // Static Member Function
         // static member function cannot have const qualifier (don't have this)
         static VmtNode* initSpecialAlphabet(const AType&);
@@ -161,7 +196,7 @@ class Aut{
         void            write(const string&);
         void            writeDeclareFun(const VarList&, const bool&, ofstream&);
         void            writeNextFun(const VarList&, int&, ofstream&);
-        void            writeDefineFun(VmtNode*,ofstream&);
+        void            writeDefineFun(VmtNode*,ofstream&,const bool& needParam=1);
         // Operations
         void            addlen(const string&);
         void            intersect(Aut*,Aut*);

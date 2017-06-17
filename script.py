@@ -176,19 +176,23 @@ def regex2blif(dgFileList) :
         autFile.close()
         for line in lines :
             v = line.split()
-            name = join(f,v[0])
-            print '[regex2blif] name=%s regex=%s' %(name,v[1])
-            ret1 = call('java -jar %s -r %s -d %s.dot -o garbage -l FATAL' %(regex2dot_dir,v[1],name),shell=True)
+            name  = join(f,v[0])
+            regex = v[1]
+            print '[regex2blif] name=%s regex=%s' %(name,regex)
+            ret1 = call('java -jar %s -r %s -d %s.dot -o garbage -l FATAL' %(regex2dot_dir,regex,name),shell=True)
             if ret1 != 0 : sys.exit('[ERROR::regex2blif] regex2dot fails')
             ret2 = call('%s --dot2blif %s.dot %s.blif' %(sla_dir,name,name),shell=True)
             if ret2 != 0 : sys.exit('[ERROR::regex2blif] dot2blif fails')
+            if regex == '".*"' or regex == '"~\\(".*"\\)"' or regex == '""' or regex == '~\\(""\\)' : 
+                print '[regex2blif] no need to invoke abc'
+                continue
             abcCmdFile = open('abc_cmd','w')
             abcCmdFile.write('read %s.blif' %(name))
             abcCmdFile.write('\nespresso')
             abcCmdFile.write('\nwrite %s.blif' %(name))
             abcCmdFile.close()
             ret3 = call('%s -f abc_cmd' %(abc70930_dir),shell=True)
-            if ret3 != 0 : sys.exit('[ERROR::regex2blif] abc minimization fails')
+            if ret3 != 0 : sys.exit('[ERROR::regex2blif] abc minimization fails regex=%s' %(regex))
 
 ##############################################################################
 # [Function Name] blif2vmt
@@ -318,9 +322,9 @@ def expRecord(solverName,idx,dirName,record) :
                         step = v[2]
                     break
         elif sat == '0' :
-            for i in range(len(lines)) :
-                if (lines[i][0:8] == 'fixpoint') :
-                    v = lines[i].split()
+            for i in range(1,len(lines)+1) :
+                if (lines[-i][0:8] == 'fixpoint') :
+                    v = lines[-i].split()
                     step = v[4]
                     break
         record.write('\n%s,%s,%.6f,%s' %(idx,sat,te-ts,step))
@@ -546,15 +550,24 @@ def clear() :
     call('rm -rf experiment/Kaluza', shell=True)
     call('rm -rf experiment/testing', shell=True)
 
+def reset(benchmark) :
+    if benchmark == 'Kaluza' :
+        f = 'experiment/Kaluza/strlen'
+    elif benchmark == 'testing' :
+        f = 'experiment/testing/all'
+    dgIdxList,dgFileList = getSplitMap(f)
+    for dgFile in dgFileList :
+        call('rm %s/*.dot %s/*.blif %s/*.vmt' %(dgFile,dgFile,dgFile), shell=True)
+
 def buildCmd(benchmark) :
     if benchmark == 'Kaluza' :
         f = 'experiment/Kaluza/strlen'
     elif benchmark == 'testing' :
         f = 'experiment/testing/all'
     dgIdxList,dgFileList = getSplitMap(f)
-    regex2blif(dgFileList)
+    #regex2blif(dgFileList)
     #blif2vmt(dgFileList)
-    #readCmd(dgFileList)
+    readCmd(dgFileList)
 
 def kaluzaSample(resample=False) :
     if resample :
@@ -597,6 +610,9 @@ if __name__ == '__main__' :
     elif sys.argv[1] == 'solve' :
         if   sys.argv[2] == 'kaluza'  : solve('Kaluza')
         elif sys.argv[2] == 'testing' : solve('testing')
+    elif sys.argv[1] == 'reset' :
+        if   sys.argv[2] == 'kaluza'  : reset('Kaluza')
+        elif sys.argv[2] == 'testing' : reset('testing')
     elif sys.argv[1] == 'sample'   : kaluzaSample()
     elif sys.argv[1] == 'resample' : kaluzaSample(True)
     elif sys.argv[1] == 'single' : single(sys.argv[2])

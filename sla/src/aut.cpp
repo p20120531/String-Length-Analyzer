@@ -460,7 +460,8 @@ void Aut::shiftStateVar(const size_t& delta)
     for (size_t i = 0; i < 3; ++i)
         _itoList[i]->shiftStateVar(delta);
     for (size_t i = 0, size = _imdList.size(); i < size; ++i)
-        assert( (_imdList[i]->_flag == gflag) );
+        if (_imdList[i]->_flag != gflag)
+            cout << "[Aut::shiftStateVar] unvisited node=" << _imdList[i]->_name << " " << _imdList[i] << " type=" << _imdList[i]->getTypeStr() << endl;
     check(this);
 }
 
@@ -851,6 +852,10 @@ void Aut::write(const char* fileName)
         cout << "[Aut::write] gflag=" << gflag << endl;
     #endif
     buildParam();
+
+    bool eUsed = (   epsilon->_flag == gflag) ? 1:0;
+    bool lUsed = ( leftAngle->_flag == gflag) ? 1:0;
+    bool rUsed = (rightAngle->_flag == gflag) ? 1:0;
     
     writeDeclareFun(  input , 1, file );
     writeDeclareFun( _state , 1, file );
@@ -873,17 +878,18 @@ void Aut::write(const char* fileName)
 
     ++gflag;
 
-    writeDefineFun( epsilon   , file );
-    writeDefineFun( leftAngle , file );
-    writeDefineFun( rightAngle, file );
+    if (eUsed) writeDefineFun( epsilon   , file );
+    if (lUsed) writeDefineFun( leftAngle , file );
+    if (rUsed) writeDefineFun( rightAngle, file );
 
     for (size_t i = 0,size = _imdList.size(); i < size; ++i)
         writeDefineFun(_imdList[i],file);
     
     file << ";\n";
 
+    // ITO cannot be specified their params
     for (size_t i = 0,size = _itoList.size(); i < size; ++i)
-        writeDefineFun(_itoList[i],file);
+        writeDefineFun(_itoList[i],file,0);
     
     file.close();
 }
@@ -906,7 +912,7 @@ void Aut::writeNextFun(const VarList& varList, int& nxtCnt, ofstream& file)
              << "(! " << varList[0][i]->_name << " :next " << varList[1][i]->_name<< "))\n";
 }
 
-void Aut::writeDefineFun(VmtNode* n, ofstream& file)
+void Aut::writeDefineFun(VmtNode* n, ofstream& file, const bool& needParam)
 {
     #ifndef AUT_NDEBUG
         cout << "[Aut::writeDefineFun] gflag=" << gflag << endl;
@@ -914,7 +920,7 @@ void Aut::writeDefineFun(VmtNode* n, ofstream& file)
     #endif
     n->_flag = gflag;
     file << "(define-fun " << n->_name << " (";
-    n->writeParam(file);
+    if (needParam) n->writeParam(file);
     file << ") Bool ";
     n->_children[0]->write(0,file);
     file << ")\n";
@@ -1202,10 +1208,10 @@ void Aut::suffix(const string& lvarIdxStr)
     renameDef();
 }
 
-void Aut::substr(const string& n1, const string& n2)
+void Aut::substr(const string& n0, const string& n1)
 {
-    prefix(n2);
-    suffix(n1);
+    prefix(n1);
+    suffix(n0);
 }
 
 void Aut::addpred(const string& fileName)
@@ -1243,8 +1249,9 @@ void Aut::addpred(const string& fileName)
         _predIV[1][i]->_name = rename + ".next";
     }
 
+    // or predicates together
     VmtNode* oNode = getO();
-    VmtNode* newNode1 = new VmtNode("tmp1");
+    VmtNode* newNode1 = new VmtNode("O_addpred");
     VmtNode* and1 = new VmtNode("and");
     and1->addChild(oNode);
     for (size_t i = 0, size = _predList.size(); i < size; ++i) {
@@ -1255,8 +1262,9 @@ void Aut::addpred(const string& fileName)
     _imdList.push_back(newNode1);
     setO(newNode1);
     
+    // add initial condiditon for length variables (i.e. (= nk 0) )
     VmtNode* iNode = getI();
-    VmtNode* newNode2 = new VmtNode("tmp2");
+    VmtNode* newNode2 = new VmtNode("I_addpred");
     VmtNode* and2 = new VmtNode("and");
     and2->addChild(iNode);
     int eCnt = -1;
@@ -1329,41 +1337,52 @@ void Aut::parsePred(const string& line, size_t& pCnt, Str2VmtNodeMap& vmap)
             size_t dCnt = 1;
             while (dCnt != 0) {
                 ++i;
-                if (line[i] == '(') ++dCnt;
+                if     (line[i] == '(') ++dCnt;
                 else if(line[i] == ')') --dCnt;
             }
-            string body = line.substr(8,++i-8);
-            VmtNode* root = buildVmtNode(body,0,body.size(),vmap);
+            vector<string> bodyTokens;
+            str2tokens(line.substr(8,(i+1)-8)," ()",bodyTokens);
 
             vector<string> tokenList;
             str2tokens(line.substr(line.find_last_of(';')+1),tokenList);
             
             if (tokenList[0] == "len") {
                 assert( (tokenList.size() == 2) );
-                assert( (root->_name == "=") );
-                assert( (root->_children[0]->_name == "str.len" || root->_children[1]->_name == "str.len") );
+                assert( (bodyTokens[0] == "=") );
+                assert( (bodyTokens[2] == "str.len" || bodyTokens[1] == "str.len") );
                 string body = "(= ";
                 size_t lvarIdx = stoi(tokenList[1]);
-                if (root->_children[0]->_name == "str.len") 
-                    body += root->_children[1]->_name + " " + lvar[0][lvarIdx]->_name + ")";
+                if (bodyTokens[2] == "str.len") 
+                    body += bodyTokens[1] + " " + lvar[0][lvarIdx]->_name + ")";
                 else
-                    body += root->_children[0]->_name + " " + lvar[0][lvarIdx]->_name + ")";
+                    body += bodyTokens[3] + " " + lvar[0][lvarIdx]->_name + ")";
                 defineFun( "p" + itos(pCnt++), NOPARAM, body, _predList, vmap);
             }
             else if (tokenList[0] == "substr") {
                 assert( (tokenList.size() == 3) );
+                assert( (bodyTokens[0] == "str.substr") );
                 size_t n0 = stoi(tokenList[1]);
                 size_t n1 = stoi(tokenList[2]);
-                string body0 = "(= " + lvar[0][n0]->_name + " (+ " + root->_children[1]->_name + " 1))";
-                string body1 = "(= " + lvar[0][n1]->_name + " (+ " + root->_children[1]->_name + " " + root->_children[2]->_name + "))";
+                string body0 = "(= " + lvar[0][n0]->_name + " (+ " + bodyTokens[2] + " 1))";
+                string body1 = "(= " + lvar[0][n1]->_name + " (+ " + bodyTokens[2] + " " + bodyTokens[3] + "))";
                 defineFun( "p" + itos(pCnt++), NOPARAM, body0, _predList, vmap);
                 defineFun( "p" + itos(pCnt++), NOPARAM, body1, _predList, vmap);
             }
             else if (tokenList[0] == "indexof") {
+                assert( (tokenList.size() == 3) );
+                assert( (bodyTokens[0] == "=") );
+                assert( (bodyTokens[2] == "str.indexof" || bodyTokens[1] == "str.indexof") );
                 size_t n0 = stoi(tokenList[1]);
                 size_t n1 = stoi(tokenList[2]);
-                string body0 = "(= " + root->_children[0]->_name + " (+ " + lvar[0][n0]->_name + " " + lvar[0][n1]->_name + "))";
-                string body1 = "(= " + root->_children[1]->_children[2]->_name + " " + lvar[0][n1]->_name + ")";
+                string body0,body1;
+                if (bodyTokens[2] == "str.indexof") {
+                    body0 = "(= " + bodyTokens[1] + " (+ " + lvar[0][n0]->_name + " " + lvar[0][n1]->_name + "))";
+                    body1 = "(= " + bodyTokens[5] + " " + lvar[0][n1]->_name + ")";
+                }
+                else {
+                    body0 = "(= " + bodyTokens[5] + " (+ " + lvar[0][n0]->_name + " " + lvar[0][n1]->_name + "))";
+                    body1 = "(= " + bodyTokens[4] + " " + lvar[0][n1]->_name + ")";
+                }
                 defineFun( "p" + itos(pCnt++), NOPARAM, body0, _predList, vmap);
                 defineFun( "p" + itos(pCnt++), NOPARAM, body1, _predList, vmap);
             }

@@ -2,7 +2,7 @@
 
 void TGEdge::print() const 
 {
-    cout << _sIdx << " -> "<< _eIdx << " ";
+    cout << "[TGEdge::print] " << _sIdx << " -> "<< _eIdx << " ";
     if (_labels.size() == 2)
         cout << _labels[0] << " - " << _labels[1] << endl;
     else {
@@ -24,17 +24,16 @@ void TGEdge::write(const CubeMap& downCubeMap, const CubeMap& rangeCubeMap, cons
     if (_labels.size() == 2) {
         if (_labels[0] == 0) {
             if (_labels[1] == MAX_ENCODE) {
-                file << "0" << downCubeMap.find(MAX_ENCODE)->second << _tBitString;
+                file << downCubeMap.find(MAX_ENCODE)->second << _tBitString;
             }
             else {
                 CubeMap::const_iterator it = downCubeMap.lower_bound(_labels[1]);
                 if (it->first == _labels[1])
-                    file << "0" << it->second << _tBitString;
+                    file << it->second << _tBitString;
                 else {
-                    assert( (_labels[1] > 0) );
-                    assert( (it->first > _labels[1]) );
-                    file << "0" << (--it)->second << _tBitString;
-                    writeRangeMinterm("0",it->first+1,_labels[1],file);
+                    assert( (_labels[1] > 0 && it->first > _labels[1]) );
+                    file << (--it)->second << _tBitString;
+                    writeRangeMinterm(it->first+1,_labels[1],file);
                 }
             }
         }
@@ -43,56 +42,48 @@ void TGEdge::write(const CubeMap& downCubeMap, const CubeMap& rangeCubeMap, cons
                 CubeMap::const_iterator it = rangeCubeMap.lower_bound(_labels[0]);
                 if (it->first/2 + 1 == _labels[0]) {
                     for (; it != rangeCubeMap.end(); ++it)
-                        file << "0" << it->second << _tBitString;
+                        file << it->second << _tBitString;
                 }
                 else {
-                    writeRangeMinterm("0",_labels[0],it->first,file);
+                    writeRangeMinterm(_labels[0],it->first,file);
                     for (++it; it != rangeCubeMap.end(); ++it)
-                        file << "0" << it->second << _tBitString;
+                        file << it->second << _tBitString;
                 }
             }
             else {
                 CubeMap::const_iterator it0 = rangeCubeMap.lower_bound(_labels[0]);
                 CubeMap::const_iterator it1 = rangeCubeMap.lower_bound(_labels[1]);
-                if (it0->first/2 + 1 != _labels[0]) {
-                    writeRangeMinterm("0",_labels[0],it0->first,file);
-                    ++it0;
+                if (it0 == it1) {
+                    if (it0->first/2 + 1 == _labels[0] && it1->first == _labels[1])
+                        file << it0->second << _tBitString;
+                    else
+                        writeRangeMinterm(_labels[0],_labels[1],file);
                 }
-                if (it1->first == _labels[1]) ++it1;
                 else {
-                    writeRangeMinterm("0",it1->first/2+1,_labels[1],file);
+                    if (it0->first/2 + 1 != _labels[0]) {
+                        writeRangeMinterm(_labels[0],it0->first,file);
+                        ++it0;
+                    }
+                    if (it1->first == _labels[1]) ++it1;
+                    else {
+                        writeRangeMinterm(it1->first/2+1,_labels[1],file);
+                    }
+                    for (; it0 != it1; ++it0)
+                        file << it0->second << _tBitString;
                 }
-                for (; it0 != it1; ++it0)
-                    file << "0" << it0->second << _tBitString;
             }
         }
     }
     else {
         assert( _labels.size() == 1 );
-        file << "0" << Uint2BitString(_labels[0],INPUT_ENCODE_BIT_NUM) << _tBitString;
+        file << Uint2BitString(_labels[0],INPUT_ENCODE_BIT_NUM+1) << _tBitString;
     }
 }
 
-void TGEdge::writeExtraBitSpace(const CubeMap& rangeCubeMap, ofstream& file)
-{
-    CubeMap::const_iterator it = rangeCubeMap.lower_bound(MAX_SPECIAL_ALPHABET_ENCODE);
-    if (it->first == MAX_SPECIAL_ALPHABET_ENCODE) {
-        for (++it; it != rangeCubeMap.end(); ++it)
-            file << "1" << it->second << _tBitString;
-    }
-    else {
-        assert( (it->first > MAX_SPECIAL_ALPHABET_ENCODE) );
-        for (size_t i = MAX_SPECIAL_ALPHABET_ENCODE+1; i <= it->first; ++i)
-            file << "1" << Uint2BitString(i,INPUT_ENCODE_BIT_NUM) << _tBitString;
-        for (++it; it != rangeCubeMap.end(); ++it)
-            file << "1" << it->second << _tBitString;
-    }
-}
-
-void TGEdge::writeRangeMinterm(const string& extraBit, const size_t& m1, const size_t& m2, ofstream& file)
+void TGEdge::writeRangeMinterm(const size_t& m1, const size_t& m2, ofstream& file)
 {
     for (size_t i = m1; i <= m2; ++i)
-        file << extraBit << Uint2BitString(i,INPUT_ENCODE_BIT_NUM) << _tBitString;
+        file << Uint2BitString(i,INPUT_ENCODE_BIT_NUM+1) << _tBitString;
 }
 
 void TGraph::init()
@@ -134,18 +125,18 @@ void TGraph::init()
     _h2dMap.insert(pair<char,size_t>('f',15));
 
     size_t prod = 2;
-    string bitstr (INPUT_ENCODE_BIT_NUM,'0');
-    for (int i = INPUT_ENCODE_BIT_NUM-1; i >= 0; --i) {
+    string bitstr ( INPUT_ENCODE_BIT_NUM + 1, '0' );
+    for (int i = INPUT_ENCODE_BIT_NUM; i >= 1; --i) {
         bitstr[i] = '-';
         _downCubeMap.insert(pair<size_t,string>(prod-1,bitstr));
         prod *= 2;
     }
 
-    bitstr = string(INPUT_ENCODE_BIT_NUM,'0');
-    bitstr[INPUT_ENCODE_BIT_NUM-1] = '-';
+    bitstr = string( INPUT_ENCODE_BIT_NUM + 1, '0' );
+    bitstr[ INPUT_ENCODE_BIT_NUM ] = '-';
     _rangeCubeMap.insert(pair<size_t,string>(1,bitstr));
     prod = 4;
-    for (int i = INPUT_ENCODE_BIT_NUM-2; i >= 0; --i) {
+    for (int i = INPUT_ENCODE_BIT_NUM-1; i >= 1; --i) {
         bitstr[i+1] = '-';
         bitstr[i]   = '1';
         _rangeCubeMap.insert(pair<size_t,string>(prod-1,bitstr));
@@ -168,10 +159,14 @@ void TGraph::parse(const char* fileName)
     while (getline(file,line)) {
         tokenList.clear();
         str2tokens(line,tokenList);
-        cout << "line=" << line << endl;
-        for (size_t i = 0, size = tokenList.size(); i < size; ++i)
-            cout << tokenList[i] << " ";
-        cout << endl;
+        #ifndef TGRAPH_NDEBUG
+        cout << "[TGraph::parse] line = \"" << line << "\" tokens = [";
+        for (size_t i = 0, size = tokenList.size(); i < size; ++i) {
+            if (i != 0) cout << ",";
+            cout << " \"" << tokenList[i] << "\" ";
+        }
+        cout << "]" << endl;
+        #endif
         if (tokenList[0] == "initial" && tokenList[1] == "->")
             _initStateIdx = stoi(tokenList[2]);
         else if (_numbers.find(tokenList[0][0]) != _numbers.end()) {
@@ -211,7 +206,9 @@ void TGraph::parse(const char* fileName)
 
     for (set<size_t>::iterator it = oSet.begin(); it != oSet.end(); ++it)
         _oList.push_back(*it);
-    print();
+    #ifndef TGRAPH_NDEBUG
+        print();
+    #endif
 }
 
 void TGraph::write(const char* fileName)
@@ -256,11 +253,11 @@ void TGraph::write(const string& fileName)
 
 void TGraph::print() const
 {
-    cout << "initial\n" << _initStateIdx << endl;
-    cout << "accpeting\n";
+    cout << "[TGraph::print] initial " << _initStateIdx << endl;
+    cout << "[TGraph::print] accpeting";
     for (size_t i = 0, size = _oList.size(); i < size; ++i)
-        cout << _oList[i] << endl;
-    cout << "transition\n";
+        cout << " " << _oList[i];
+    cout << "[TGraph::print] transition\n";
     for (size_t i = 0, size = _tList.size(); i < size; ++i)
         _tList[i]->print();
 }
@@ -279,25 +276,51 @@ bool TGraph::isAccepting(const string& line)
 
 void TGraph::parseLabels(const string& line, vector<size_t>& labels)
 {
-    size_t i = 0;
-    while (line[i] != '\"') ++i;
-    size_t j = ++i;
-    bool isRange = 1;
-    while (line[i] != '-') {
-        if (line[i] == '\"') {
-            isRange = 0;
-            break;
+    size_t bpos = line.find_first_of('\"') + 1;
+    size_t epos = line.find_last_of('\"');
+    string labelStr = line.substr(bpos,epos-bpos);
+
+    vector<string> labelTokens;
+    size_t dashBpos = labelStr.find_first_of('-');
+    size_t dashEpos = labelStr.find_last_of('-');
+
+    if (dashBpos == dashEpos) {
+        if (labelStr.size() == 1) {
+            labelTokens.push_back(labelStr);
         }
-        ++i;
-    }
-    if (isRange) {
-        labels.push_back(label2Decimal(line.substr(j,i-j)));
-        j = ++i;
-        while (line[i] != '\"') ++i;
-        labels.push_back(label2Decimal(line.substr(j,i-j)));
+        else {
+            // range
+            str2tokens(labelStr,"-",labelTokens);
+        }
     }
     else {
-        labels.push_back(label2Decimal(line.substr(j,i-j)));
+        // special cases
+        assert( (labelStr[0] == '-' || *(labelStr.rbegin()) == '-') );
+        if (labelStr[0] == '-') {
+            assert( (labelStr[1] == '-') );
+            labelTokens.push_back("-");
+            labelTokens.push_back(labelStr.substr(2));
+        }
+        else {
+            size_t len = labelStr.size();
+            assert( (labelStr[len-2] == '-') );
+            labelTokens.push_back(labelStr.substr(0,len-2));
+            labelTokens.push_back("-");
+        }
+    }
+
+    size_t tokenNum = labelTokens.size();
+    assert( ( tokenNum == 1 || tokenNum == 2 ) );
+
+    if (tokenNum == 1) {
+        labels.push_back(label2Decimal(labelTokens[0]));
+    }
+    else {
+        size_t d0 = label2Decimal(labelTokens[0]);
+        size_t d1 = label2Decimal(labelTokens[1]);
+        assert( (d0 < d1) );
+        labels.push_back(d0);
+        labels.push_back(d1);
     }
 }
 

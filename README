@@ -133,7 +133,7 @@ next state: n0 - nk
 vmt file
 input: current: x0(MSB)      - x16(LSB)
        next   : x0.next(MSB) - x16.next(LSB)
-state: current: s0      - sk
-       next   : s0.next - sk.next
-lvar : current: n0      - nk
-       next   : n0.next - nk.next
+state: current: s0      - si
+       next   : s0.next - si.next
+lvar : current: n0      - nj
+       next   : n0.next - nj.next

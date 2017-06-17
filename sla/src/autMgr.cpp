@@ -6,7 +6,6 @@ void AutMgr::dot2blif(const char* inFileName, const char* outFileName)
         cout << ">> dot2blif::inFile=" << inFileName << " outFile=" << outFileName << endl;
     #endif
     TGraph* tgraph = new TGraph(inFileName);
-    //tgraph->print();
     tgraph->write(outFileName);
 }
 
@@ -82,6 +81,21 @@ void AutMgr::blif2vmt(const char* inFileName, const char* outFileName)
     // Transition Relation
     parseCubeList(a,"t",iotCubeList[2],pList1,dCnt);
     // Accepting States
+    if (iotCubeList[1].size() == 1) {
+        bool isDC = 1;
+        for (size_t i = 0, size = iotCubeList[1][0].size(); i < size; ++i)
+            if (iotCubeList[1][0][i] != '-') {
+                isDC = 0;
+                break;
+            }
+        if (isDC) {
+            iotCubeList[1].clear();
+            size_t max = 1;
+            for (size_t i = 0; i < stateVarNum; ++i) max *= 2;
+            for (size_t i = 0; i < max; ++i)
+                iotCubeList[1].push_back(Uint2BitString(i,stateVarNum));
+        }
+    }
     parseCubeList(a,"o",iotCubeList[1],pList0,dCnt);
     a->defineFun( "I", "(! i :init true)"             , a->_itoList);
     a->defineFun( "T", "(! t :trans true)"            , a->_itoList);
@@ -97,6 +111,7 @@ void AutMgr::parseCubeList(Aut* a, const string& name, const vector<string>& cub
         cout << "[AutMgr::parseCubeList] name=" << name << " len(cubeList)=" << cubeList.size() << " dCnt=" << dCnt << endl;
     #endif
     if (cubeList.empty()) {
+        // TODO : make sure no accpeting states or no transition condition are correctly described
         a->defineFun( name, "false", a->_imdList);
         return;
     }
@@ -113,7 +128,7 @@ void AutMgr::parseCubeList(Aut* a, const string& name, const vector<string>& cub
         for (size_t i = 0, size = cubeList.size(); i < size; ++i) {
             string body = cube2vmt(cubeList[i], pList);
             #ifndef AUTMGR_NDEBUG
-                cout << "[AutMgr::parseCubeList] dCnt=" << dCnt << " body=" << s << endl;
+                cout << "[AutMgr::parseCubeList] dCnt=" << dCnt << " body=" << body << endl;
             #endif
             a->defineFun( "d" + itos(++dCnt), body, a->_imdList);
             ors += " d" + itos(dCnt);
@@ -154,8 +169,13 @@ void AutMgr::readCmdFile(const char* fileName)
         cout << "fail open file=" << fileName << endl;
         return;
     }
-    string sigma_star_dir = "experiment/special_regex/sigma_star.vmt";
-    string alphabet_dir   = "experiment/special_regex/alphabet.vmt";
+    #ifdef UTF16_ENCODE
+        string sigma_star_dir = "special_regex/sigma_star_16.vmt";
+        string alphabet_dir   = "special_regex/alphabet_16.vmt";
+    #else
+        string sigma_star_dir = "special_regex/sigma_star_7.vmt";
+        string alphabet_dir   = "special_regex/alphabet_7.vmt";
+    #endif
     string path(fileName);
     path = path.substr(0,path.find_last_of("/")) + "/";
     cout << ">> readCmd::dgDir = " << path << endl;
@@ -164,43 +184,46 @@ void AutMgr::readCmdFile(const char* fileName)
     while(getline(file,line)) {
         tokenList.clear();
         str2tokens(line,tokenList);
+        if (tokenList[0][0] == ';' || tokenList[0] == ";") continue;
         for (size_t i = 0, size = tokenList.size(); i < size; ++i)
             cout << tokenList[i] << " ";
         cout << endl;
-        if (tokenList[0] == "intersect" || tokenList[0] == "contains" || tokenList[0] == "notcontains" ||
+        if (tokenList[0] == "intersect"       || tokenList[0] == "notcontains" ||
             tokenList[0] == "notprefixof_smt" || tokenList[0] == "notsuffixof_smt") {
-            Aut* a1  = new Aut( path + tokenList[1] + ".vmt" );
-            Aut* a2  = new Aut( path + tokenList[2] + ".vmt" );
-            cur = new Aut();
-            cur->intersect(a1,a2);
+            Aut* a1 = new Aut( path + tokenList[1] + ".vmt" );
+            Aut* a2 = new Aut( path + tokenList[2] + ".vmt" );
+            cur     = new Aut( a1, a2, INTERSECT );
+        }
+        else if (tokenList[0] == "contains") {
+            Aut* a1 = new Aut( path + tokenList[1] + ".vmt" );
+            Aut* a2 = new Aut( path + tokenList[2] + ".vmt" );
+            Aut* a3 = new Aut( sigma_star_dir );
+            Aut* a4 = new Aut( sigma_star_dir );
+            Aut* a5 = new Aut( a3, a2, CONCATE );
+            Aut* a6 = new Aut( a5, a4, CONCATE );
+            cur     = new Aut( a1, a6, INTERSECT );
         }
         else if (tokenList[0] == "prefixof_smt") {
             Aut* a1 = new Aut( path + tokenList[1] + ".vmt" );
             Aut* a2 = new Aut( path + tokenList[2] + ".vmt" );
             Aut* a3 = new Aut( sigma_star_dir );
-            Aut* a4 = new Aut();
-            a4->concate(a1,a3);
-            cur = new Aut();
-            cur->intersect(a4,a2);
+            Aut* a4 = new Aut( a1, a3, CONCATE );
+            cur     = new Aut( a4, a2, INTERSECT);
         }
         else if (tokenList[0] == "suffixof_smt"){
             Aut* a1 = new Aut( path + tokenList[1] + ".vmt" );
             Aut* a2 = new Aut( path + tokenList[2] + ".vmt" );
             Aut* a3 = new Aut( sigma_star_dir );
-            Aut* a4 = new Aut();
-            a4->concate(a3,a1);
-            cur = new Aut();
-            cur->intersect(a4,a2);
+            Aut* a4 = new Aut( a3, a1, CONCATE );
+            cur     = new Aut( a4, a2, INTERSECT);
         }
         else if (tokenList[0] == "concate") {
-            Aut* a1  = new Aut( path + tokenList[1] + ".vmt" );
-            Aut* a2  = new Aut( path + tokenList[2] + ".vmt" );
-            cur = new Aut();
-            cur->concate(a1,a2);
+            Aut* a1 = new Aut( path + tokenList[1] + ".vmt" );
+            Aut* a2 = new Aut( path + tokenList[2] + ".vmt" );
+            cur     = new Aut( a1, a2, CONCATE );
         }
         else if (tokenList[0] == "addlen") {
-            cur = new Aut( path + tokenList[1] + ".vmt" );
-            cur->addlen(tokenList[2]);
+            cur = new Aut( path + tokenList[1] + ".vmt", tokenList[2], ADDLEN );
         }
         else if (tokenList[0] == "replace") {
             Aut* a1 = new Aut( path + tokenList[1] + ".vmt" );
@@ -208,35 +231,41 @@ void AutMgr::readCmdFile(const char* fileName)
             Aut* a3 = new Aut( path + tokenList[3] + ".vmt" );
             Aut* ah = new Aut( path + tokenList[4] + ".vmt" );
             size_t alpha = a1->mark();
-            Aut* a4 = new Aut();
-            a4->replace_A4(a2,ah);
-            Aut* a5 = new Aut();
-            a5->intersect(a1,a4);
-            cur = new Aut();
-            cur->replace(a5,a3,alpha);
+            //Aut* a4 = new Aut();
+            //a4->replace_A4(a2,ah);
+            Aut* a4 = new Aut( a2, ah, REPLACE_A4 );
+            //a5->intersect(a1,a4);
+            Aut* a5 = new Aut( a1, a4, INTERSECT );
+            //cur     = new Aut( a5, a3, alpha, REPLACE);
+            //cur->replace(a5,a3,alpha);
+            cur     = new Aut( a5, a3, alpha, REPLACE);
         }
         else if (tokenList[0] == "substr") {
-            cur = new Aut( path + tokenList[1] + ".vmt" );
-            cur->substr(tokenList[2],tokenList[3]);
+            cur = new Aut( path + tokenList[1] + ".vmt", tokenList[2], tokenList[3], SUBSTR );
+            //cur->substr(tokenList[2],tokenList[3]);
         }
         else if (tokenList[0] == "indexof") {
-            Aut* a1 = new Aut( path + tokenList[3] + ".vmt" );
-            Aut* a2 = new Aut( alphabet_dir );
-            Aut* a3 = new Aut();
-            a3->concate(a1,a2);
-            Aut* a4 = new Aut( sigma_star_dir );
-            a4->addlen(tokenList[4]);
-            Aut* a5 = new Aut( path + tokenList[2] + ".vmt" );
-            Aut* a6 = new Aut();
-            a6->concate(a4,a5);
-            Aut* a7 = new Aut();
-            a7->intersect(a6,a3);
-            Aut* a8 = new Aut( sigma_star_dir );
-            a8->addlen(tokenList[5]);
-            Aut* a9 = new Aut();
-            a9->concate(a8,a7);
+            Aut* a1  = new Aut( path + tokenList[3] + ".vmt" );
+            Aut* a2  = new Aut( alphabet_dir );
+            //Aut* a3 = new Aut();
+            //a3->concate(a1,a2);
+            Aut* a3  = new Aut( a1, a2, CONCATE );
+            Aut* a4  = new Aut( sigma_star_dir, tokenList[4], ADDLEN );
+            //a4->addlen(tokenList[4]);
+            Aut* a5  = new Aut( path + tokenList[2] + ".vmt" );
+            //Aut* a6 = new Aut();
+            //a6->concate(a4,a5);
+            Aut* a6  = new Aut( a4, a5, CONCATE );
+            //Aut* a7 = new Aut();
+            //a7->intersect(a6,a3);
+            Aut* a7  = new Aut( a6, a3, INTERSECT );
+            Aut* a8  = new Aut( sigma_star_dir, tokenList[5], ADDLEN );
+            //a8->addlen(tokenList[5]);
+            //Aut* a9 = new Aut();
+            //a9->concate(a8,a7);
+            Aut* a9  = new Aut( a8, a7, CONCATE );
             Aut* a10 = new Aut( path + tokenList[1] + ".vmt" );
-            cur->intersect(a10,a9);
+            cur      = new Aut( a10, a9, INTERSECT );
         }
         else if (tokenList[0] == "read") {
             cur = new Aut( path + tokenList[1] + ".vmt" );
@@ -248,6 +277,6 @@ void AutMgr::readCmdFile(const char* fileName)
             cur->write( path + tokenList[1] + ".vmt" );
         }
         else
-            cout << "[ERROR] invalid command=" << tokenList[0] << endl;
+            cout << "[AutMgr::readCmdFile] ERROR: invalid command=" << tokenList[0] << endl;
     }
 }

@@ -1,5 +1,6 @@
 #include "kaluzaMgr.h"
 #include "autMgr.h"
+#include "utility.h"
 KaluzaMgr* kmgr = new KaluzaMgr();
 AutMgr*  autmgr = new AutMgr();
 
@@ -44,7 +45,21 @@ int main(int argc, char* argv[]) {
 
     //kmgr->closeLogFile();
     //kmgr->analyzePT();
-    
+    /*
+    vector<string> v;
+    v.push_back("(= 0 (str.len T0_2))");
+    v.push_back("(= (str.len TY) UI10~)");
+    v.push_back("(str.substr v1 0 v3)");
+    v.push_back("(= v3 (str.indexof v1 \"<>\" 0))");
+    v.push_back("(= (str.indexof v1 \"<\" 0) v3)");
+    vector<string> tokens;
+    for (size_t i = 0, size = v.size(); i < size; ++i) {
+        tokens.clear();
+        str2tokens(v[i]," ()",tokens);
+        for(size_t j=0,size1=tokens.size();j<size1;++j)
+            cout << tokens[j] << "|";
+        cout << endl;
+    }*/
     string input(argv[1]);
     //AutOp
     /*
@@ -194,7 +209,6 @@ int main(int argc, char* argv[]) {
     }
     else
         cout << "invalid option=" << input << endl;
-
     //cout << "at main"<< endl;
     //autmgr->_epsilon->print(0);
     //Aut* a2 = new Aut(argv[2]);

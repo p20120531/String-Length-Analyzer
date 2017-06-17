@@ -1,7 +1,10 @@
 CC = g++
 CFLAGS = -g3
+TAG = ctags
+TAGFLAGS = -R
 all: main.o kaluzaMgrRead.o kaluzaMgrDG.o pt.o ptnode.o dg.o dgnode.o utility.o autMgr.o aut.o vmtnode.o tgraph.o
 	$(CC) $(CFLAGS) main.o kaluzaMgrRead.o kaluzaMgrDG.o pt.o ptnode.o dg.o dgnode.o utility.o autMgr.o aut.o vmtnode.o tgraph.o -o ../../bin/sla
+	$(TAG) $(TAGFLAGS)
 main.o: main.cpp
 	$(CC) $(CFLAGS) main.cpp -c
 kaluzaMgrRead.o: kaluzaMgrRead.cpp
@@ -27,4 +30,4 @@ vmtnode.o: vmtnode.cpp
 tgraph.o: tgraph.cpp
 	$(CC) $(CFLAGS) tgraph.cpp -c
 clean:
-	rm *.o ../../bin/sla
+	rm *.o tags ../../bin/sla

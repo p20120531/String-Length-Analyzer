@@ -59,6 +59,20 @@ void str2tokens(const string& s, vector<string>& tokenList)
     }
 }
 
+void str2tokens(const string& s, const string& delimiters, vector<string>& tokenList)
+{
+    set<char> dSet;
+    for (size_t i = 0, size = delimiters.size(); i < size; ++i)
+        dSet.insert(delimiters[i]);
+    for (size_t i = 0, j = 0, size = s.size(); i < size; ++i) {
+        if (dSet.find(s[i]) != dSet.end()) continue;
+        j = i;
+        while (dSet.find(s[j]) == dSet.end() && j < size) ++j;
+        tokenList.push_back(s.substr(i,j-i));
+        i = j;
+    }
+}
+
 string Uint2BitString(const size_t& n, const size_t& bitNum)
 {
     string bitstr (bitNum,'0');
