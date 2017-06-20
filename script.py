@@ -522,8 +522,7 @@ def plotCumTime(rstr,data,mode) :
     plt.savefig('%s/%s_wonorn.jpg' %(rstr,name),dpi=DPI)
 
 def getData(filename,isIc3ia=False) :
-    idx,sat,time = [],[],[]
-    if isIc3ia : step = []
+    idx,sat,time,step = [],[],[],[]
     with open(filename,'r') as  csvfile :
         csvreader = csv.reader(csvfile)
         csvreader.next()
@@ -539,81 +538,116 @@ def getData(filename,isIc3ia=False) :
         return idx,sat,time
 ##############################################################################
 
-def build() :
-    buildDG('Kaluza')
-    buildMap('Kaluza','all')
-    buildMap('Kaluza','strlen')
-    buildMap('testing','all')
+def parse(argv) :
+    if   len(argv) == 1 : opt1(argv)
+    elif len(argv) == 2 : opt2(argv)
+    elif len(argv) == 3 : opt3(argv)
+    else                :
+        sys.exit('[ERROR::parse] invalid argc=%d' %(len(argv)))
 
-def clear() :
-    call('rm -rf DG/Kaluza')
-    call('rm -rf experiment/Kaluza', shell=True)
-    call('rm -rf experiment/testing', shell=True)
-
-def reset(benchmark) :
-    if benchmark == 'Kaluza' :
-        f = 'experiment/Kaluza/strlen'
-    elif benchmark == 'testing' :
-        f = 'experiment/testing/all'
-    dgIdxList,dgFileList = getSplitMap(f)
-    for dgFile in dgFileList :
-        call('rm %s/*.dot %s/*.blif %s/*.vmt' %(dgFile,dgFile,dgFile), shell=True)
-
-def buildCmd(benchmark) :
-    if benchmark == 'Kaluza' :
-        f = 'experiment/Kaluza/strlen'
-    elif benchmark == 'testing' :
-        f = 'experiment/testing/all'
-    dgIdxList,dgFileList = getSplitMap(f)
-    #regex2blif(dgFileList)
-    #blif2vmt(dgFileList)
-    readCmd(dgFileList)
-
-def kaluzaSample(resample=False) :
-    if resample :
+def opt1(argv) :
+    if   argv[0] == '--buildDG'  : 
+        buildDG('Kaluza')
+        buildMap('Kaluza','all')
+    elif argv[0] == '--resample' :
         call('rm experiment/Kaluza/sample', shell=True)
         call('rm -rf experiment/Kaluza/result/sample', shell=True)
         buildMap('Kaluza','sample')
-    dgIdxList,dgFileList = getSplitMap('experiment/Kaluza/sample')
-    solvers = ['ic3ia','cvc4','z3']
-    for solver in solvers :
-        exp('Kaluza','sample',dgIdxList,dgFileList,solver)
-    ConsistencyChecking('Kaluza','sample',solvers)
+    elif argv[0] == '--h' or argv[0] == '-h' :
+        print '''
+                --buildDG
+                --resample
+                --build      < --k | --ks | --t >
+                --clear      < --k | --ks | --t >
+                --reset      < --k | --ks | --t >
+                --solve      < --k | --ks | --t >
+                --solve-n    < --k | --ks | --t >
+                --plot       < --k | --ks | --t >
+                --execmd     < --k | --ks | --t > < --r2b | --b2v | --cmd | --all >
+                --single     <    dgFileName    > < --r2b | --b2v | --cmd | --all >
+              '''
+    else :
+        sys.exit('[ERROR::opt1] invalid opt=%s' %(argv[0]))
 
-def solve(benchmark,enable_norn=False) :
-    if benchmark == 'Kaluza' :
+def opt2(argv) :
+    if   argv[0] == '--build'   : opt_build(argv[1])
+    elif argv[0] == '--clear'   : opt_clear(argv[1])
+    elif argv[0] == '--reset'   : opt_reset(argv[1])
+    elif argv[0] == '--solve'   : opt_solve(['ic3ia','cvc4','z3'],argv[1])
+    elif argv[0] == '--solve-n' : opt_solve(['norn'],argv[1])
+    else : sys.exit('[ERROR::opt2] invalid opt=%s' %(argv[0]))
+
+def opt_build(opt) :
+    if   opt == '--k'  : buildMap('Kaluza','strlen')
+    elif opt == '--ks' : buildMap('Kaluza','sample')
+    elif opt == '--t'  : buildMap('testing','all')
+    else : sys.exit('[ERROR_opt_build] invalid opt=%s' %(opt))
+
+def opt_clear(opt) :
+    if   opt == '--k'  : 
+        call('rm experiment/Kaluza/strlen',shell=True)
+        call('rm -rf experiment/Kaluza/result/strlen',shell=True)
+    elif opt == '--ks' :
+        call('rm experiment/Kaluza/sample',shell=True)
+        call('rm -rf experiment/Kaluza/result/sample',shell=True)
+    elif opt == '--t'  :
+        call('rm experiment/testing/all',shell=True)
+        call('rm -rf experiment/testing/result/all',shell=True)
+    else :
+        sys.exit('[ERROR_opt_build] invalid opt=%s' %(opt))
+
+def opt_reset(opt) :
+    dgFileList = opt_scope(opt)
+    for dgFile in dgFileList :
+        call('rm %s/*.dot %s/*.blif %s/*.vmt' %(dgFile,dgFile,dgFile), shell=True)
+
+def opt_solve(solvers,opt) :
+    if   opt == '--k'  : 
         f = 'experiment/Kaluza/strlen'
+        benchmark = 'Kaluza'
         scope = 'strlen'
-    elif benchmark == 'testing' :
+    elif opt == '--ks' : 
+        f = 'experiment/Kaluza/sample'
+        benchmark = 'Kaluza'
+        scope = 'sample'
+    elif opt == '--t'  : 
         f = 'experiment/testing/all'
+        benchmark = 'testing'
         scope = 'all'
-    if enable_norn : solvers = ['ic3ia','cvc4','z3','norn']
-    else           : solvers = ['ic3ia','cvc4','z3']
-    solvers = ['ic3ia','cvc4','norn','z3']
+    else : sys.exit('[ERROR::opt_solve] invalid opt=%s' %(opt))
+    dgIdxList,dgFileList = getSplitMap(f)
     for solver in solvers :
         exp(benchmark,scope,dgIdxList,dgFileList,solver)
     ConsistencyChecking(bemchmark,scope,solvers)
 
-def single(fileName) :
-    dgFileList = [fileName]
-    regex2blif(dgFileList)
-    blif2vmt(dgFileList)
-    readCmd(dgFileList)
+def opt3(argv) :
+    if   argv[0] == '--execmd' : 
+        dgFileList = opt_scope(argv[1])
+        opt_execmd(argv[2],dgFileList)
+    elif argv[0] == '--single' :
+        dgFileList = [argv[1]]
+        opt_execmd(argv[2],dgFileList)
+    else : sys.exit('[ERROR::opt3] invalid opt=%s' %(argv[0]))
+
+def opt_scope(opt) :
+    if   opt == '--k'  : f = 'experiment/Kaluza/strlen'
+    elif opt == '--ks' : f = 'experiment/Kaluza/sample'
+    elif opt == '--t'  : f = 'experiment/testing/all'
+    else : sys.exit('[ERROR::opt_scope] invalid opt=%s' %(opt))
+    dgIdxList, dgFileList = getSplitMap(f)
+    return dgFileList
+
+def opt_execmd(opt,dgFileList) :
+    if   opt == '--r2b' : regex2blif(dgFileList)
+    elif opt == '--b2v' : blif2vmt(dgFileList)
+    elif opt == '--cmd' : readCmd(dgFileList)
+    elif opt == '--all' : 
+        regex2blif(dgFileList)
+        blif2vmt(dgFileList)
+        readCmd(dgFileList)
+    else : sys.exit('[ERROR:opt_execmd] invalid opt=%s' %(opt))
 
 if __name__ == '__main__' :
     init()
-    if   sys.argv[1] == 'build' : build()
-    elif sys.argv[1] == 'clear' : clear()
-    elif sys.argv[1] == 'cmd' :
-        if   sys.argv[2] == 'kaluza'  : buildCmd('Kaluza')
-        elif sys.argv[2] == 'testing' : buildCmd('testing')
-    elif sys.argv[1] == 'solve' :
-        if   sys.argv[2] == 'kaluza'  : solve('Kaluza')
-        elif sys.argv[2] == 'testing' : solve('testing')
-    elif sys.argv[1] == 'reset' :
-        if   sys.argv[2] == 'kaluza'  : reset('Kaluza')
-        elif sys.argv[2] == 'testing' : reset('testing')
-    elif sys.argv[1] == 'sample'   : kaluzaSample()
-    elif sys.argv[1] == 'resample' : kaluzaSample(True)
-    elif sys.argv[1] == 'single' : single(sys.argv[2])
-    else : print 'invalid option=%s' %(sys.argv[1])
+    print sys.argv
+    parse(sys.argv[1:])

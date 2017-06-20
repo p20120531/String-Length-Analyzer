@@ -88,6 +88,7 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
                     outFile << ")";
                 }
                 else {
+                    cout << "name=" << _name << " c0=" << _children[0]->_name << endl;
                     assert( (_children.size() == 1) );
                     assert( (_children[0]->_name == "true" || _children[0]->_name == "false") );
                     outFile << _name;
@@ -133,7 +134,8 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
 void VmtNode::merge(VmtNodeSet& v1, const VmtNodeSet& v2) 
 {
     for (VmtNodeSet::iterator it = v2.begin(); it != v2.end(); ++it)
-        v1.insert(*it);
+        if ((*it)->_name != "true" && (*it)->_name != "false")
+            v1.insert(*it);
 }
 
 bool VmtNode::hasParam()

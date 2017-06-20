@@ -232,12 +232,14 @@ void Aut::vmtTokenize(const string& s,vector<string>& paramList, vector<string>&
                     }
                 }
             }
+            /*
             #ifndef AUT_NDEBUG
-                cout << "vmtTokenize:: "<<tokenList[0] << "|" << tokenList[1] << "|" << endl;
+                cout << "[Aut::vmtTokenize] "<<tokenList[0] << "|" << tokenList[1] << "|" << endl;
                 for (size_t i = 0, s = paramList.size(); i < s; ++i)
                     cout << paramList[i] << " ";
                 cout << endl;
             #endif
+            */
             return;
         }
     }
@@ -260,6 +262,9 @@ VmtNode* Aut::buildVmtNode(const string& s, size_t bpos, size_t epos, Str2VmtNod
         size_t i = bpos + 1;
         while (s[i] != ' ') ++i;
         string root = s.substr(bpos+1,i-(bpos+1));
+        #ifndef AUT_NDEBUG
+            //cout << "[Aut::buildVmtNode] root = " << root << endl;
+        #endif
         if ( !isReservedString(root) ) {
             Str2VmtNodeMap::iterator it = vmap.find(root);
             assert((it != vmap.end())); // define-fun in topological order
@@ -269,27 +274,33 @@ VmtNode* Aut::buildVmtNode(const string& s, size_t bpos, size_t epos, Str2VmtNod
                 while (s[i] != ' ' && s[i] != ')') ++i;
                 string param = s.substr(j,i-j);
                 Str2VmtNodeMap::iterator jt = vmap.find(param);
-                const VmtType& type = jt->second->_type;
-                assert( (type != 3 && type >= 0 && type <= 5) );
-                switch (type) {
-                    case INPUT   :
-                        pNode->_paramList[0].insert(jt->second);
-                        break;
-                    case STATE   :
-                        pNode->_paramList[1].insert(jt->second);
-                        break;
-                    case LEN     :
-                        pNode->_paramList[2].insert(jt->second);
-                        break;
-                    case INPUT_N :
-                        pNode->_paramList[3].insert(jt->second);
-                        break;
-                    case STATE_N :
-                        pNode->_paramList[4].insert(jt->second);
-                        break;
-                    case LEN_N   :
-                        pNode->_paramList[5].insert(jt->second);
-                        break;
+                if (jt == vmap.end()) {
+                    assert( (param == "true" || param == "false") );
+                    pNode->_paramList[0].insert(new VmtNode(param));
+                }
+                else {
+                    const VmtType& type = jt->second->_type;
+                    assert( (type != 3 && type >= 0 && type <= 5) );
+                    switch (type) {
+                        case INPUT   :
+                            pNode->_paramList[0].insert(jt->second);
+                            break;
+                        case STATE   :
+                            pNode->_paramList[1].insert(jt->second);
+                            break;
+                        case LEN     :
+                            pNode->_paramList[2].insert(jt->second);
+                            break;
+                        case INPUT_N :
+                            pNode->_paramList[3].insert(jt->second);
+                            break;
+                        case STATE_N :
+                            pNode->_paramList[4].insert(jt->second);
+                            break;
+                        case LEN_N   :
+                            pNode->_paramList[5].insert(jt->second);
+                            break;
+                    }
                 }
             }
             if (pNode->haveSameParam(it->second)) {
@@ -370,8 +381,11 @@ void Aut::check(Aut* a1, Aut* a2, const size_t& lvarIdx)
 
 ///////////////////////////// Non-Static Member ///////////////////////////////
 
-void Aut::init()
+void Aut::init(const string& fileName)
 {
+    size_t bpos = fileName.find_last_of('/') + 1;
+    size_t epos = fileName.find_last_of('.');
+    _name = fileName.substr(bpos,epos-bpos);
     _stateVarNum = 0;
     _state.assign(2,VmtNodeList());
     _lvar.assign(2,VmtNodeList());
@@ -429,22 +443,31 @@ void Aut::collectPARAM()
 
 void Aut::renameDef()
 {
-    cout << "[Aut::renameDef]\n";
-    vector<string> PARAMname;
-    vector<string> PARAMsourcebefore;
-    for (size_t i = 0, size = _PARAMList.size(); i < size; ++i) {
-        PARAMname.push_back(_PARAMList[i]->_name);
-        PARAMsourcebefore.push_back(_PARAMList[i]->_source->_name);
-    }
+    #ifndef AUT_PARAM_NDEBUG
+        cout << "[Aut::renameDef]\n";
+        vector<string> PARAMname;
+        vector<string> PARAMsourcebefore;
+        for (size_t i = 0, size = _PARAMList.size(); i < size; ++i) {
+            PARAMname.push_back(_PARAMList[i]->_name);
+            PARAMsourcebefore.push_back(_PARAMList[i]->_source->_name);
+        }
+    #endif
     int dCnt = -1;
     for (size_t i = 0, size = _imdList.size(); i < size; ++i) {
         if (_imdList[i]->_name == "epsilon") continue;
         _imdList[i]->_name = "d" + itos(++dCnt);
     }
-    for (size_t i = 0, size = _PARAMList.size(); i < size; ++i) {
-        assert( (PARAMname[i] == _PARAMList[i]->_name) );
-        cout << PARAMname[i] << " " << _PARAMList[i] << " " << PARAMsourcebefore[i] << " -> " << _PARAMList[i]->_source->_name << endl;
-    }
+    clearParam();
+    buildParam();
+    _eUsed = (   epsilon->_flag == gflag) ? 1:0;
+    _lUsed = ( leftAngle->_flag == gflag) ? 1:0;
+    _rUsed = (rightAngle->_flag == gflag) ? 1:0;
+    #ifndef AUT_PARAM_NDEBUG
+        for (size_t i = 0, size = _PARAMList.size(); i < size; ++i) {
+            assert( (PARAMname[i] == _PARAMList[i]->_name) );
+            cout << PARAMname[i] << " " << _PARAMList[i] << " " << PARAMsourcebefore[i] << " -> " << _PARAMList[i]->_source->_name << endl;
+        }
+    #endif
 }
 
 void Aut::shiftStateVar(const size_t& delta)
@@ -520,8 +543,8 @@ void Aut::addParamNode(const string& name, VmtNode* source, Aut* a, const size_t
         n->_paramList[4].insert(a->_state[1][i]);
     }
     for (size_t i = 0, size = a->_lvar[0].size(); i < size; ++i) {
-        n->_paramList[1].insert(a->_lvar[0][i]);
-        n->_paramList[4].insert(a->_lvar[1][i]);
+        n->_paramList[2].insert(a->_lvar[0][i]);
+        n->_paramList[5].insert(a->_lvar[1][i]);
     }
     
     if (isExistential) {
@@ -562,6 +585,8 @@ void Aut::renameITOs2Aut(Aut* a1, Aut* a2)
 
 void Aut::integrate(Aut* a1, Aut* a2)
 {
+    assert( (_imdList.empty()) );
+    assert( (_itoList.empty()) );
     // Make sure _stateVarNum is already handled
     // _lvar may already be non-empty
     
@@ -598,25 +623,26 @@ void Aut::integrate(Aut* a1, Aut* a2)
     }
 
     // merge _imdList
-    assert( (_imdList.empty()) );
     _imdList = a1->_imdList;
     for (size_t i = 0, size = a2->_imdList.size(); i < size; ++i)
         _imdList.push_back(a2->_imdList[i]);
+    
     //TODO : merge _predBV _predIV _predList 
 
     // merget _PARAMList
-    assert( (_PARAMList.empty()) );
-    for (size_t i = 0, size = a1->_PARAMList.size(); i < size; ++i)
-        for (size_t j = 0, size1 = a2->_PARAMList.size(); j < size1; ++j)
-            assert( (a1->_PARAMList[i] != a2->_PARAMList[j]) );
-    _PARAMList = a1->_PARAMList;
-    for (size_t i = 0, size = a2->_PARAMList.size(); i < size; ++i)
-        _PARAMList.push_back(a2->_PARAMList[i]);
+    #ifndef AUT_PARAM_NDEBUG
+        assert( (_PARAMList.empty()) );
+        for (size_t i = 0, size = a1->_PARAMList.size(); i < size; ++i)
+            for (size_t j = 0, size1 = a2->_PARAMList.size(); j < size1; ++j)
+                assert( (a1->_PARAMList[i] != a2->_PARAMList[j]) );
+        _PARAMList = a1->_PARAMList;
+        for (size_t i = 0, size = a2->_PARAMList.size(); i < size; ++i)
+            _PARAMList.push_back(a2->_PARAMList[i]);
+    #endif
 }
 
 size_t Aut::addStateVar(const size_t& num)
 {
-    // _state and _vmap is handled in integrate()
     size_t svbpos = _stateVarNum;
     for (size_t i = 0; i < num; ++i) {
         ++_stateVarNum;
@@ -740,10 +766,13 @@ void Aut::parse(const char* fileName)
         paramList.clear();
         vmtTokenize(line,paramList,tokenList);
         #ifndef AUT_NDEBUG
-            cout << "line=" << line << endl;
-            cout << "parse::       " << tokenList[0] << "|" << tokenList[1] << "|" <<endl;
-            for (size_t i = 0, s = paramList.size(); i < s; ++i)
-                cout << paramList[i] << " ";
+            cout << "[Aut::parse] line = \"" << line << "\"" << endl;
+            cout << "[Aut::parse] tokenList = [ \"" << tokenList[0] << "\" , \"" << tokenList[1] << "\" ]" <<endl;
+            cout << "[Aut::parse] paramList = [ ";
+            for (size_t i = 0, s = paramList.size(); i < s; ++i) {
+                if (i > 0) cout << ", ";
+                cout << "\"" << paramList[i] << "\" ";
+            }
             cout << endl;
         #endif
         if (tokenList[0] == "epsilon" || tokenList[0] == "leftAngle" || tokenList[0] == "rightAngle") continue;
@@ -798,6 +827,8 @@ void Aut::parse(const char* fileName)
             VmtNode* newNode1 = new VmtNode(tokenList[0]);
             VmtNode* newNode2 = buildVmtNode(tokenList[1],0,tokenList[1].size(),_vmap);
             newNode1->addChild(newNode2);
+            // no need to build _paramList at the parse stage
+            /*
             for (size_t i = 0, s = paramList.size(); i < s; ++i) {
                 Str2VmtNodeMap::iterator jt = _vmap.find(paramList[i]);
                 assert((jt != _vmap.end()));
@@ -825,6 +856,7 @@ void Aut::parse(const char* fileName)
                         break;
                 }
             }
+            */
             //cout << "n1=" << newNode1->_name << " n2=" << newNode2->_name << endl;
              _vmap.insert(Str2VmtNode(tokenList[0],newNode1));
             if      (sCnt == 2) _imdList.push_back(newNode1);
@@ -832,8 +864,10 @@ void Aut::parse(const char* fileName)
         }
     }
     file.close();
-    collectPARAM();
-    printPARAMList();
+    #ifndef AUT_PARAM_NDEBUG
+        collectPARAM();
+        printPARAMList();
+    #endif
 }
 
 void Aut::write(const string& fileName)
@@ -844,18 +878,6 @@ void Aut::write(const string& fileName)
 void Aut::write(const char* fileName)
 {
     ofstream file(fileName);
-    #ifndef AUT_NDEBUG
-        cout << "[Aut::write] gflag=" << gflag << endl;
-    #endif
-    clearParam();
-    #ifndef AUT_NDEBUG
-        cout << "[Aut::write] gflag=" << gflag << endl;
-    #endif
-    buildParam();
-
-    bool eUsed = (   epsilon->_flag == gflag) ? 1:0;
-    bool lUsed = ( leftAngle->_flag == gflag) ? 1:0;
-    bool rUsed = (rightAngle->_flag == gflag) ? 1:0;
     
     writeDeclareFun(  input , 1, file );
     writeDeclareFun( _state , 1, file );
@@ -878,9 +900,9 @@ void Aut::write(const char* fileName)
 
     ++gflag;
 
-    if (eUsed) writeDefineFun( epsilon   , file );
-    if (lUsed) writeDefineFun( leftAngle , file );
-    if (rUsed) writeDefineFun( rightAngle, file );
+    if (_eUsed) writeDefineFun( epsilon   , file );
+    if (_lUsed) writeDefineFun( leftAngle , file );
+    if (_rUsed) writeDefineFun( rightAngle, file );
 
     for (size_t i = 0,size = _imdList.size(); i < size; ++i)
         writeDefineFun(_imdList[i],file);
@@ -943,6 +965,10 @@ void Aut::addlen(const string& lvarIdxStr)
     string lv  = lvar[0][lvarIdx]->_name;
     string lvn = lvar[1][lvarIdx]->_name;
 
+    #ifndef AUT_OP_NDEBUG
+        cout << "[Aut::addlen] " << _name << " lvar=" << lvarIdxStr << endl;
+    #endif
+
     // Add Length Constraint
     renameITO("tmpT", getT());
     defineFun("tmp1", "(and (not epsilon) (= " + lvn + " (+ " + lv + " 1)))", _imdList);
@@ -954,46 +980,67 @@ void Aut::addlen(const string& lvarIdxStr)
 void Aut::intersect(Aut* a1, Aut* a2)
 {
     check(a1,a2);
+    
+    #ifndef AUT_OP_NDEBUG
+        cout << "[Aut::intersect] " << a1->_name << " " << a2->_name << endl;
+        cout << "[Aut::intersect] origin  svar " << a1->_name << ":";
+        for (size_t i = 0, size = a1->_state[0].size(); i < size; ++i)
+            cout << " " << a1->_state[0][i]->_name;
+        cout << " " << a2->_name << ":";
+        for (size_t i = 0, size = a2->_state[0].size(); i < size; ++i)
+            cout << " " << a2->_state[0][i]->_name;
+    #endif
 
     // Shift State Variable of a2
     a2->shiftStateVar(a1->_stateVarNum);
     _stateVarNum = a1->_stateVarNum + a2->_stateVarNum;
     
+    #ifndef AUT_OP_NDEBUG
+        cout << "\n[Aut::intersect] shifted svar " << a1->_name << ":";
+        for (size_t i = 0, size = a1->_state[0].size(); i < size; ++i)
+            cout << " " << a1->_state[0][i]->_name;
+        cout << " " << a2->_name << ":";
+        for (size_t i = 0, size = a2->_state[0].size(); i < size; ++i)
+            cout << " " << a2->_state[0][i]->_name;
+        cout << endl;
+    #endif
+
     // Integrate _state, _lvar, _imdList into this
     integrate(a1,a2);
     
     // Rename ITO
     renameITOs2Aut(a1,a2);
 
-    // Add Epsilon Loop
-    defineFun("tmp1", "(and epsilon" + a1->CSNSEquiv(STATE) + ")", _imdList);
-    defineFun("tmp2", "(and epsilon" + a2->CSNSEquiv(STATE) + ")", _imdList);
-
     // Initial
-    defineFun("tmp4", "(and tmpI1 tmpI2)", _imdList);
-    defineFun("I", "(! tmp4 :init true)", _itoList);
+    defineFun( "tmp1", "(and tmpI1 tmpI2)", _imdList);
+    defineFun( "I", "(! tmp1 :init true)", _itoList );
     
     // Transition
-    defineFun("tmp3", "(and (or tmpT1 tmp1) (or tmpT2 tmp2))", _imdList);
-    defineFun("T", "(! tmp3 :trans true)", _itoList);
+    defineFun( "T1_epsilon", "(or tmpT1 (and epsilon" + a1->CSNSEquiv(STATE) + "))", _imdList);
+    defineFun( "T2_epsilon", "(or tmpT2 (and epsilon" + a2->CSNSEquiv(STATE) + "))", _imdList);
+    defineFun( "tmp2", "(and T1_epsilon T2_epsilon)", _imdList);
+    defineFun( "T", "(! tmp2 :trans true)", _itoList);
 
     // Accepting
-    defineFun("tmp5", "(and tmpO1 tmpO2)", _imdList);
-    defineFun("O", "(! (not tmp5) :invar-property 0)", _itoList);
+    defineFun( "tmp3", "(and tmpO1 tmpO2)", _imdList);
+    defineFun( "O", "(! (not tmp3) :invar-property 0)", _itoList);
 
     renameDef();
 }
 
 void Aut::concate(Aut* a1,Aut* a2)
 {
-    cout << "[Aut::concate]\n";
     check(a1,a2);
     
     _stateVarNum = (a1->_stateVarNum > a2->_stateVarNum)? a1->_stateVarNum : a2->_stateVarNum;
     size_t svbpos = addStateVar(1);
     string sa  = state[0][svbpos]->_name;
     string san = state[1][svbpos]->_name;
-    
+
+    #ifndef AUT_OP_NDEBUG
+        cout << "[Aut:concate] " << a1->_name << " " << a2->_name << " alpha=" << svbpos << endl;
+    #endif
+
     // Integrate _state, _lvar, _imdList into this
     integrate(a1,a2);
     
@@ -1008,7 +1055,7 @@ void Aut::concate(Aut* a1,Aut* a2)
     addParamNode( "I2_PARAM", a2->getI(), a2->_state[1]);
     defineFun( "tmp2", "(and (not " + sa + ") (not " + san + ") tmpT1" + a2->CSNSEquiv(LEN) + ")", _imdList);
     defineFun( "tmp3", "(and " + sa + " " + san + " tmpT2" + a1->CSNSEquiv(LEN) + ")", _imdList);
-    defineFun( "tmp4", "(and epsilon (not " + sa + ") " + san + " tmpO1 I2_PARAM" + a1->CSNSEquiv(LEN) + a2->CSNSEquiv(LEN) + ")", _imdList);
+    defineFun( "tmp4", "(and epsilon (not " + sa + ") " + san + " tmpO1 I2_PARAM" + CSNSEquiv(LEN) + ")", _imdList);
     defineFun( "tmp5", "(or tmp2 tmp3 tmp4)", _imdList);
     defineFun( "T", "(! tmp5 :trans true)", _itoList);
 
@@ -1022,25 +1069,29 @@ void Aut::concate(Aut* a1,Aut* a2)
 size_t Aut::mark()
 {
     check(this);
+    // construct the equivalence before adding svar
+    string sveq = CSNSEquiv(STATE);
+    string lveq = CSNSEquiv(LEN);
     size_t svbpos = addStateVar(1);
+    #ifndef AUT_OP_NDEBUG
+        cout << "[Aut::mark] " << _name << " alpha=" << svbpos << endl;
+    #endif
     string sa  = state[0][svbpos]->_name;
     string san = state[1][svbpos]->_name;
     
     renameITO1Aut();
     
     // Initial State
-    defineFun( "tmp1", "(and (not sa) tmpI1)", _imdList);
-    defineFun( "I", "(! tmp1 :init true)", _itoList);
+    defineFun( "tmp1", "(and (not " + sa + ") tmpI1)", _imdList, &Aut::setI );
 
     // Transition Relation
-    defineFun( "tmp2", "(and (= " + sa + " " + san + ") (not " + leftAngle->_name + ") (not " + rightAngle->_name + ") tmpT1)", _imdList);
+    defineFun( "tmp2", "(and (= " + sa + " " + san + ") (not " + leftAngle->_name + ") (not " + rightAngle->_name + ") tmpI1)", _imdList);
     defineFun( "tmp3", "(or (and (not " + sa + ") " + san + " " + leftAngle->_name + ") (and " + sa + " (not " + san + ") " + rightAngle->_name + "))", _imdList);
-    defineFun( "tmp4", "(or tmp2 (and" + CSNSEquiv(STATE) + CSNSEquiv(LEN) + " tmp3))", _imdList);
-    defineFun( "T", "(! tmp4 :trans true)", _itoList);
+    defineFun( "tmp4", "(and" + sveq + lveq + " tmp3)", _imdList);
+    defineFun( "tmp5", "(or tmp2 tmp4)", _imdList, &Aut::setT);
 
     // Accepting States
-    defineFun( "tmp5", "(and (not " + sa + ") tmpO1)", _imdList);
-    defineFun( "O", "(! (not tmp5) :invar-property 0)", _itoList);
+    defineFun( "tmp5", "(and (not " + sa + ") tmpO1)", _imdList, &Aut::setO );
 
     renameDef();
     return svbpos;
@@ -1053,6 +1104,10 @@ void Aut::replace_A4(Aut* a1, Aut* a2)
     a2->shiftStateVar(a1->_stateVarNum);
     _stateVarNum = (a1->_stateVarNum > a2->_stateVarNum)? a1->_stateVarNum : a2->_stateVarNum;
     size_t svbpos = addStateVar(1);
+    #ifndef AUT_OP_NDEBUG
+        cout << "[Aut::replace_A4] " << a1->_name << " " << a2->_name << " beta=" << svbpos << endl;
+    #endif
+    
     string sa  = state[0][svbpos]->_name;
     string san = state[1][svbpos]->_name;
     
@@ -1063,15 +1118,15 @@ void Aut::replace_A4(Aut* a1, Aut* a2)
     renameITOs2Aut(a1,a2);
 
     // Initial State
-    defineFun( "tmp1", "(and (not " + sa + ") tmpT2)", _imdList);
+    defineFun( "tmp1", "(and (not " + sa + ") tmpI2)", _imdList);
     defineFun( "I", "(! tmp1 :init true)", _itoList);
 
     // Transition Relation
-    defineFun( "tmp2", "(and (not " + sa + ") (not " + san + ") (not " + leftAngle->_name + ") (not" + rightAngle->_name + ") tmpT2)", _imdList);
+    defineFun( "tmp2", "(and (not " + sa + ") (not " + san + ") (not " + leftAngle->_name + ") (not " + rightAngle->_name + ") tmpT2)", _imdList);
     defineFun( "tmp3", "(and " + sa + " " + san + " (not " + leftAngle->_name + ") (not " + rightAngle->_name + ") tmpT1)", _imdList);
     defineFun( "tmp4", "(and (not " + sa + ") " + san + " " + leftAngle->_name + " tmpO2 tmpI1)", _imdList);
     defineFun( "tmp5", "(and " + sa + " (not " + san + ") " + rightAngle->_name + " tmpO1 tmpI2)", _imdList);
-    defineFun( "tmp6", "(or tmp2 tmp3 tmp4 tmp5 tmp6)", _imdList);
+    defineFun( "tmp6", "(or tmp2 tmp3 tmp4 tmp5)", _imdList);
     defineFun( "T", "(! tmp6 :trans true)", _itoList);
     
     // Accepting States
@@ -1093,6 +1148,12 @@ void Aut::replace(Aut* a1, Aut* a2, const size_t& alpha)
     string sa1  = state[0][svbpos]->_name;
     string san1 = state[1][svbpos]->_name;
     
+    string csnseq = a1->CSNSEquiv(STATE) + a1->CSNSEquiv(LEN);
+
+    #ifndef AUT_OP_NDEBUG
+        cout << "[Aut::replace] " << a1->_name << " " << a2->_name << " alpha=" << alpha << " gamma=" << svbpos << endl;
+    #endif
+    
     // Integrate _state, _lvar, _imdList into this
     integrate(a1,a2);
     
@@ -1113,8 +1174,8 @@ void Aut::replace(Aut* a1, Aut* a2, const size_t& alpha)
 
     
     defineFun( "tmp2", "(and (not " + sa0 + ") (not " + san0 + ") tmpT1 (not " + sa1 + ") (not " + san1 + ") tmpI2 I2_PARAM)", _imdList);
-    defineFun( "tmp3", "(and (not " + sa0 + ") (not " + san0 + ") epsilon" + a1->CSNSEquiv(STATE) + a1->CSNSEquiv(LEN) + " (not " + sa1 + ") " + san1 + " tmpI2 I2_PARAM)", _imdList);
-    defineFun( "tmp4", "(and (not " + sa0 + ") (not " + san0 + ")" + a1->CSNSEquiv(STATE) + a1->CSNSEquiv(LEN) + " " + sa1 + " " + san1 + " tmpT2)", _imdList);
+    defineFun( "tmp3", "(and (not " + sa0 + ") (not " + san0 + ") epsilon" + csnseq + " (not " + sa1 + ") (not " + san1 + ") tmpI2 I2_PARAM)", _imdList);
+    defineFun( "tmp4", "(and (not " + sa0 + ") (not " + san0 + ")" + csnseq + " " + sa1 + " " + san1 + " tmpT2)", _imdList);
     defineFun( "tmp5", "(and (not " + sa0 + ") " + san0 + " epsilon T1_PARAM_1 " + sa1 + " (not " + san1 + ") I2_PARAM tmpO2)", _imdList);
     defineFun( "tmp6", "(and " + sa0 + " " + san0 + " epsilon T1_PARAM_2 (not " + sa1 + ") (not " + san1 + ") tmpI2 I2_PARAM)", _imdList);
     defineFun( "tmp7", "(and " + sa0 + " (not " + san0 + ") epsilon T1_PARAM_3 (not " + sa1 + ") (not " + san1 + ") tmpI2 I2_PARAM)", _imdList);
@@ -1122,7 +1183,7 @@ void Aut::replace(Aut* a1, Aut* a2, const size_t& alpha)
     defineFun( "T", "(! tmp8 :trans true)", _itoList);
     
     // Accepting States
-    defineFun( "tmp9", "(and (not " + sa1 + ") tmpO1 tmpO2)", _imdList);
+    defineFun( "tmp9", "(and (not " + sa1 + ") tmpO1 tmpI2)", _imdList);
     defineFun( "O", "(! (not tmp9) :invar-property 0)", _itoList);
     
     renameDef();
@@ -1131,6 +1192,8 @@ void Aut::replace(Aut* a1, Aut* a2, const size_t& alpha)
 void Aut::prefix(const string& lvarIdxStr)
 {
     // Add Length Variable
+    string csnseq0 = CSNSEquiv(STATE);
+    string csnseq1 = CSNSEquiv(LEN);
     size_t lvarIdx = stoi(lvarIdxStr);
     check(this,lvarIdx);
     addLVar(lvarIdx);
@@ -1139,34 +1202,41 @@ void Aut::prefix(const string& lvarIdxStr)
     string san = state[1][svbpos]->_name;
     string lv  = lvar[0][lvarIdx]->_name;
     string lvn = lvar[1][lvarIdx]->_name;
-    
+
+    string lveq    = " (= " + lvn + " " + lv + ")";
+    string lvincre = " (= " + lvn + " (+ " + lv + " 1))";
+
+    #ifndef AUT_OP_NDEBUG
+        cout << "[Aut::prefix] " << _name << " alpha=" << svbpos << " lvar=" << lvarIdxStr << endl;
+    #endif
+
     renameITO1Aut();
 
     // Initial State
-    defineFun( "tmp1", "(and (not " + sa + ") tmpI1)", _imdList);
-    defineFun( "I", "(! tmp1 :init true)", _itoList);
+    defineFun( "tmp1", "(and (not " + sa + ") tmpI1)", _imdList, &Aut::setI );
 
     // Transition Relation
     size_t evbpos = addEVar();
     addParamNode("T1_PARAM",getT(),this,evbpos,1);
 
-    defineFun( "T1_epsilon", "(or tmpT1 (and epsilon" + CSNSEquiv(STATE) + "))", _imdList);
-    defineFun( "tmp2", "(or (and (not epsilon) (= " + lvn + " (+ " + lv + " 1))) (epsilon (= " + lvn + " " + lv + ")))", _imdList);
+    defineFun( "T1_epsilon", "(or tmpT1 (and epsilon" + csnseq0 + "))", _imdList);
+    
+    defineFun( "tmp2", "(or (and (not epsilon)" + lvincre + ") (and epsilon" + lveq + "))", _imdList);
     defineFun( "tmp3", "(and (not " + sa + ") (not " + san + ") T1_epsilon tmp2)", _imdList);
-    defineFun( "tmp4", "(and (not " + sa + ") " + san + " epsilon" + CSNSEquiv(STATE) + CSNSEquiv(LEN) + " (= " + lvn + " " + lv + "))", _imdList);
-    defineFun( "tmp5", "(and " + sa + " " + san + " epsilon T1_PARAM (= " + lvn + " " + lv + "))", _imdList);
-    defineFun( "tmp6", "(or tmp3 tmp4 tmp5)", _imdList);
-    defineFun( "T", "(! tmp6 :trans true)", _itoList);
+    defineFun( "tmp4", "(and (not " + sa + ") " + san + " epsilon" + csnseq0 + csnseq1 + lveq + ")", _imdList);
+    defineFun( "tmp5", "(and " + sa + " " + san + " epsilon T1_PARAM" + lveq + ")", _imdList);
+    defineFun( "tmp6", "(or tmp3 tmp4 tmp5)", _imdList, &Aut::setT );
     
     // Accepting States
-    defineFun( "tmp7", "(and " + sa + " tmpO1)", _imdList);
-    defineFun( "O", "(! (not tmp7) :invar-property 0)", _itoList);
+    defineFun( "tmp7", "(and " + sa + " tmpO1)", _imdList, &Aut::setO );
     renameDef();
 }
 
 void Aut::suffix(const string& lvarIdxStr)
 {
     // Add Length Variable
+    string csnseq0 = CSNSEquiv(STATE);
+    string csnseq1 = CSNSEquiv(LEN);
     size_t lvarIdx = stoi(lvarIdxStr);
     check(this,lvarIdx);
     addLVar(lvarIdx);
@@ -1175,35 +1245,41 @@ void Aut::suffix(const string& lvarIdxStr)
     string san = state[1][svbpos]->_name;
     string lv  = lvar[0][lvarIdx]->_name;
     string lvn = lvar[1][lvarIdx]->_name;
+    
+    string lveq    = " (= " + lvn + " " + lv + ")";
+    string lvincre = " (= " + lvn + " (+ 1 " + lv + "))";
+
+    #ifndef AUT_OP_NDEBUG
+        cout << "[Aut::suffix] " << _name << " alpha=" << svbpos << " lvar=" << lvarIdxStr << endl;
+    #endif
+    
+    renameITO1Aut();
 
     // Initial State
-    defineFun( "tmp1", "(and (not" + sa + ") tmpI1)", _imdList);
-    defineFun( "I", "(! tmp1 :init true)", _itoList);
+    defineFun( "tmp1", "(and (not " + sa + ") tmpI1)", _imdList, &Aut::setI );
     
     // Transition Relation
     size_t evbpos = addEVar();
-    VmtNode* n = new VmtNode("yEpsilon");
-    n->addChild(new VmtNode("and"));
+    VmtNode* ye = new VmtNode("yEpsilon");
+    ye->addChild(new VmtNode("and"));
     for (size_t i = evbpos; i < evbpos + inputBitNum; ++i) {
         VmtNode* notNode = new VmtNode("not");
         notNode->addChild(evar[0][i]);
-        n->_children[0]->addChild(notNode);
+        ye->_children[0]->addChild(notNode);
     }
-    _vmap.insert(Str2VmtNode("yEpsilon",n));
+    _vmap.insert(Str2VmtNode("yEpsilon",ye));
 
-    defineFun( "T1_epsilon", "(or tmpT1 (and epsilon" + CSNSEquiv(STATE) + "))", _imdList);
+    defineFun( "T1_epsilon", "(or tmpT1 (and epsilon" + csnseq0 + "))", _imdList);
     addParamNode("T1_PARAM",_imdList.back(),this,evbpos,1);
 
-    defineFun( "tmp2", "(and T1_PARAM (or (and (not yEpsilon) (= " + lvn + " (+ " + lv + " 1))) (and yEpsilon (= " + lvn + " " + lv + "))))", _imdList);
-    defineFun( "tmp3", "(and (not " + sa + ") (not " + san + ") epsilon tmp2)", _imdList);
-    defineFun( "tmp4", "(and (not " + sa + ") " + san + " epsilon" + CSNSEquiv(STATE) + CSNSEquiv(LEN) + " (= " + lvn + " " + lv + "))", _imdList);
-    defineFun( "tmp5", "(and " + sa + " " + san + " tmpT1 (= " + lvn + " " + lv + "))", _imdList);
-    defineFun( "tmp6", "(or tmp3 tmp4 tmp5)", _imdList);
-    defineFun( "T", "(! tmp6 :trans true)", _itoList);
+    defineFun( "tmp2", "(or (and (not yEpsilon)" + lvincre + ") (and yEpsilon" + lveq + "))", _imdList);
+    defineFun( "tmp3", "(and (not " + sa + ") (not " + san + ") epsilon T1_PARAM tmp2)", _imdList);
+    defineFun( "tmp4", "(and (not " + sa + ") " + san + " epsilon" + csnseq0 + csnseq1 + lveq + ")", _imdList);
+    defineFun( "tmp5", "(and " + sa + " " + san + " tmpT1" + lveq + ")", _imdList);
+    defineFun( "tmp6", "(or tmp3 tmp4 tmp5)", _imdList, &Aut::setT );
     
     // Accepting States
-    defineFun( "tmp7", "(and " + sa + " tmpO1)", _imdList);
-    defineFun( "O", "(! (not tmp7) :invar-property 0)", _itoList);
+    defineFun( "tmp7", "(and " + sa + " tmpO1)", _imdList, &Aut::setO );
     
     renameDef();
 }
@@ -1249,42 +1325,40 @@ void Aut::addpred(const string& fileName)
         _predIV[1][i]->_name = rename + ".next";
     }
 
-    // or predicates together
-    VmtNode* oNode = getO();
-    VmtNode* newNode1 = new VmtNode("O_addpred");
-    VmtNode* and1 = new VmtNode("and");
-    and1->addChild(oNode);
+    // and predicates together
+    VmtNode* n0   = new VmtNode("O_addpred");
+    VmtNode* and0 = new VmtNode("and");
+    n0->addChild(and0);
+    and0->addChild(getO());
     for (size_t i = 0, size = _predList.size(); i < size; ++i) {
         _imdList.push_back(_predList[i]);
-        and1->addChild(_predList[i]);
+        and0->addChild(_predList[i]);
     }
-    newNode1->addChild(and1);
-    _imdList.push_back(newNode1);
-    setO(newNode1);
+    _imdList.push_back(n0);
+    setO(n0);
     
     // add initial condiditon for length variables (i.e. (= nk 0) )
-    VmtNode* iNode = getI();
-    VmtNode* newNode2 = new VmtNode("I_addpred");
-    VmtNode* and2 = new VmtNode("and");
-    and2->addChild(iNode);
-    int eCnt = -1;
+    VmtNode* n1   = new VmtNode("I_addpred");
+    VmtNode* and1 = new VmtNode("and");
+    n1->addChild(and1);
+    and1->addChild(getI());
     for (size_t i = 0, size = _lvar[0].size(); i < size; ++i) {
-        VmtNode* newNode3 = new VmtNode( "e" + itos(++eCnt) , NOPARAM );
-        VmtNode* newNode4 = new VmtNode("=");
-        newNode4->addChild(_lvar[0][i]);
-        newNode4->addChild(new VmtNode("0"));
-        newNode3->addChild(newNode4);
-        _imdList.push_back(newNode3);
-        and2->addChild(newNode3);
+        VmtNode* eq = new VmtNode("=");
+        eq->addChild(new VmtNode("0"));
+        eq->addChild(_lvar[0][i]);
+        and1->addChild(eq);
     }
-    newNode2->addChild(and2);
-    _imdList.push_back(newNode2);
-    setI(newNode2);
+    _imdList.push_back(n1);
+    setI(n1);
+    // not calling renameDef
+    renameDef();
 }
 
 void Aut::parseDef(const string& line, Str2VmtNodeMap& vmap)
 {
-    cout << "line=" << line << endl;
+    #ifndef AUT_OP_NDEBUG
+        cout << "[Aut::parseDef] line = \"" << line << "\"" << endl;
+    #endif
     size_t i = 0, j = 0;
     string name, nameNxt, type;
     while (line[i] != ' ') ++i;
@@ -1296,8 +1370,11 @@ void Aut::parseDef(const string& line, Str2VmtNodeMap& vmap)
     j = i;
     while (line[i] != ')') ++i;
     type = line.substr(j,i-j);
-    cout << "name=" << name << " nameNxt=" << nameNxt << " type=" << type << endl;
     
+    #ifndef AUT_OP_NDEBUG
+        cout << "[Aut::parseDef] name=" << name << " nameNxt=" << nameNxt << " type=" << type << endl;
+    #endif
+
     VmtNode* newNode0 = new VmtNode(name);
     VmtNode* newNode1 = new VmtNode(nameNxt);
     vmap.insert(Str2VmtNode(name,newNode0));
@@ -1316,12 +1393,13 @@ void Aut::parseDef(const string& line, Str2VmtNodeMap& vmap)
 
 void Aut::parsePred(const string& line, size_t& pCnt, Str2VmtNodeMap& vmap)
 {
-    //cout << "line=" << line << endl;
+    #ifndef AUT_OP_NDEBUG
+        cout << "[Aut::parsePred] line = \"" << line << "\"" << endl;
+    #endif
     if (line[8] != '(') {
         size_t i = 8;
         while (line[i] != ')') ++i;
         string var = line.substr(8,i-8);
-        cout << "var=" << var << endl;
         Str2VmtNodeMap::iterator it = vmap.find(var);
         assert((it != vmap.end()));
         defineFun( "p" + itos(pCnt++), NOPARAM, var, _predList, vmap);
@@ -1329,7 +1407,6 @@ void Aut::parsePred(const string& line, size_t& pCnt, Str2VmtNodeMap& vmap)
     else {
         if ( *(line.rbegin()) == ')') {
             string body = line.substr(8,line.size()-1-8);
-            cout << "regular=" << body << endl;
             defineFun( "p" + itos(pCnt++), NOPARAM, body, _predList, vmap);
         }
         else {

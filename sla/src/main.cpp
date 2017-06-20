@@ -207,6 +207,24 @@ int main(int argc, char* argv[]) {
         a3->concate(a1,a2);
         a3->write(argv[4]);
     }
+    else if (input == "mark") {
+        Aut* a1 = new Aut(argv[2]);
+        size_t alpha = a1->mark();
+        cout << "alpha = " << alpha << endl;
+        a1->write(argv[3]);
+    }
+    else if (input == "replace_A4") {
+        Aut* a1 = new Aut(argv[2]);
+        Aut* a2 = new Aut(argv[3]);
+        Aut* a3 = new Aut(a1,a2,REPLACE_A4);
+        a3->write(argv[4]);
+    }
+    else if (input == "replace") {
+        Aut* a1 = new Aut(argv[2]);
+        Aut* a2 = new Aut(argv[3]);
+        Aut* a3 = new Aut(a1,a2,0,REPLACE);
+        a3->write(argv[4]);
+    }
     else
         cout << "invalid option=" << input << endl;
     //cout << "at main"<< endl;

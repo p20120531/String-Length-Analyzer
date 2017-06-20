@@ -26,6 +26,8 @@
 #define TGRAPH_NDEBUG
 #define VMTNODE_NDEBUG
 #define AUT_NDEBUG
+#define AUT_PARAM_NDEBUG
+//#define AUT_OP_NDEBUG
 #define AUTMGR_NDEBUG
 using namespace std;
 
@@ -142,22 +144,22 @@ class Aut{
             //printSpecialAlphabet(RIGHT_ANGLE);
         }
         Aut(const char* fileName){ 
-            init();
+            init(fileName);
             parse(fileName);
         }
         Aut(const string& fileName){ 
-            init();
+            init(fileName);
             parse(fileName.c_str()); 
         }
         Aut ( const string& fileName, const string& lvarIdxStr, const AutOpType& type ){
             assert( (type == ADDLEN) );
-            init();
+            init(fileName);
             parse(fileName.c_str());
             addlen(lvarIdxStr);
         }
         Aut ( const string& fileName, const string& n0, const string& n1, const AutOpType& type ) {
             assert( (type == SUBSTR) );
-            init();
+            init(fileName);
             parse(fileName.c_str());
             substr(n0,n1);
         }
@@ -198,16 +200,18 @@ class Aut{
         void            writeNextFun(const VarList&, int&, ofstream&);
         void            writeDefineFun(VmtNode*,ofstream&,const bool& needParam=1);
         // Operations
+        // Unary 
         void            addlen(const string&);
-        void            intersect(Aut*,Aut*);
-        void            concate(Aut*,Aut*);
-        void            replace(Aut*,Aut*,const size_t&);
-        void            replace_A4(Aut*,Aut*);
         size_t          mark();
         void            prefix(const string&);
         void            suffix(const string&);
         void            substr(const string&, const string&);
         void            addpred(const string&);
+        // Binary
+        void            intersect(Aut*,Aut*);
+        void            concate(Aut*,Aut*);
+        void            replace(Aut*,Aut*,const size_t&);
+        void            replace_A4(Aut*,Aut*);
         string          CSNSEquiv(const VmtType&);
     private:
         // Static Member
@@ -232,7 +236,7 @@ class Aut{
         static VmtNode* leftAngle;
         static VmtNode* rightAngle;
         // Non-Static Member Function
-        void            init();
+        void            init(const string& fileName="NONAME");
         void            clearParam();
         void            buildParam();
         void            collectPARAM();
@@ -271,6 +275,9 @@ class Aut{
         VmtNodeList     _PARAMList;
         Str2VmtNodeMap  _vmap;
         size_t          _stateVarNum;
+        bool            _eUsed;
+        bool            _lUsed;
+        bool            _rUsed;
         string          _name;
 };
 
