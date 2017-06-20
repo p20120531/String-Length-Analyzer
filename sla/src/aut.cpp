@@ -248,7 +248,7 @@ void Aut::vmtTokenize(const string& s,vector<string>& paramList, vector<string>&
 //TODO::refactor this function
 VmtNode* Aut::buildVmtNode(const string& s, size_t bpos, size_t epos, Str2VmtNodeMap& vmap)
 {
-    //cout << s.substr(bpos,epos-bpos) << endl;
+    cout << s.substr(bpos,epos-bpos) << endl;
     if (s[bpos] != '(') {
         string name = s.substr(bpos,epos-bpos);
         Str2VmtNodeMap::iterator it = vmap.find(name);
@@ -304,11 +304,12 @@ VmtNode* Aut::buildVmtNode(const string& s, size_t bpos, size_t epos, Str2VmtNod
                 }
             }
             if (pNode->haveSameParam(it->second)) {
-                //cout << root << " same" << endl;
+                cout << "[Aut::buildVmtNode] " << root << " same" << endl;
+
                 return it->second;
             }
             else {
-                //cout << "[Aut::buildVmtNode] ";
+                cout << "[Aut::buildVmtNode] " << root << " PARAM" << endl;
                 return pNode;
             }
         }
@@ -624,6 +625,13 @@ void Aut::integrate(Aut* a1, Aut* a2)
         _vmap.insert(Str2VmtNode(lvar[1][*it]->_name,lvar[1][*it]));
     }
 
+    // push evar
+    for (size_t i = 0; i < evarNum; ++i) {
+        _evar[0].push_back(evar[0][i]);
+        _evar[1].push_back(evar[1][i]);
+        _vmap.insert(Str2VmtNode(evar[0][i]->_name,evar[0][i]));
+    }
+
     // merge _imdList
     _imdList = a1->_imdList;
     for (size_t i = 0, size = a2->_imdList.size(); i < size; ++i)
@@ -827,36 +835,33 @@ void Aut::parse(const char* fileName)
             VmtNode* newNode1 = new VmtNode(tokenList[0]);
             VmtNode* newNode2 = buildVmtNode(tokenList[1],0,tokenList[1].size(),_vmap);
             newNode1->addChild(newNode2);
-            // no need to build _paramList at the parse stage
-            /*
             for (size_t i = 0, s = paramList.size(); i < s; ++i) {
                 Str2VmtNodeMap::iterator jt = _vmap.find(paramList[i]);
                 assert((jt != _vmap.end()));
                 const VmtType& type = jt->second->_type;
                 switch (type) {
                     case INPUT   :
-                        newNode1->_paramList[0].insert(jt->second);
+                        newNode1->_paramList[0].push_back(jt->second);
+                        break;
+                    case EXIST   :
+                        newNode1->_paramList[1].push_back(jt->second);
                         break;
                     case STATE   :
-                        newNode1->_paramList[1].insert(jt->second);
+                        newNode1->_paramList[2].push_back(jt->second);
                         break;
                     case LEN     :
-                        newNode1->_paramList[2].insert(jt->second);
-                        break;
-                    case INPUT_N :
-                        newNode1->_paramList[3].insert(jt->second);
+                        newNode1->_paramList[3].push_back(jt->second);
                         break;
                     case STATE_N :
-                        newNode1->_paramList[4].insert(jt->second);
+                        newNode1->_paramList[4].push_back(jt->second);
                         break;
                     case LEN_N   :
-                        newNode1->_paramList[5].insert(jt->second);
+                        newNode1->_paramList[5].push_back(jt->second);
                         break;
                     default    :
                         break;
                 }
             }
-            */
             //cout << "n1=" << newNode1->_name << " n2=" << newNode2->_name << endl;
              _vmap.insert(Str2VmtNode(tokenList[0],newNode1));
             if      (sCnt == 2) _imdList.push_back(newNode1);
@@ -864,9 +869,6 @@ void Aut::parse(const char* fileName)
         }
     }
     file.close();
-    // in case of the need of shiftSVar
-    clearParam();
-    buildParam();
     #ifndef AUT_PARAM_NDEBUG
         collectPARAM();
         printPARAMList();

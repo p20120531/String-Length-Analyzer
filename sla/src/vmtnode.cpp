@@ -58,7 +58,6 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
             assert( (_children.empty()) );
             assert( (_source->_flag == gflag) );
             assert( (hasParam()) );
-            assert( (_paramList[3].empty()) );
             outFile << "(" << _source->_name;
             for (size_t i = 0; i < 6; ++i) {
                 for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
@@ -69,7 +68,6 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
         else {
             if (!_children.empty()) {
                 if ( hasParam() ) {
-                    assert( (_paramList[3].empty()) );
                     outFile << "(" << _name;
                     for (size_t i = 0; i < 6; ++i) {
                         for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
@@ -95,7 +93,6 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
         assert( (_children.empty()) );
         assert( (_source->_flag == gflag) );
         assert( (hasParam()) );
-        assert( (_paramList[3].empty()) );
         outFile << "(" << _source->_name;
         for (size_t i = 0; i < 6; ++i) {
             for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
@@ -210,10 +207,10 @@ void VmtNode::buildParam(const size_t& level)
                 }
             }
         }
-        if (!count[0].empty()) assert( (count[1].empty()) );
-        if (!count[1].empty()) assert( (count[0].empty()) );
-        assert( (count[2].size() == count[4].size()) );
-        assert( (count[3].size() == count[5].size()) );
+        //if (!count[0].empty()) assert( (count[1].empty()) );
+        //if (!count[1].empty()) assert( (count[0].empty()) );
+        //assert( (count[2].size() == count[4].size()) );
+        //assert( (count[3].size() == count[5].size()) );
         
         for (set<size_t>::iterator it = count[0].begin(); it != count[0].end(); ++it) {
             _paramList[0].push_back(Aut::input[0][*it]);
@@ -238,11 +235,12 @@ void VmtNode::buildParam(const size_t& level)
         for (set<size_t>::iterator it = count[5].begin(); it != count[5].end(); ++it) {
             _paramList[5].push_back(Aut::lvar[1][*it]);
         }
-
+        /*
         for (size_t i = 0, size = _paramList[2].size(); i < size; ++i)
             assert( (_paramList[2][i]->_idx == _paramList[4][i]->_idx) );
         for (size_t i = 0, size = _paramList[3].size(); i < size; ++i)
             assert( (_paramList[3][i]->_idx == _paramList[5][i]->_idx) );
+        */
     }
 }
 

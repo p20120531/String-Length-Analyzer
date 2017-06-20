@@ -232,14 +232,14 @@ void AutMgr::readCmdFile(const char* fileName)
             Aut* a3 = new Aut( path + tokenList[3] + ".vmt" );
             Aut* ah = new Aut( path + tokenList[4] + ".vmt" );
             size_t alpha = a1->mark();
-            a1->write( path + tokenList[1] + "_m.vmt" );
+            //a1->write( path + tokenList[1] + "_m.vmt" );
             //Aut* a4 = new Aut();
             //a4->replace_A4(a2,ah);
             Aut* a4 = new Aut( a2, ah, REPLACE_A4 );
-            a4->write( path + "T1.vmt" );
+            //a4->write( path + "T1.vmt" );
             //a5->intersect(a1,a4);
             Aut* a5 = new Aut( a1, a4, INTERSECT );
-            a5->write( path + "T2.vmt" );
+            //a5->write( path + "T2.vmt" );
             //cur     = new Aut( a5, a3, alpha, REPLACE);
             //cur->replace(a5,a3,alpha);
             cur     = new Aut( a5, a3, alpha, REPLACE);

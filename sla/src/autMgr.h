@@ -27,7 +27,7 @@
 #define VMTNODE_NDEBUG
 #define AUT_NDEBUG
 #define AUT_PARAM_NDEBUG
-//#define AUT_OP_NDEBUG
+#define AUT_OP_NDEBUG
 #define AUTMGR_NDEBUG
 using namespace std;
 
