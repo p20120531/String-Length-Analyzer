@@ -40,7 +40,7 @@ class AutMgr;
 // PARAM   : has _paramList different from _source
 // NOPARAM : no need to specify _paramList
 enum VmtType {
-    INPUT, STATE, LEN, INPUT_N, STATE_N, LEN_N, PARAM, NOPARAM, EXIST, OTHER
+    INPUT, EXIST, STATE, LEN, STATE_N, LEN_N, PARAM, OTHER
 };
 
 enum AType {
@@ -55,7 +55,6 @@ typedef vector<TGEdge*>       TGEdgeList;
 typedef vector<VmtNode*>      VmtNodeList;
 typedef set<VmtNode*>         VmtNodeSet;
 typedef map<size_t,string>    CubeMap;
-typedef vector<VmtNodeSet>    ParamSetList;
 typedef vector<VmtNodeList>   VarList;
 typedef pair<string,VmtNode*> Str2VmtNode;
 typedef map<string,VmtNode*>  Str2VmtNodeMap;
@@ -106,30 +105,29 @@ class VmtNode{
     friend class AutMgr;
     public:
         VmtNode (const string& name,const VmtType& type=OTHER,const size_t& idx=0): _name(name) 
-            {_paramList.assign(6,VmtNodeSet()); _type = type; _idx = idx; _source=0; _flag = 0;}
+            {_paramList.assign(6,VmtNodeList()); _type = type ; _idx = idx; _source=0; _flag = 0;}
         VmtNode (const string& name, VmtNode* source) : _name(name), _source(source)
-            {_paramList.assign(6,VmtNodeSet()); _type = PARAM; _idx = 0; _flag = 0;}
-        void        print(const size_t&);
-        void        write(const size_t&,ofstream&);
-        const       string& getName()            {return _name;}
-        void        setType(const VmtType& type) {_type = type;}
-        string      getTypeStr();
+            {_paramList.assign(6,VmtNodeList()); _type = PARAM; _idx = 0; _flag = 0;}
+        void         print(const size_t&);
+        void         write(const size_t&,ofstream&);
+        const        string& getName()            {return _name;}
+        void         setType(const VmtType& type) {_type = type;}
+        string       getTypeStr();
     private:
-        void        merge(VmtNodeSet&, const VmtNodeSet&);
-        bool        hasParam();
-        bool        haveSameParam(VmtNode*);
-        void        addChild(VmtNode*);
-        void        clearParam(const size_t&);
-        void        buildParam(const size_t&);
-        void        collectPARAM(VmtNodeList&);
-        void        writeParam(ofstream&);
-        void        shiftStateVar(const size_t&);
+        bool         hasParam();
+        bool         haveSameParam(VmtNode*);
+        void         addChild(VmtNode*);
+        void         clearParam(const size_t&);
+        void         buildParam(const size_t&);
+        void         collectPARAM(VmtNodeList&);
+        void         writeParam(ofstream&);
+        void         shiftStateVar(const size_t&);
         string       _name;
         size_t       _idx;
         VmtType      _type;
         VmtNodeList  _children;
         VmtNode*     _source;   // used for _type == PARAM
-        ParamSetList _paramList; // input/state/lvar
+        VarList      _paramList; // input/state/lvar
         size_t       _flag;
 };
 

@@ -6,12 +6,13 @@ import numpy as np
 from subprocess import call
 from os import listdir
 from os.path import isdir, isfile, join
+'''
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpat
 from matplotlib.font_manager import FontProperties
-
+'''
 ############################## Global Variable ###############################
 DPI                     = 200
 ############################## Benchmark Directory ###########################
@@ -564,7 +565,7 @@ def opt1(argv) :
                 --solve-n    < --k | --ks | --t >
                 --plot       < --k | --ks | --t >
                 --execmd     < --k | --ks | --t > < --r2b | --b2v | --cmd | --all >
-                --single     <    dgFileName    > < --r2b | --b2v | --cmd | --all >
+                --single     <    dgFileName    > < --r2b | --b2v | --cmd | --all | --reset >
               '''
     else :
         sys.exit('[ERROR::opt1] invalid opt=%s' %(argv[0]))
@@ -625,8 +626,11 @@ def opt3(argv) :
         dgFileList = opt_scope(argv[1])
         opt_execmd(argv[2],dgFileList)
     elif argv[0] == '--single' :
-        dgFileList = [argv[1]]
-        opt_execmd(argv[2],dgFileList)
+        if argv[2] == '--reset' :
+            call('rm %s/*.dot %s/*.blif %s/*.vmt' %(argv[1],argv[1],argv[1]), shell=True)
+        else :
+            dgFileList = [argv[1]]
+            opt_execmd(argv[2],dgFileList)
     else : sys.exit('[ERROR::opt3] invalid opt=%s' %(argv[0]))
 
 def opt_scope(opt) :
@@ -649,5 +653,4 @@ def opt_execmd(opt,dgFileList) :
 
 if __name__ == '__main__' :
     init()
-    print sys.argv
     parse(sys.argv[1:])
