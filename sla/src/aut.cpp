@@ -11,9 +11,11 @@ size_t   Aut::stateBitNum = INIT_STATE_BIT_NUM;
 size_t   Aut::lvarNum     = INIT_LVAR_NUM;
 size_t   Aut::evarNum     = 0;
 VarList  Aut::input       = Aut::initVarList(INPUT);
+VarList  Aut::evar        = Aut::initVarList(EXIST);
 VarList  Aut::state       = Aut::initVarList(STATE);
 VarList  Aut::lvar        = Aut::initVarList(LEN);
-VarList  Aut::evar        = Aut::initVarList(EXIST);
+VmtNode* Aut::const0      = Aut::initConst(CONST0);
+VmtNode* Aut::const1      = Aut::initConst(CONST1);
 VmtNode* Aut::epsilon     = Aut::initSpecialAlphabet(EPSILON);
 VmtNode* Aut::leftAngle   = Aut::initSpecialAlphabet(LEFT_ANGLE);
 VmtNode* Aut::rightAngle  = Aut::initSpecialAlphabet(RIGHT_ANGLE);
@@ -27,6 +29,14 @@ void Aut::test() {
         expandVarList(LEN);
     }
 }
+
+VmtNode* Aut::initConst(const VmtType& type)
+{
+    assert( (type == CONST0 || type == CONST1) );
+    if (type == CONST0) return new VmtNode("false",CONST0);
+    else                return new VmtNode("true" ,CONST1);
+}
+
 VmtNode* Aut::initSpecialAlphabet(const AType& type)
 {
     string name;
@@ -100,8 +110,45 @@ VarList Aut::initVarList(const VmtType& type)
     return v;
 }
 
+void Aut::printStaticDataMember() 
+{
+    cout << "[Aut::printStaticDataMember] inputBitNum = " << inputBitNum << endl;
+    for (size_t i = 0; i < inputBitNum; ++i) {
+        input[0][i]->print(0);
+        input[1][i]->print(0);
+    }
+    cout << "\n[Aut::printStaticDataMember] stateBitNum = " << stateBitNum << endl;
+    for (size_t i = 0; i < stateBitNum; ++i) {
+        state[0][i]->print(0);
+        state[1][i]->print(0);
+    }
+    cout << "\n[Aut::printStaticDataMember] lvarNum = " << lvarNum << endl;
+    for (size_t i = 0; i < lvarNum; ++i) {
+        lvar[0][i]->print(0);
+        lvar[1][i]->print(0);
+    }
+    cout << "[Aut::printStaticDataMember] const0\n";
+    const0->print(0);
+    cout << "[Aut::printStaticDataMember] const1\n";
+    const1->print(0);
+    cout << "[Aut::printStaticDataMember] epsilon\n";
+    epsilon->print(0);
+    cout << "[Aut::printStaticDataMember] leftAngle\n";
+    leftAngle->print(0);
+    cout << "[Aut::printStaticDataMember] rightAngle\n";
+    rightAngle->print(0);
+}
+
 void Aut::expandVarList(const VmtType& type)
 {
+    assert( (type == EXIST || type == STATE || type == LEN) );
+    if (type == EXIST) {
+        for (size_t i = evarNum; i < evarNum + inputBitNum; ++i) {
+            evar[0].push_back(new VmtNode( "y" + itos(i)           , EXIST , i ));
+            evar[1].push_back(new VmtNode( "y" + itos(i) + ".next" , OTHER , i ));
+        }
+        evarNum += inputBitNum;
+    }
     if (type == STATE) {
         VmtNodeList v0 = state[0];
         VmtNodeList v1 = state[1];
@@ -116,12 +163,12 @@ void Aut::expandVarList(const VmtType& type)
         }
         assert((isConsistent));
         for (size_t i = stateBitNum; i < stateBitNum * 2; ++i) {
-            state[0][i] = new VmtNode( "s"+itos(i) , STATE , i );
+            state[0][i] = new VmtNode( "s"+itos(i)         , STATE   , i );
             state[1][i] = new VmtNode( "s"+itos(i)+".next" , STATE_N , i );
         }
         stateBitNum *= 2;
     }
-    else if (type == LEN) {
+    else {
         VmtNodeList v0 = lvar[0];
         VmtNodeList v1 = lvar[1];
         lvar[0].resize(lvarNum * 2);
@@ -135,56 +182,16 @@ void Aut::expandVarList(const VmtType& type)
         }
         assert((isConsistent));
         for (size_t i = lvarNum; i < lvarNum * 2; ++i) {
-            lvar[0][i] = new VmtNode("n"+itos(i),LEN,i);
-            lvar[1][i] = new VmtNode("n"+itos(i)+".next",LEN_N,i);
+            lvar[0][i] = new VmtNode( "n"+itos(i)         , LEN   , i );
+            lvar[1][i] = new VmtNode( "n"+itos(i)+".next" , LEN_N , i );
         }
         lvarNum *= 2;
-    }
-    else {
-        cout << "[ERROR::expandVarList] invalid type" << endl;
-    }
-}
-
-void Aut::printVarList() 
-{
-    cout << "inputBitNum = " << inputBitNum << endl;
-    for (size_t i = 0; i < inputBitNum; ++i) {
-        input[0][i]->print(0);
-        input[1][i]->print(0);
-    }
-    cout << "\nstateBitNum = " << stateBitNum << endl;
-    for (size_t i = 0; i < stateBitNum; ++i) {
-        state[0][i]->print(0);
-        state[1][i]->print(0);
-    }
-    cout << "\nlvarNum = " << lvarNum << endl;
-    for (size_t i = 0; i < lvarNum; ++i) {
-        lvar[0][i]->print(0);
-        lvar[1][i]->print(0);
-    }
-}
-
-void Aut::printSpecialAlphabet(const AType& type)
-{
-    switch (type) {
-        case EPSILON     : cout << "epsilon\n";
-                           epsilon->print(0);
-                           break;
-        case LEFT_ANGLE  : cout << "leftAngle\n";
-                           leftAngle->print(0);
-                           break;
-        case RIGHT_ANGLE : cout << "rightAngle\n";
-                           rightAngle->print(0);
-                           break;
-        default          : break;
     }
 }
 
 void Aut::vmtTokenize(const string& s,vector<string>& paramList, vector<string>& tokenList)
 {
     size_t size = s.size();
-    // Handle 
-    //if (s[size-1] == 13) --size;
     size_t state = 0;
     for (size_t i = 0; i < size; ++i) {
         if (state == 0) {
@@ -248,65 +255,71 @@ void Aut::vmtTokenize(const string& s,vector<string>& paramList, vector<string>&
 //TODO::refactor this function
 VmtNode* Aut::buildVmtNode(const string& s, size_t bpos, size_t epos, Str2VmtNodeMap& vmap)
 {
-    cout << s.substr(bpos,epos-bpos) << endl;
+    #ifndef AUT_NDEBUG
+        cout << "[Aut::buildVmtNode] line = " << s.substr(bpos,epos-bpos) << endl;
+    #endif
     if (s[bpos] != '(') {
         string name = s.substr(bpos,epos-bpos);
         Str2VmtNodeMap::iterator it = vmap.find(name);
         if (it != vmap.end()) return it->second;
-        else {
-            VmtNode* newNode = new VmtNode(name);
-            return newNode;
-        }
+        else                  return new VmtNode(name);
     }
     else {
         size_t i = bpos + 1;
         while (s[i] != ' ') ++i;
         string root = s.substr(bpos+1,i-(bpos+1));
         #ifndef AUT_NDEBUG
-            //cout << "[Aut::buildVmtNode] root = " << root << endl;
+            cout << "[Aut::buildVmtNode] root = " << root << endl;
         #endif
         if ( !isReservedString(root) ) {
             Str2VmtNodeMap::iterator it = vmap.find(root);
             assert((it != vmap.end())); // define-fun in topological order
-            VmtNode* pNode = new VmtNode(root,it->second);
+            VmtNode* source = it->second;
+            VmtNode* pNode  = new VmtNode(root,source);
             while(s[i] != ')') {
                 size_t j = ++i;
                 while (s[i] != ' ' && s[i] != ')') ++i;
                 string param = s.substr(j,i-j);
                 Str2VmtNodeMap::iterator jt = vmap.find(param);
-                if (jt == vmap.end()) {
-                    assert( (param == "true" || param == "false") );
-                    pNode->_paramList[0].push_back(new VmtNode(param));
-                }
-                else {
-                    const VmtType& type = jt->second->_type;
-                    assert( (type >= 0 && type <= 5) );
-                    switch (type) {
-                        case INPUT   :
-                            pNode->_paramList[0].push_back(jt->second);
-                            break;
-                        case EXIST   :
-                            pNode->_paramList[1].push_back(jt->second);
-                            break;
-                        case STATE   :
-                            pNode->_paramList[2].push_back(jt->second);
-                            break;
-                        case LEN     :
-                            pNode->_paramList[3].push_back(jt->second);
-                            break;
-                        case STATE_N :
-                            pNode->_paramList[4].push_back(jt->second);
-                            break;
-                        case LEN_N   :
-                            pNode->_paramList[5].push_back(jt->second);
-                            break;
-                    }
+                assert( (jt != vmap.end()) );
+                const VmtType& type = jt->second->_type;
+                assert( (type >= 0 && type <= 9) );
+                switch (type) {
+                    case INPUT   :
+                        pNode->_paramList[0].push_back(jt->second);
+                        break;
+                    case EXIST   :
+                        pNode->_paramList[1].push_back(jt->second);
+                        break;
+                    case STATE   :
+                        pNode->_paramList[2].push_back(jt->second);
+                        break;
+                    case LEN     :
+                        pNode->_paramList[3].push_back(jt->second);
+                        break;
+                    case STATE_N :
+                        pNode->_paramList[4].push_back(jt->second);
+                        break;
+                    case LEN_N   :
+                        pNode->_paramList[5].push_back(jt->second);
+                        break;
+                    case PREDBV  :
+                        pNode->_paramList[6].push_back(jt->second);
+                        break;
+                    case PREDIV  :
+                        pNode->_paramList[7].push_back(jt->second);
+                        break;
+                    case CONST0  :
+                        pNode->_paramList[0].push_back(jt->second);
+                        break;
+                    case CONST1  :
+                        pNode->_paramList[0].push_back(jt->second);
+                        break;
                 }
             }
-            if (pNode->haveSameParam(it->second)) {
+            if (pNode->haveSameParam(source)) {
                 cout << "[Aut::buildVmtNode] " << root << " same" << endl;
-
-                return it->second;
+                return source;
             }
             else {
                 cout << "[Aut::buildVmtNode] " << root << " PARAM" << endl;
@@ -350,7 +363,7 @@ void Aut::check(Aut* a)
 {
     assert( (a->_state[0].size() == a->_stateVarNum) );
     assert( (a->_state[1].size() == a->_stateVarNum) );
-    assert( (a->_lvar[0].size() == a->_lvar[1].size()) );
+    assert( (a->_lvar[0].size()  == a->_lvar[1].size()) );
     for (size_t i = 0, size = a->_lvar[0].size(); i < size; ++i)
         assert( (a->_lvar[0][i]->_idx == a->_lvar[1][i]->_idx) );
 }
@@ -387,12 +400,14 @@ void Aut::init(const string& fileName)
     size_t epos = fileName.find_last_of('.');
     _name = fileName.substr(bpos,epos-bpos);
     _stateVarNum = 0;
+    _evar.assign(2,VmtNodeList());
     _state.assign(2,VmtNodeList());
     _lvar.assign(2,VmtNodeList());
-    _evar.assign(2,VmtNodeList());
     _predBV.assign(2,VmtNodeList());
     _predIV.assign(2,VmtNodeList());
-    // insert epsilon and input to map
+    // insert special nodes and inputs to map
+    _vmap.insert(Str2VmtNode("false",const0));
+    _vmap.insert(Str2VmtNode("true",const1));
     _vmap.insert(Str2VmtNode("epsilon",epsilon));
     _vmap.insert(Str2VmtNode("leftAngle",leftAngle));
     _vmap.insert(Str2VmtNode("rightAngle",rightAngle));
@@ -558,8 +573,8 @@ void Aut::addParamNode(const string& name, VmtNode* source, Aut* a, const size_t
     else {
         string bitstr = Uint2BitString(encode,inputBitNum);
         for (size_t i = 0; i < inputBitNum; ++i)
-            if (bitstr[i] == '0') n->_paramList[0].push_back(new VmtNode("false"));
-            else                  n->_paramList[0].push_back(new VmtNode("true"));
+            if (bitstr[i] == '0') n->_paramList[0].push_back(const0);
+            else                  n->_paramList[0].push_back(const1);
     }
 }
 
@@ -590,11 +605,20 @@ void Aut::integrate(Aut* a1, Aut* a2)
 {
     assert( (_imdList.empty()) );
     assert( (_itoList.empty()) );
+    assert( (_predBV[0].empty()) );
+    assert( (_predBV[1].empty()) );
+    assert( (_predIV[0].empty()) );
+    assert( (_predIV[1].empty()) );
     // Make sure _stateVarNum is already handled
     // _lvar may already be non-empty
     
-    // state lvar into _vmap , merge _imdList
-    
+    // push evar
+    for (size_t i = 0; i < evarNum; ++i) {
+        _evar[0].push_back(evar[0][i]);
+        _evar[1].push_back(evar[1][i]);
+        _vmap.insert(Str2VmtNode(evar[0][i]->_name,evar[0][i]));
+    }
+
     // State variable indexing is continuous
     _state[0].clear();
     _state[1].clear();
@@ -625,20 +649,18 @@ void Aut::integrate(Aut* a1, Aut* a2)
         _vmap.insert(Str2VmtNode(lvar[1][*it]->_name,lvar[1][*it]));
     }
 
-    // push evar
-    for (size_t i = 0; i < evarNum; ++i) {
-        _evar[0].push_back(evar[0][i]);
-        _evar[1].push_back(evar[1][i]);
-        _vmap.insert(Str2VmtNode(evar[0][i]->_name,evar[0][i]));
-    }
-
+    // merge _predBV _predIV , need to rename due to insertion into vmap
+    size_t bCnt = 0, iCnt = 0;
+    integratePredVar(PREDBV,a1,bCnt);
+    integratePredVar(PREDBV,a2,bCnt);
+    integratePredVar(PREDIV,a1,iCnt);
+    integratePredVar(PREDIV,a2,iCnt);
+    
     // merge _imdList
     _imdList = a1->_imdList;
     for (size_t i = 0, size = a2->_imdList.size(); i < size; ++i)
         _imdList.push_back(a2->_imdList[i]);
     
-    //TODO : merge _predBV _predIV _predList 
-
     // merget _PARAMList
     #ifndef AUT_PARAM_NDEBUG
         assert( (_PARAMList.empty()) );
@@ -649,6 +671,28 @@ void Aut::integrate(Aut* a1, Aut* a2)
         for (size_t i = 0, size = a2->_PARAMList.size(); i < size; ++i)
             _PARAMList.push_back(a2->_PARAMList[i]);
     #endif
+}
+
+void Aut::integratePredVar(const VmtType& type, Aut* a, size_t& cnt)
+{
+    assert( (type == PREDBV || type == PREDIV) );
+    VarList& tVarList = (type == PREDBV)? _predBV : _predIV;
+    const VarList& varList  = (type == PREDBV)? a->_predBV : a->_predIV;
+    string head = (type == PREDBV)? "B" : "I";
+    for (size_t i = 0, size = varList[0].size(); i < size; ++i) {
+        VmtNode* cur = varList[0][i];
+        VmtNode* nxt = varList[1][i];
+        assert( (cur->_idx == nxt->_idx) );
+        cur->_name = head + itos(cnt);
+        cur->_idx  = cnt;
+        nxt->_name = head + itos(cnt) + ".next";
+        nxt->_idx  = cnt;
+        ++cnt;
+        tVarList[0].push_back(cur);
+        tVarList[1].push_back(nxt);
+        _vmap.insert(Str2VmtNode(cur->_name,cur));
+        _vmap.insert(Str2VmtNode(nxt->_name,nxt));
+    }
 }
 
 size_t Aut::addStateVar(const size_t& num)
@@ -677,18 +721,12 @@ void Aut::addLVar(const size_t& lvarIdx)
 size_t Aut::addEVar()
 {
     size_t evbpos = evarNum;
-    for (size_t i = evarNum; i < evarNum + inputBitNum; ++i) {
-        string name = "y" + itos(i);
-        string nameNxt = name + ".next";
-        VmtNode* e0 = new VmtNode( name, EXIST, i);
-        VmtNode* e1 = new VmtNode( nameNxt, OTHER, i);
-        evar[0].push_back(e0);
-        evar[1].push_back(e1);
-        _evar[0].push_back(e0);
-        _evar[1].push_back(e1);
-        _vmap.insert(Str2VmtNode(name,e0));
+    expandVarList(EXIST);
+    for (size_t i = evbpos; i < evarNum; ++i) {
+        _evar[0].push_back(evar[0][i]);
+        _evar[1].push_back(evar[1][i]);
+        _vmap.insert(Str2VmtNode(evar[0][i]->_name,evar[0][i]));
     }
-    evarNum += inputBitNum;
     return evbpos;
 }
 
@@ -746,7 +784,7 @@ void Aut::printPARAMList() const
         VmtNode* n = _PARAMList[i];
         assert( (n->_type == PARAM) );
         cout << n->_name << " source=" << n->_source->_name << " params=";
-        for (size_t j = 0; j < 6; ++j)
+        for (size_t j = 0, size1 = n->_paramList.size(); j < size1; ++j)
             for (size_t k = 0, size2 = n->_paramList[j].size(); k < size2; ++k)
                 cout << " " << n->_paramList[j][k]->_name;
         cout << endl;
@@ -786,47 +824,72 @@ void Aut::parse(const char* fileName)
         #endif
         if (tokenList[0] == "epsilon" || tokenList[0] == "leftAngle" || tokenList[0] == "rightAngle") continue;
         if (sCnt == 0) {
-            if (tokenList[0][0] == 's') {
-                if (*(tokenList[0].rbegin()) != 't') {
-                    ++_stateVarNum;
-                    size_t idx = stoi(tokenList[0].substr(1));
-                    while (idx >= stateBitNum) expandVarList(STATE);
-                    _vmap.insert(Str2VmtNode(state[0][idx]->_name,state[0][idx]));
-                    _state[0].push_back(state[0][idx]);
-                }
-                else {
-                    size_t idx = stoi(tokenList[0].substr(1,tokenList[0].find_last_of(".")-1));
-                    while (idx >= stateBitNum) expandVarList(STATE);
-                    _vmap.insert(Str2VmtNode(state[1][idx]->_name,state[1][idx]));
-                    _state[1].push_back(state[1][idx]);
-                }
+            char head = tokenList[0][0];
+            if (head == 'x') continue;
+            
+            bool isNxt = 0;
+            size_t idx;
+            if ( *(tokenList[0].rbegin()) != 't' )
+                idx = stoi(tokenList[0].substr(1));
+            else {
+                isNxt = 1;
+                idx = stoi(tokenList[0].substr(1,tokenList[0].find_last_of(".")-1));
             }
-            else if (tokenList[0][0] == 'n'){
-                if (*(tokenList[0].rbegin()) != 't') {
-                    size_t idx = stoi(tokenList[0].substr(1));
-                    while (idx >= lvarNum) expandVarList(LEN);
-                    _vmap.insert(Str2VmtNode(lvar[0][idx]->_name,lvar[0][idx]));
-                    _lvar[0].push_back(lvar[0][idx]);
-                }
-                else {
-                    size_t idx = stoi(tokenList[0].substr(1,tokenList[0].find_last_of(".")-1));
-                    while (idx >= lvarNum) expandVarList(LEN);
-                    _vmap.insert(Str2VmtNode(lvar[1][idx]->_name,lvar[1][idx]));
-                    _lvar[1].push_back(lvar[1][idx]);
-                }
-            }
-            else if (tokenList[0][0] == 'y') {
-                // Existential Variables
-                if (*(tokenList[0].rbegin()) != 't') {
-                    size_t idx = stoi(tokenList[0].substr(1));
-                    assert( (idx < evarNum) );
-                    _vmap.insert(Str2VmtNode(evar[0][idx]->_name,evar[0][idx]));
-                    _evar[0].push_back(evar[0][idx]);
-                }
-                else {
-                    size_t idx = stoi(tokenList[0].substr(1,tokenList[0].find_last_of(".")-1));
-                    assert( (idx < evarNum) );
+            
+            if (head == 'y') {
+                while (idx >= evarNum) expandVarList(EXIST);
+                if (isNxt) {
                     _evar[1].push_back(evar[1][idx]);
+                }
+                else {
+                    _evar[0].push_back(evar[0][idx]);
+                    _vmap.insert(Str2VmtNode(evar[0][idx]->_name,evar[0][idx]));
+                }
+            }
+            else if (head == 's') {
+                while (idx >= stateBitNum) expandVarList(STATE);
+                if (isNxt) {
+                    _state[1].push_back(state[1][idx]);
+                    _vmap.insert(Str2VmtNode(state[1][idx]->_name,state[1][idx]));
+                }
+                else {
+                    ++_stateVarNum;
+                    _state[0].push_back(state[0][idx]);
+                    _vmap.insert(Str2VmtNode(state[0][idx]->_name,state[0][idx]));
+                }
+            }
+            else if (head == 'n') {
+                while (idx >= lvarNum) expandVarList(LEN);
+                if (isNxt) {
+                    _lvar[1].push_back(lvar[1][idx]);
+                    _vmap.insert(Str2VmtNode(lvar[1][idx]->_name,lvar[1][idx]));
+                }
+                else {
+                    _lvar[0].push_back(lvar[0][idx]);
+                    _vmap.insert(Str2VmtNode(lvar[0][idx]->_name,lvar[0][idx]));
+                }
+            }
+            else if (head == 'B') {
+                if (isNxt) {
+                    VmtNode* n = new VmtNode( "B"+itos(idx)+".next" , PREDBV );
+                    _predBV[1].push_back(n);
+                }
+                else {
+                    VmtNode* n = new VmtNode( "B"+itos(idx) , PREDBV );
+                    _predBV[0].push_back(n);
+                    _vmap.insert(Str2VmtNode(n->_name,n));
+                }
+            }
+            else {
+                assert( (head == 'I') );
+                if (isNxt) {
+                    VmtNode* n = new VmtNode( "I"+itos(idx)+".next" , PREDIV );
+                    _predIV[1].push_back(n);
+                }
+                else {
+                    VmtNode* n = new VmtNode( "I"+itos(idx) , PREDIV );
+                    _predIV[0].push_back(n);
+                    _vmap.insert(Str2VmtNode(n->_name,n));
                 }
             }
         }
@@ -858,6 +921,12 @@ void Aut::parse(const char* fileName)
                     case LEN_N   :
                         newNode1->_paramList[5].push_back(jt->second);
                         break;
+                    case PREDBV  :
+                        newNode1->_paramList[6].push_back(jt->second);
+                        break;
+                    case PREDIV  :
+                        newNode1->_paramList[7].push_back(jt->second);
+                        break;
                     default    :
                         break;
                 }
@@ -885,9 +954,9 @@ void Aut::write(const char* fileName)
     ofstream file(fileName);
     
     writeDeclareFun(  input , 1, file );
+    writeDeclareFun( _evar  , 1, file );
     writeDeclareFun( _state , 1, file );
     writeDeclareFun( _lvar  , 0, file );
-    writeDeclareFun( _evar  , 1, file );
     writeDeclareFun( _predBV, 1, file );
     writeDeclareFun( _predIV, 0, file );
     
@@ -895,9 +964,9 @@ void Aut::write(const char* fileName)
     
     int nxtCnt = -1;
     writeNextFun(  input , nxtCnt, file );
+    writeNextFun( _evar  , nxtCnt, file );
     writeNextFun( _state , nxtCnt, file );
     writeNextFun( _lvar  , nxtCnt, file );
-    writeNextFun( _evar  , nxtCnt, file );
     writeNextFun( _predBV, nxtCnt, file );
     writeNextFun( _predIV, nxtCnt, file );
     
@@ -947,7 +1016,7 @@ void Aut::writeDefineFun(VmtNode* n, ofstream& file, const bool& needParam)
     #endif
     n->_flag = gflag;
     file << "(define-fun " << n->_name << " (";
-    if (needParam) n->writeParam(file);
+    if (needParam) n->writeParamHead(file);
     file << ") Bool ";
     n->_children[0]->write(0,file);
     file << ")\n";
@@ -1075,8 +1144,8 @@ size_t Aut::mark()
 {
     check(this);
     // construct the equivalence before adding svar
-    string sveq = CSNSEquiv(STATE);
-    string lveq = CSNSEquiv(LEN);
+    string sveq   = CSNSEquiv(STATE);
+    string lveq   = CSNSEquiv(LEN);
     size_t svbpos = addStateVar(1);
     #ifndef AUT_OP_NDEBUG
         cout << "[Aut::mark] " << _name << " alpha=" << svbpos << endl;
@@ -1107,7 +1176,7 @@ void Aut::replace_A4(Aut* a1, Aut* a2)
     check(a1,a2);
     
     a2->shiftStateVar(a1->_stateVarNum);
-    _stateVarNum = (a1->_stateVarNum > a2->_stateVarNum)? a1->_stateVarNum : a2->_stateVarNum;
+    _stateVarNum  = (a1->_stateVarNum > a2->_stateVarNum)? a1->_stateVarNum : a2->_stateVarNum;
     size_t svbpos = addStateVar(1);
     #ifndef AUT_OP_NDEBUG
         cout << "[Aut::replace_A4] " << a1->_name << " " << a2->_name << " beta=" << svbpos << endl;
@@ -1385,15 +1454,18 @@ void Aut::parseDef(const string& line, Str2VmtNodeMap& vmap)
     vmap.insert(Str2VmtNode(name,newNode0));
     vmap.insert(Str2VmtNode(nameNxt,newNode1));
 
+    assert( (type == "Bool" || type == "Int") );
+
     if (type == "Bool") {
+        newNode0->_type = PREDBV;
         _predBV[0].push_back(newNode0);
         _predBV[1].push_back(newNode1);
     }
-    else if(type == "Int") {
+    else {
+        newNode0->_type = PREDIV;
         _predIV[0].push_back(newNode0);
         _predIV[1].push_back(newNode1);
     }
-    else cout << "[ERROR::Aut::parseDef] invalid type=" << type << endl;
 }
 
 void Aut::parsePred(const string& line, size_t& pCnt, Str2VmtNodeMap& vmap)
@@ -1432,23 +1504,61 @@ void Aut::parsePred(const string& line, size_t& pCnt, Str2VmtNodeMap& vmap)
                 assert( (tokenList.size() == 2) );
                 assert( (bodyTokens[0] == "=") );
                 assert( (bodyTokens[2] == "str.len" || bodyTokens[1] == "str.len") );
-                string body = "(= ";
                 size_t lvarIdx = stoi(tokenList[1]);
-                if (bodyTokens[2] == "str.len") 
-                    body += bodyTokens[1] + " " + lvar[0][lvarIdx]->_name + ")";
-                else
-                    body += bodyTokens[3] + " " + lvar[0][lvarIdx]->_name + ")";
-                defineFun( "p" + itos(pCnt++), body, _predList, vmap);
+                VmtNode* pNode = new VmtNode( "p" + itos(pCnt++) );
+                _predList.push_back(pNode);
+                vmap.insert(Str2VmtNode(pNode->_name,pNode));
+
+                string aname;
+                if (bodyTokens[2] == "str.len") aname = bodyTokens[1];
+                else                            aname = bodyTokens[3];
+
+                VmtNode* alias = 0;
+                Str2VmtNodeMap::iterator it = vmap.find(aname);
+                if (it == vmap.end()) alias = new VmtNode(aname);
+                else                  alias = it->second;
+
+                VmtNode* eq = new VmtNode("=");
+                eq->addChild(alias);
+                eq->addChild(lvar[0][lvarIdx]);
+                pNode->addChild(eq);
             }
             else if (tokenList[0] == "substr") {
                 assert( (tokenList.size() == 3) );
                 assert( (bodyTokens[0] == "str.substr") );
                 size_t n0 = stoi(tokenList[1]);
                 size_t n1 = stoi(tokenList[2]);
-                string body0 = "(= " + lvar[0][n0]->_name + " (+ " + bodyTokens[2] + " 1))";
-                string body1 = "(= " + lvar[0][n1]->_name + " (+ " + bodyTokens[2] + " " + bodyTokens[3] + "))";
-                defineFun( "p" + itos(pCnt++), body0, _predList, vmap);
-                defineFun( "p" + itos(pCnt++), body1, _predList, vmap);
+                VmtNode* pNode0 = new VmtNode( "p" + itos(pCnt++) );
+                VmtNode* pNode1 = new VmtNode( "p" + itos(pCnt++) );
+                _predList.push_back(pNode0);
+                _predList.push_back(pNode1);
+                vmap.insert(Str2VmtNode(pNode0->_name,pNode0));
+                vmap.insert(Str2VmtNode(pNode1->_name,pNode1));
+
+                VmtNode* i1Node = 0;
+                VmtNode* i2Node = 0;
+                Str2VmtNodeMap::iterator it0  = vmap.find(bodyTokens[2]);
+                if (it0 == vmap.end()) i1Node = new VmtNode(bodyTokens[2]);
+                else                   i1Node = it0->second;
+                Str2VmtNodeMap::iterator it1  = vmap.find(bodyTokens[3]);
+                if (it1 == vmap.end()) i2Node = new VmtNode(bodyTokens[3]);
+                else                   i2Node = it1->second;
+
+                VmtNode* eq0   = new VmtNode("=");
+                VmtNode* plus0 = new VmtNode("+");
+                plus0->addChild(i2Node);
+                plus0->addChild(new VmtNode("1"));
+                eq0->addChild(lvar[0][n0]);
+                eq0->addChild(plus0);
+                pNode0->addChild(eq0);
+                
+                VmtNode* eq1   = new VmtNode("=");
+                VmtNode* plus1 = new VmtNode("+");
+                plus1->addChild(i1Node);
+                plus1->addChild(i2Node);
+                eq1->addChild(lvar[0][n1]);
+                eq1->addChild(plus1);
+                pNode1->addChild(eq1);
             }
             else if (tokenList[0] == "indexof") {
                 assert( (tokenList.size() == 3) );
@@ -1456,17 +1566,43 @@ void Aut::parsePred(const string& line, size_t& pCnt, Str2VmtNodeMap& vmap)
                 assert( (bodyTokens[2] == "str.indexof" || bodyTokens[1] == "str.indexof") );
                 size_t n0 = stoi(tokenList[1]);
                 size_t n1 = stoi(tokenList[2]);
-                string body0,body1;
+                VmtNode* pNode0 = new VmtNode( "p" + itos(pCnt++) );
+                VmtNode* pNode1 = new VmtNode( "p" + itos(pCnt++) );
+                _predList.push_back(pNode0);
+                _predList.push_back(pNode1);
+                vmap.insert(Str2VmtNode(pNode0->_name,pNode0));
+                vmap.insert(Str2VmtNode(pNode1->_name,pNode1));
+                
+                string aname,kname;
                 if (bodyTokens[2] == "str.indexof") {
-                    body0 = "(= " + bodyTokens[1] + " (+ " + lvar[0][n0]->_name + " " + lvar[0][n1]->_name + "))";
-                    body1 = "(= " + bodyTokens[5] + " " + lvar[0][n1]->_name + ")";
+                    aname = bodyTokens[1];
+                    kname = bodyTokens[5];
                 }
                 else {
-                    body0 = "(= " + bodyTokens[5] + " (+ " + lvar[0][n0]->_name + " " + lvar[0][n1]->_name + "))";
-                    body1 = "(= " + bodyTokens[4] + " " + lvar[0][n1]->_name + ")";
+                    aname = bodyTokens[5];
+                    kname = bodyTokens[4];
                 }
-                defineFun( "p" + itos(pCnt++), body0, _predList, vmap);
-                defineFun( "p" + itos(pCnt++), body1, _predList, vmap);
+                VmtNode* alias = 0;
+                VmtNode* kNode = 0;
+                Str2VmtNodeMap::iterator it0 = vmap.find(aname);
+                assert( (it0 != vmap.end()) );
+                alias = it0->second;
+                Str2VmtNodeMap::iterator it1 = vmap.find(kname);
+                if (it1 == vmap.end()) kNode = new VmtNode(kname);
+                else                   kNode = it1->second;
+                
+                VmtNode* eq0   = new VmtNode("=");
+                VmtNode* plus0 = new VmtNode("+");
+                plus0->addChild(lvar[0][n0]);
+                plus0->addChild(lvar[0][n1]);
+                eq0->addChild(alias);
+                eq0->addChild(plus0);
+                pNode0->addChild(eq0);
+
+                VmtNode* eq1   = new VmtNode("=");
+                eq1->addChild(kNode);
+                eq1->addChild(lvar[0][n1]);
+                pNode1->addChild(eq1);
             }
             else {
                 cout << "readPredFile::[WARNING] invalid type=" << tokenList[0] << endl;

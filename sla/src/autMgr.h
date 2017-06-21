@@ -38,9 +38,8 @@ class Aut;
 class AutMgr;
 
 // PARAM   : has _paramList different from _source
-// NOPARAM : no need to specify _paramList
 enum VmtType {
-    INPUT, EXIST, STATE, LEN, STATE_N, LEN_N, PARAM, OTHER
+    INPUT, EXIST, STATE, LEN, STATE_N, LEN_N, PREDBV, PREDIV, CONST0, CONST1, PARAM, OTHER
 };
 
 enum AType {
@@ -105,9 +104,9 @@ class VmtNode{
     friend class AutMgr;
     public:
         VmtNode (const string& name,const VmtType& type=OTHER,const size_t& idx=0): _name(name) 
-            {_paramList.assign(6,VmtNodeList()); _type = type ; _idx = idx; _source=0; _flag = 0;}
+            {_paramList.assign(8,VmtNodeList()); _type = type ; _idx = idx; _source=0; _flag = 0;}
         VmtNode (const string& name, VmtNode* source) : _name(name), _source(source)
-            {_paramList.assign(6,VmtNodeList()); _type = PARAM; _idx = 0; _flag = 0;}
+            {_paramList.assign(8,VmtNodeList()); _type = PARAM; _idx = 0; _flag = 0;}
         void         print(const size_t&);
         void         write(const size_t&,ofstream&);
         const        string& getName()            {return _name;}
@@ -120,14 +119,15 @@ class VmtNode{
         void         clearParam(const size_t&);
         void         buildParam(const size_t&);
         void         collectPARAM(VmtNodeList&);
-        void         writeParam(ofstream&);
+        void         writeParamHead(ofstream&);
+        void         writeParamBody(const string&,ofstream&);
         void         shiftStateVar(const size_t&);
         string       _name;
         size_t       _idx;
         VmtType      _type;
         VmtNodeList  _children;
-        VmtNode*     _source;   // used for _type == PARAM
-        VarList      _paramList; // input/state/lvar
+        VmtNode*     _source;    // used for _type == PARAM
+        VarList      _paramList; // 0-7 follow the order of VmtType
         size_t       _flag;
 };
 
@@ -182,10 +182,10 @@ class Aut{
 
         // Static Member Function
         // static member function cannot have const qualifier (don't have this)
+        static VmtNode* initConst(const VmtType&);
         static VmtNode* initSpecialAlphabet(const AType&);
         static VarList  initVarList(const VmtType&);
-        static void     printSpecialAlphabet(const AType&);
-        static void     printVarList();
+        static void     printStaticDataMember();
         // Non-Static Member Function
         // I/O
         void            test();
@@ -198,6 +198,7 @@ class Aut{
         void            writeNextFun(const VarList&, int&, ofstream&);
         void            writeDefineFun(VmtNode*,ofstream&,const bool& needParam=1);
         // Operations
+        string          CSNSEquiv(const VmtType&);
         // Unary 
         void            addlen(const string&);
         size_t          mark();
@@ -210,7 +211,6 @@ class Aut{
         void            concate(Aut*,Aut*);
         void            replace(Aut*,Aut*,const size_t&);
         void            replace_A4(Aut*,Aut*);
-        string          CSNSEquiv(const VmtType&);
     private:
         // Static Member
         static void     expandVarList(const VmtType&);
@@ -227,9 +227,11 @@ class Aut{
         static size_t   lvarNum;
         static size_t   evarNum;
         static VarList  input;
+        static VarList  evar;
         static VarList  state;
         static VarList  lvar;
-        static VarList  evar;
+        static VmtNode* const0;
+        static VmtNode* const1;
         static VmtNode* epsilon;
         static VmtNode* leftAngle;
         static VmtNode* rightAngle;
@@ -252,6 +254,7 @@ class Aut{
         void            renameITO1Aut();
         void            renameITOs2Aut(Aut*,Aut*);
         void            integrate(Aut*, Aut*);
+        void            integratePredVar(const VmtType&,Aut*,size_t&);
         size_t          addStateVar(const size_t&);
         void            addLVar(const size_t&);
         size_t          addEVar();
@@ -283,17 +286,19 @@ class AutMgr{
     public :
         AutMgr() {_gflag = 0;}
         // Converter
-        void dot2blif(const char*,const char*);
-        void blif2vmt(const char*,const char*);
+        void    dot2blif(const char*,const char*);
+        void    blif2vmt(const char*,const char*);
+        void    aig2vmt (const char*,const char*);
+        void    vmt2aig (const char*,const char*);
         // Automata Operation
-        void readCmdFile(const char*);
+        void    readCmdFile(const char*);
         size_t& getGFlag() {return _gflag;}
     private:
         // Converter
-        void   parseCubeList(Aut*, const string&, const vector<string>&, const VmtNodeList&, int&);
-        string cube2vmt(const string& cube, const VmtNodeList&);
+        void    parseCubeList(Aut*, const string&, const vector<string>&, const VmtNodeList&, int&);
+        string  cube2vmt(const string& cube, const VmtNodeList&);
         // Data Member
-        size_t        _gflag;
+        size_t  _gflag;
 };
 
 #endif

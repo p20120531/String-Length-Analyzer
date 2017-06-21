@@ -20,6 +20,14 @@ string VmtNode::getTypeStr()
                        break;
         case LEN_N   : typeStr = "LEN_N";
                        break;
+        case PREDBV  : typeStr = "PREDBV";
+                       break;
+        case PREDIV  : typeStr = "PREDIV";
+                       break;
+        case CONST0  : typeStr = "CONST0";
+                       break;
+        case CONST1  : typeStr = "CONST1";
+                       break;
         case PARAM   : typeStr = "PARAM";
                        break;
         case OTHER   : typeStr = "OTHER";
@@ -33,8 +41,8 @@ string VmtNode::getTypeStr()
 void VmtNode::print(const size_t& level) 
 {
     cout << string(level*3,' ') << _name << " " << this << " " << getTypeStr() << " " << _flag;
-    for (size_t i = 0; i < 6; ++i) {
-        for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
+    for (size_t i = 0, size1 = _paramList.size(); i < size1; ++i) {
+        for (size_t j = 0, size2 = _paramList[i].size(); j < size2; ++j)
             cout << " " << _paramList[i][j]->_name;
     }
     cout << endl;
@@ -58,27 +66,17 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
             assert( (_children.empty()) );
             assert( (_source->_flag == gflag) );
             assert( (hasParam()) );
-            outFile << "(" << _source->_name;
-            for (size_t i = 0; i < 6; ++i) {
-                for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
-                    outFile << " " << _paramList[i][j]->_name;
-            }
-            outFile << ")";
+            writeParamBody(_source->_name,outFile);
         }
         else {
             if (!_children.empty()) {
                 if ( hasParam() ) {
-                    outFile << "(" << _name;
-                    for (size_t i = 0; i < 6; ++i) {
-                        for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
-                            outFile << " " << _paramList[i][j]->_name;
-                    }
-                    outFile << ")";
+                    writeParamBody(_name,outFile);
                 }
                 else {
                     cout << "[VmtNode::write] special node name=" << _name << " c0=" << _children[0]->_name << endl;
                     assert( (_children.size() == 1) );
-                    assert( (_children[0]->_name == "true" || _children[0]->_name == "false") );
+                    assert( (_children[0] == Aut::const0 || _children[0] == Aut::const1) );
                     outFile << _name;
                 }
             }
@@ -93,12 +91,7 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
         assert( (_children.empty()) );
         assert( (_source->_flag == gflag) );
         assert( (hasParam()) );
-        outFile << "(" << _source->_name;
-        for (size_t i = 0; i < 6; ++i) {
-            for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
-                outFile << " " << _paramList[i][j]->_name;
-        }
-        outFile << ")";
+        writeParamBody(_source->_name,outFile);
     }
     else {
         if (!_children.empty()) {
@@ -117,7 +110,7 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
 
 bool VmtNode::hasParam()
 {
-    for (size_t i = 0; i < 6; ++i) {
+    for (size_t i = 0, size = _paramList.size(); i < size; ++i) {
         if (!_paramList[i].empty())
             return 1;
     }
@@ -126,7 +119,7 @@ bool VmtNode::hasParam()
 
 bool VmtNode::haveSameParam(VmtNode* n)
 {
-    for (size_t i = 0; i < 6; ++i) {
+    for (size_t i = 0, size0 = _paramList.size(); i < size0; ++i) {
         set<string> s0,s1;
         for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
             s0.insert(_paramList[i][j]->_name);
@@ -156,7 +149,7 @@ void VmtNode::clearParam(const size_t& level)
     
     _flag = gflag;
     
-    for (size_t i = 0; i < 6; ++i)
+    for (size_t i = 0, size = _paramList.size(); i < size; ++i)
         _paramList[i].clear();
     for (size_t i = 0, size = _children.size(); i < size; ++i)
         _children[i]->clearParam(level+1);
@@ -193,17 +186,28 @@ void VmtNode::buildParam(const size_t& level)
             case LEN_N   :
                 _paramList[5].push_back(this);
                 break;
+            case PREDBV  :
+                _paramList[6].push_back(this);
+                break;
+            case PREDIV  :
+                _paramList[7].push_back(this);
+                break;
             default :
                 break;
         }
     }
     else {
-        vector<set<size_t> > count(6,set<size_t>());
-        for (size_t i = 0, size = _children.size(); i < size; ++i) {
+        vector<set<size_t> > count(_paramList.size(),set<size_t>());
+        map<size_t,VmtNode*> predBVmap;
+        map<size_t,VmtNode*> predIVmap;
+        for (size_t i = 0, size0 = _children.size(); i < size0; ++i) {
             _children[i]->buildParam(level+1);
-            for (size_t j = 0; j < 6; ++j) {
-                for (size_t k = 0, size = _children[i]->_paramList[j].size(); k < size; ++k) {
-                    count[j].insert(_children[i]->_paramList[j][k]->_idx);
+            for (size_t j = 0, size1 = _paramList.size(); j < size1; ++j) {
+                for (size_t k = 0, size2 = _children[i]->_paramList[j].size(); k < size2; ++k) {
+                    VmtNode* n = _children[i]->_paramList[j][k];
+                    count[j].insert(n->_idx);
+                    if      (j == 6) predBVmap.insert(pair<size_t,VmtNode*>(n->_idx,n));
+                    else if (j == 7) predIVmap.insert(pair<size_t,VmtNode*>(n->_idx,n));
                 }
             }
         }
@@ -235,6 +239,18 @@ void VmtNode::buildParam(const size_t& level)
         for (set<size_t>::iterator it = count[5].begin(); it != count[5].end(); ++it) {
             _paramList[5].push_back(Aut::lvar[1][*it]);
         }
+        
+        for (set<size_t>::iterator it = count[6].begin(); it != count[6].end(); ++it) {
+            map<size_t,VmtNode*>::iterator jt = predBVmap.find(*it);
+            assert( (jt != predBVmap.end()) );
+            _paramList[6].push_back(jt->second);
+        }
+        
+        for (set<size_t>::iterator it = count[7].begin(); it != count[7].end(); ++it) {
+            map<size_t,VmtNode*>::iterator jt = predIVmap.find(*it);
+            assert( (jt != predIVmap.end()) );
+            _paramList[7].push_back(jt->second);
+        }
         /*
         for (size_t i = 0, size = _paramList[2].size(); i < size; ++i)
             assert( (_paramList[2][i]->_idx == _paramList[4][i]->_idx) );
@@ -253,13 +269,13 @@ void VmtNode::collectPARAM(VmtNodeList& PARAMList)
         _children[i]->collectPARAM(PARAMList);
 }
 
-void VmtNode::writeParam(ofstream& file)
+void VmtNode::writeParamHead(ofstream& file)
 {
     bool isfirst = 1;
     #ifndef VMTNODE_NDEBUG
-        cout << "[VmtNode::writeParam]";
+        cout << "[VmtNode::writeParamHead]";
     #endif
-    for (size_t i = 0; i < 6; ++i) {
+    for (size_t i = 0, size0 = _paramList.size(); i < size0; ++i) {
         for (size_t j = 0, size = _paramList[i].size(); j < size; ++j) {
             #ifndef VMTNODE_NDEBUG
                 cout << " " << _paramList[i][j]->_name << " " << _paramList[i][j]->getTypeStr();
@@ -267,7 +283,7 @@ void VmtNode::writeParam(ofstream& file)
             if (!isfirst) file << " ";
             isfirst = 0;
             file << "(" << _paramList[i][j]->_name;
-            if (i == 3 || i == 5) {
+            if (i == 3 || i == 5 || i == 7) {
                 file << " Int)";
             }
             else {
@@ -278,6 +294,16 @@ void VmtNode::writeParam(ofstream& file)
     #ifndef VMTNODE_NDEBUG
         cout << endl;
     #endif
+}
+
+void VmtNode::writeParamBody(const string& fname, ofstream& file)
+{
+    file << "(" << fname;
+    for (size_t i = 0, size0 = _paramList.size(); i < size0; ++i) {
+        for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
+            file << " " << _paramList[i][j]->_name;
+    }
+    file << ")";
 }
 
 void VmtNode::shiftStateVar(const size_t& delta)
