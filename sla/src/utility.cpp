@@ -3,19 +3,19 @@
 bool isNumber(const string& s)
 {
     size_t size = s.size();
-    if (size == 0) return false;
+    if (size == 0) return 0;
     else if (size == 1) {
         if (s[0] < 48 || s[0] > 57)
-            return false;
+            return 0;
         else
-            return true;
+            return 1;
     }
     else {
-        if (s[0] == 48) return false;
-        bool b = true;
+        if (s[0] == 48) return 0;
+        bool b = 1;
         for (size_t i=0; i<size; ++i)
             if (s[0] < 48 || s[i] > 57){
-                b = false;
+                b = 0;
                 break;
             }
         return b;

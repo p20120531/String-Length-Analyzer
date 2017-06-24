@@ -4,45 +4,11 @@
 extern AutMgr* autmgr;
 static size_t& gflag = autmgr->getGFlag();
 
-string VmtNode::getTypeStr() 
-{
-    string typeStr;
-    switch (_type) {
-        case INPUT   : typeStr = "INPUT";
-                       break;
-        case EXIST   : typeStr = "EXIST";
-                       break;
-        case STATE   : typeStr = "STATE";
-                       break;
-        case LEN     : typeStr = "LEN";
-                       break;
-        case STATE_N : typeStr = "STATE_N";
-                       break;
-        case LEN_N   : typeStr = "LEN_N";
-                       break;
-        case PREDBV  : typeStr = "PREDBV";
-                       break;
-        case PREDIV  : typeStr = "PREDIV";
-                       break;
-        case CONST0  : typeStr = "CONST0";
-                       break;
-        case CONST1  : typeStr = "CONST1";
-                       break;
-        case PARAM   : typeStr = "PARAM";
-                       break;
-        case OTHER   : typeStr = "OTHER";
-                       break;
-        default      : typeStr = "INVALID";
-                       break;
-    }
-    return typeStr;
-}
-
 void VmtNode::print(const size_t& level) 
 {
-    cout << string(level*3,' ') << _name << " " << this << " " << getTypeStr() << " " << _flag;
-    for (size_t i = 0, size1 = _paramList.size(); i < size1; ++i) {
-        for (size_t j = 0, size2 = _paramList[i].size(); j < size2; ++j)
+    cout << string(level*3,' ') << _name << " " << this << " " << Aut::getTypeStr(_type) << " " << _flag;
+    for (size_t i = 0; i < PI_NUM; ++i) {
+        for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
             cout << " " << _paramList[i][j]->_name;
     }
     cout << endl;
@@ -54,13 +20,13 @@ void VmtNode::print(const size_t& level)
 void VmtNode::write(const size_t& level,ofstream& outFile)
 {
     #ifndef VMTNODE_NDEBUG
-        cout << string(level*3,' ') << _name << " " << this << " " << getTypeStr() << " " << _flag;
+        cout << string(level*3,' ') << _name << " " << this << " " << Aut::getTypeStr(_type) << " " << _flag;
         if      (_flag == gflag)     cout << " visited";
         else                         cout << " unvisited";
-        if      (_type == PARAM)     cout << " PARAM\n";
-        else if (!_children.empty()) cout << " internal\n";
-        else                         cout << " leaf\n";
+        if      (Aut::isLEAF(_type)) cout << " LEAF\n";
+        else {assert(Aut::isIMD(_type)); cout << " IMD\n";}
     #endif
+    /*
     if (_flag == gflag) {
         if (_type == PARAM) {
             assert( (_children.empty()) );
@@ -86,7 +52,48 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
         }
         return;
     }
+    */
+    if ( _flag == gflag ) {
+        if ( Aut::isLEAF(_type) ) {
+            assert( (_type != PARAM) );
+            outFile << _name;
+        }
+        else {
+            assert( (_type == MODULE) );
+            assert( (!_children.empty()) );
+            if ( hasParam() ) 
+                writeParamBody(_name,outFile);
+            else {
+                cout << "[VmtNode::write] special node name=" << _name << " c0=" << _children[0]->_name << endl;
+                assert( (_children.size() == 1) );
+                assert( (_children[0] == Aut::const0 || _children[0] == Aut::const1) );
+                outFile << _name;
+            }
+        }
+        return;
+    }
     _flag = gflag;
+    if ( Aut::isLEAF(_type) ) {
+        if (_type == PARAM) {
+            assert( (_children.empty()) );
+            assert( (_source->_flag == gflag) );
+            assert( (hasParam()) );
+            writeParamBody(_source->_name,outFile);
+        }
+        else
+            outFile << _name;
+    }
+    else {
+        assert( (Aut::isIMD(_type)) );
+        assert( (!_children.empty()) );
+        outFile << "(" << _name;
+        for (size_t i = 0, size = _children.size(); i < size; ++i) {
+            outFile << " ";
+            _children[i]->write(level+1,outFile);
+        }
+        outFile << ")";
+    }
+    /*
     if (_type == PARAM) {
         assert( (_children.empty()) );
         assert( (_source->_flag == gflag) );
@@ -106,11 +113,44 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
             outFile << _name;
         }
     }
+    */
+}
+
+VmtType VmtNode::getType(const string& name)
+{
+    if      (name == "not"  ) return NOT;
+    else if (name == "-"    ) return NEG;
+    else if (name == "and"  ) return AND;
+    else if (name == "or"   ) return OR;
+    else if (name == "+"    ) return PLUS;
+    else if (name == "<"    ) return LT;
+    else if (name == "<="   ) return LTOEQ;
+    else if (name == "="    ) return EQ;
+    else if (name == ">="   ) return MTOEQ;
+    else if (name == ">"    ) return MT;
+    else if (name == "!"    ) return EXCM;
+    else if (name == "false") return CONST0;
+    else if (name == "true" ) return CONST1;
+    else if (isNumber(name) ) return NUM;
+    else if (name == ":trans" || name == ":init" || name == ":invar-property") return SPECIAL;
+    else if (name[0] == 'x' ) return INPUT;
+    else if (name[0] == 'y' ) return EXIST;
+    else if (name[0] == 'B' ) return PREDBV;
+    else if (name[0] == 'I' ) return PREDIV;
+    else if (name[0] == 's' ) {
+        if ( *(name.end()) == 't' ) return STATE_N;
+        else                        return STATE;
+    }
+    else if (name[0] == 'n') {
+        if ( *(name.end()) == 't' ) return LEN_N;
+        else                        return LEN;
+    }
+    else return MODULE;
 }
 
 bool VmtNode::hasParam()
 {
-    for (size_t i = 0, size = _paramList.size(); i < size; ++i) {
+    for (size_t i = 0; i < PI_NUM; ++i) {
         if (!_paramList[i].empty())
             return 1;
     }
@@ -119,7 +159,7 @@ bool VmtNode::hasParam()
 
 bool VmtNode::haveSameParam(VmtNode* n)
 {
-    for (size_t i = 0, size0 = _paramList.size(); i < size0; ++i) {
+    for (size_t i = 0; i < PI_NUM; ++i) {
         set<string> s0,s1;
         for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
             s0.insert(_paramList[i][j]->_name);
@@ -140,16 +180,16 @@ void VmtNode::addChild(VmtNode* n)
 void VmtNode::clearParam(const size_t& level)
 {
     #ifndef VMTNODE_NDEBUG
-        cout << string(level*3,' ') << _name << " " << this << " " << getTypeStr() << " " << _flag;
-        if      (_flag == gflag)   cout << " visited";
-        else if (_type == PARAM)   cout << " PARAM";
+        cout << string(level*3,' ') << _name << " " << this << " " << Aut::getTypeStr(_type) << " " << _flag;
+        if      (_flag == gflag)     cout << " visited";
+        else if (Aut::isLEAF(_type)) cout << " LEAF";
         cout << endl;
     #endif
-    if (_flag == gflag || _type == PARAM) return;
+    if ( _flag == gflag || Aut::isLEAF(_type) ) return;
     
     _flag = gflag;
     
-    for (size_t i = 0, size = _paramList.size(); i < size; ++i)
+    for (size_t i = 0; i < PI_NUM; ++i)
         _paramList[i].clear();
     for (size_t i = 0, size = _children.size(); i < size; ++i)
         _children[i]->clearParam(level+1);
@@ -158,105 +198,27 @@ void VmtNode::clearParam(const size_t& level)
 void VmtNode::buildParam(const size_t& level)
 {
     #ifndef VMTNODE_NDEBUG
-        cout << string(level*3,' ') << _name << " " << this << " " << getTypeStr() << " " << _flag;
-        if      (_flag == gflag)   cout << " visited";
-        else if (_type == PARAM)   cout << " PARAM";
+        cout << string(level*3,' ') << _name << " " << this << " " << Aut::getTypeStr(_type) << " " << _flag;
+        if      (_flag == gflag)     cout << " visited";
+        else if (Aut::isLEAF(_type)) cout << " LEAF";
         cout << endl;
     #endif
-    if (_flag == gflag || _type == PARAM) return;
-    
+    if ( _flag == gflag || Aut::isLEAF(_type) ) return;
     _flag = gflag;
-    if (_children.empty()) {
-        switch (_type) {
-            case INPUT   :
-                _paramList[0].push_back(this);
-                break;
-            case EXIST   :
-                _paramList[1].push_back(this);
-                break;
-            case STATE :
-                _paramList[2].push_back(this);
-                break;
-            case LEN   :
-                _paramList[3].push_back(this);
-                break;
-            case STATE_N :
-                _paramList[4].push_back(this);
-                break;
-            case LEN_N   :
-                _paramList[5].push_back(this);
-                break;
-            case PREDBV  :
-                _paramList[6].push_back(this);
-                break;
-            case PREDIV  :
-                _paramList[7].push_back(this);
-                break;
-            default :
-                break;
+
+    // do not push CONST0 CONST1 into _paramList
+    vector<set<size_t> > count(PI_NUM,set<size_t>());
+    for (size_t i = 0, size = _children.size(); i < size; ++i) {
+        const VmtType& type = _children[i]->_type;
+        if ( Aut::isPI(type) ) {
+            count[type].insert( _children[i]->_idx );
         }
     }
-    else {
-        vector<set<size_t> > count(_paramList.size(),set<size_t>());
-        map<size_t,VmtNode*> predBVmap;
-        map<size_t,VmtNode*> predIVmap;
-        for (size_t i = 0, size0 = _children.size(); i < size0; ++i) {
-            _children[i]->buildParam(level+1);
-            for (size_t j = 0, size1 = _paramList.size(); j < size1; ++j) {
-                for (size_t k = 0, size2 = _children[i]->_paramList[j].size(); k < size2; ++k) {
-                    VmtNode* n = _children[i]->_paramList[j][k];
-                    count[j].insert(n->_idx);
-                    if      (j == 6) predBVmap.insert(pair<size_t,VmtNode*>(n->_idx,n));
-                    else if (j == 7) predIVmap.insert(pair<size_t,VmtNode*>(n->_idx,n));
-                }
-            }
+    // push parameters into _paramList increasingly
+    for (size_t i = 0; i < PI_NUM; ++i) {
+        for (set<size_t>::iterator it = count[i].begin(); it != count[i].end(); ++it) {
+            _paramList[i].push_back(Aut::piList[i][*it]);
         }
-        //if (!count[0].empty()) assert( (count[1].empty()) );
-        //if (!count[1].empty()) assert( (count[0].empty()) );
-        //assert( (count[2].size() == count[4].size()) );
-        //assert( (count[3].size() == count[5].size()) );
-        
-        for (set<size_t>::iterator it = count[0].begin(); it != count[0].end(); ++it) {
-            _paramList[0].push_back(Aut::input[0][*it]);
-        }
-        
-        for (set<size_t>::iterator it = count[1].begin(); it != count[1].end(); ++it) {
-            _paramList[1].push_back(Aut::evar[0][*it]);
-        }
-        
-        for (set<size_t>::iterator it = count[2].begin(); it != count[2].end(); ++it) {
-            _paramList[2].push_back(Aut::state[0][*it]);
-        }
-        
-        for (set<size_t>::iterator it = count[3].begin(); it != count[3].end(); ++it) {
-            _paramList[3].push_back(Aut::lvar[0][*it]);
-        }
-        
-        for (set<size_t>::iterator it = count[4].begin(); it != count[4].end(); ++it) {
-            _paramList[4].push_back(Aut::state[1][*it]);
-        }
-        
-        for (set<size_t>::iterator it = count[5].begin(); it != count[5].end(); ++it) {
-            _paramList[5].push_back(Aut::lvar[1][*it]);
-        }
-        
-        for (set<size_t>::iterator it = count[6].begin(); it != count[6].end(); ++it) {
-            map<size_t,VmtNode*>::iterator jt = predBVmap.find(*it);
-            assert( (jt != predBVmap.end()) );
-            _paramList[6].push_back(jt->second);
-        }
-        
-        for (set<size_t>::iterator it = count[7].begin(); it != count[7].end(); ++it) {
-            map<size_t,VmtNode*>::iterator jt = predIVmap.find(*it);
-            assert( (jt != predIVmap.end()) );
-            _paramList[7].push_back(jt->second);
-        }
-        /*
-        for (size_t i = 0, size = _paramList[2].size(); i < size; ++i)
-            assert( (_paramList[2][i]->_idx == _paramList[4][i]->_idx) );
-        for (size_t i = 0, size = _paramList[3].size(); i < size; ++i)
-            assert( (_paramList[3][i]->_idx == _paramList[5][i]->_idx) );
-        */
     }
 }
 
@@ -271,14 +233,16 @@ void VmtNode::collectPARAM(VmtNodeList& PARAMList)
 
 void VmtNode::writeParamHead(ofstream& file)
 {
+    assert( (_type == MODULE) );
     bool isfirst = 1;
     #ifndef VMTNODE_NDEBUG
         cout << "[VmtNode::writeParamHead]";
     #endif
-    for (size_t i = 0, size0 = _paramList.size(); i < size0; ++i) {
+    for (size_t i = 0; i < PI_NUM; ++i) {
         for (size_t j = 0, size = _paramList[i].size(); j < size; ++j) {
             #ifndef VMTNODE_NDEBUG
-                cout << " " << _paramList[i][j]->_name << " " << _paramList[i][j]->getTypeStr();
+                cout << " " << _paramList[i][j]->_name 
+                     << " " << Aut::getTypeStr(_paramList[i][j]->_type);
             #endif
             if (!isfirst) file << " ";
             isfirst = 0;
@@ -299,7 +263,7 @@ void VmtNode::writeParamHead(ofstream& file)
 void VmtNode::writeParamBody(const string& fname, ofstream& file)
 {
     file << "(" << fname;
-    for (size_t i = 0, size0 = _paramList.size(); i < size0; ++i) {
+    for (size_t i = 0; i < PI_NUM; ++i) {
         for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
             file << " " << _paramList[i][j]->_name;
     }
@@ -308,42 +272,31 @@ void VmtNode::writeParamBody(const string& fname, ofstream& file)
 
 void VmtNode::shiftStateVar(const size_t& delta)
 {
-    //cout << "node=" << _name <<endl;
-    if (_flag == gflag) return;
-    /*
-    cout << "node=" << _name << " unvisited"<<endl;
-    for (size_t i=0;i<6;++i){
-        for (VmtNodeSet::iterator it=_paramList[i].begin();it!=_paramList[i].end();++it)
-            cout << (*it)->getName() << endl;
-    }
-    */
+    if ( _flag == gflag || (_type != PARAM && !Aut::isIMD(_type)) ) return;
+    
     _flag = gflag;
     if (_type == PARAM) {
         assert((_children.empty()));
         
+        // change STATE 
         VmtNodeList tmp;
-        for (size_t i = 0, size = _paramList[2].size(); i < size; ++i)
-            tmp.push_back( Aut::state[0][ _paramList[2][i]->_idx + delta ] );
-        _paramList[2] = tmp;
+        for (size_t i = 0, size = _paramList[STATE].size(); i < size; ++i)
+            tmp.push_back( Aut::piList[STATE][ _paramList[STATE][i]->_idx + delta ] );
+        _paramList[STATE] = tmp;
         
+        // change STATE_N
         tmp.clear();
-        for (size_t i = 0, size = _paramList[4].size(); i < size; ++i)
-            tmp.push_back( Aut::state[1][ _paramList[4][i]->_idx + delta ] );
-        _paramList[4] = tmp;
+        for (size_t i = 0, size = _paramList[STATE_N].size(); i < size; ++i)
+            tmp.push_back( Aut::piList[STATE_N][ _paramList[STATE_N][i]->_idx + delta ] );
+        _paramList[STATE_N] = tmp;
         return;
     }
 
     for (size_t i = 0, size = _children.size(); i < size; ++i) {
         _children[i]->shiftStateVar(delta);
         //cout << "node = " << _name << " children[" << i << "] = " << _children[i]->_name << endl;
-        size_t idx = _children[i]->_idx + delta;
-        if (_children[i]->_type == STATE) {
-            //cout << "renameSV " << _children[i]->_idx << " -> " <<  xsList[1][svar]->_idx << endl;
-            _children[i] = Aut::state[0][idx];
-        }
-        else if (_children[i]->_type == STATE_N) {
-            //cout << "renameSV " << _children[i]->_idx << " -> " <<  xsList[3][svar]->_idx << endl;
-            _children[i] = Aut::state[1][idx];
-        }
+        const VmtType& type = _children[i]->_type;
+        if (type != STATE && type != STATE_N) continue;
+        _children[i] = Aut::piList[type][ _children[i]->_idx + delta ];
     }
 }

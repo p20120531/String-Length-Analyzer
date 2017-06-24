@@ -225,6 +225,10 @@ int main(int argc, char* argv[]) {
         Aut* a3 = new Aut(a1,a2,0,REPLACE);
         a3->write(argv[4]);
     }
+    else if (input == "substr") {
+        Aut* a1 = new Aut(argv[2],argv[3],argv[4],SUBSTR);
+        a1->write(argv[5]);
+    }
     else
         cout << "invalid option=" << input << endl;
     //cout << "at main"<< endl;

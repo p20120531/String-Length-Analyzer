@@ -2,17 +2,16 @@
 #define _AUT_MGR_
 //#define UTF16_ENCODE
 #ifdef  UTF16_ENCODE
-    #define INPUT_ENCODE_BIT_NUM 16
-    #define MAX_ENCODE 65535
+    #define INPUT_ENCODE_BIT_NUM    16
+    #define MAX_ENCODE              65535
 #else
-    #define INPUT_ENCODE_BIT_NUM 7
-    #define MAX_ENCODE 127
+    #define INPUT_ENCODE_BIT_NUM    7
+    #define MAX_ENCODE              127
 #endif
-#define INIT_STATE_BIT_NUM 4
-#define INIT_LVAR_NUM 4
-#define EPSILON_ENCODE 0
-#define LEFT_ANGLE_BRACKET_ENCODE 1
-#define RIGHT_ANGLE_BRACKET_ENCODE 2
+#define PI_NUM                      8
+#define EPSILON_ENCODE              0
+#define LEFT_ANGLE_BRACKET_ENCODE   1
+#define RIGHT_ANGLE_BRACKET_ENCODE  2
 #define MAX_SPECIAL_ALPHABET_ENCODE 2
 #include <iostream>
 #include <fstream>
@@ -37,9 +36,15 @@ class VmtNode;
 class Aut;
 class AutMgr;
 
-// PARAM   : has _paramList different from _source
+// PARAM : has _paramList different from _source
 enum VmtType {
-    INPUT, EXIST, STATE, LEN, STATE_N, LEN_N, PREDBV, PREDIV, CONST0, CONST1, PARAM, OTHER
+    // LEAF  (leaf node)
+    // PI    (primary input)
+    INPUT , EXIST  , STATE  , LEN   , STATE_N , LEN_N , PREDBV , PREDIV , 
+    // CONST (constant)
+    NUM   , CONST0 , CONST1 , PARAM , SPECIAL , 
+    // IMD   (intermediate node)
+    NOT=30, NEG    , AND    , OR    , PLUS    , MINUS , LT     , LTOEQ  , EQ, MTOEQ, MT, EXCM, MODULE
 };
 
 enum AType {
@@ -103,15 +108,18 @@ class VmtNode{
     friend class Aut;
     friend class AutMgr;
     public:
-        VmtNode (const string& name,const VmtType& type=OTHER,const size_t& idx=0): _name(name) 
-            {_paramList.assign(8,VmtNodeList()); _type = type ; _idx = idx; _source=0; _flag = 0;}
-        VmtNode (const string& name, VmtNode* source) : _name(name), _source(source)
-            {_paramList.assign(8,VmtNodeList()); _type = PARAM; _idx = 0; _flag = 0;}
+        
+        VmtNode (const string& name,const size_t& idx=0): _name(name), _idx(idx) 
+        { _paramList.assign(PI_NUM,VmtNodeList()); _type = getType(name) ; _source=0; _flag = 0; }
+
+        VmtNode (const string& name,VmtNode* source) : _name(name), _source(source)
+        { _paramList.assign(PI_NUM,VmtNodeList()); _type = PARAM; _idx = 0 ; _flag = 0; }
+        
         void         print(const size_t&);
         void         write(const size_t&,ofstream&);
         const        string& getName()            {return _name;}
         void         setType(const VmtType& type) {_type = type;}
-        string       getTypeStr();
+        VmtType      getType(const string&);
     private:
         bool         hasParam();
         bool         haveSameParam(VmtNode*);
@@ -184,8 +192,17 @@ class Aut{
         // static member function cannot have const qualifier (don't have this)
         static VmtNode* initConst(const VmtType&);
         static VmtNode* initSpecialAlphabet(const AType&);
-        static VarList  initVarList(const VmtType&);
+        static VarList  initPIList();
         static void     printStaticDataMember();
+        static bool     isPI(const VmtType&);
+        static bool     isCurPI(const VmtType&);
+        static bool     isLEAF(const VmtType&);
+        static bool     isIMD(const VmtType&);
+        static string   getPISymbol(const VmtType&);
+        static string   getPISymbol(const size_t&);
+        static VmtType  getPITypeByName(const string&);
+        static string   getTypeStr(const VmtType&);
+        static string   getTypeStr(const size_t&);
         // Non-Static Member Function
         // I/O
         void            test();
@@ -206,6 +223,7 @@ class Aut{
         void            suffix(const string&);
         void            substr(const string&, const string&);
         void            addpred(const string&);
+        void            isempty(const string&);
         // Binary
         void            intersect(Aut*,Aut*);
         void            concate(Aut*,Aut*);
@@ -213,7 +231,7 @@ class Aut{
         void            replace_A4(Aut*,Aut*);
     private:
         // Static Member
-        static void     expandVarList(const VmtType&);
+        static void     expandPIList(const VmtType&);
         static void     vmtTokenize(const string&,vector<string>&,vector<string>&);
         static VmtNode* buildVmtNode(const string&,size_t,size_t,Str2VmtNodeMap&);
         static bool     isReservedString(const string&);
@@ -223,13 +241,18 @@ class Aut{
         static void     check(Aut*, Aut*, const size_t&);
         
         static size_t   inputBitNum;
-        static size_t   stateBitNum;
-        static size_t   lvarNum;
-        static size_t   evarNum;
-        static VarList  input;
-        static VarList  evar;
-        static VarList  state;
-        static VarList  lvar;
+        //static size_t   evarNum;
+        //static size_t   stateBitNum;
+        //static size_t   lvarNum;
+        //static size_t   predBVNum;
+        //static size_t   predIVNum;
+        //static VarList  input;  // shared
+        //static VarList  evar;   // repeated
+        //static VarList  state;  // shared
+        //static VarList  lvar;   // non-repeated
+        //static VarList  predBV; // repeated
+        //static VarList  predIV; // repeated
+        static VarList  piList; // 0-7 follows the order of VmtType
         static VmtNode* const0;
         static VmtNode* const1;
         static VmtNode* epsilon;
@@ -237,6 +260,10 @@ class Aut{
         static VmtNode* rightAngle;
         // Non-Static Member Function
         void            init(const string& fileName="NONAME");
+        void            initVMap();
+        void            buildVMap(const VmtNodeList&);
+        void            buildVMap(const VarList&,const bool& needNxt=0);
+        void            assignGlobalPIList(const VmtType&);
         void            clearParam();
         void            buildParam();
         void            collectPARAM();
@@ -248,16 +275,16 @@ class Aut{
         void            defineFun(const string&, const string&, VmtNodeList&, Str2VmtNodeMap&);
         void            defineFun(const string&, const VmtType&, const string&, VmtNodeList&, Str2VmtNodeMap&);
         void            defineFun(const string&, const string&, VmtNodeList&, void (Aut::*)(VmtNode*));
-        void            addParamNode(const string&, VmtNode*, const VmtNodeList&);
-        void            addParamNode(const string&, VmtNode*, Aut*, const size_t&, const bool&);
+        void            addParamNode(const string&, VmtNode*);
+        void            addParamNode(const string&, VmtNode*, const size_t&, const bool&);
         void            renameITO(const string&, VmtNode*);
         void            renameITO1Aut();
         void            renameITOs2Aut(Aut*,Aut*);
         void            integrate(Aut*, Aut*);
-        void            integratePredVar(const VmtType&,Aut*,size_t&);
+        void            integrateMerge(VarList&,const VarList&,const VmtNodeList&,const VmtNodeList&);
+        size_t          addEVar(const size_t&);
         size_t          addStateVar(const size_t&);
         void            addLVar(const size_t&);
-        size_t          addEVar();
         VmtNode*        getI();
         VmtNode*        getO();
         VmtNode*        getT();
@@ -265,20 +292,21 @@ class Aut{
         void            setO(VmtNode*);
         void            setT(VmtNode*);
         // Non-Static Data Member
-        VarList         _state;
-        VarList         _lvar;
-        VarList         _evar;
-        VarList         _predBV;
-        VarList         _predIV;
+        //VarList         _evar;
+        //VarList         _state;
+        //VarList         _lvar;
+        //VarList         _predBV;
+        //VarList         _predIV;
+        VarList         _piList;
         VmtNodeList     _imdList;
         VmtNodeList     _itoList;
         VmtNodeList     _predList;
         VmtNodeList     _PARAMList;
         Str2VmtNodeMap  _vmap;
         size_t          _stateVarNum;
-        bool            _eUsed;
-        bool            _lUsed;
-        bool            _rUsed;
+        //bool            _eUsed;
+        //bool            _lUsed;
+        //bool            _rUsed;
         string          _name;
 };
 
@@ -289,7 +317,7 @@ class AutMgr{
         void    dot2blif(const char*,const char*);
         void    blif2vmt(const char*,const char*);
         void    aig2vmt (const char*,const char*);
-        void    vmt2aig (const char*,const char*);
+        //void    vmt2blif (const char*,const char*);
         // Automata Operation
         void    readCmdFile(const char*);
         size_t& getGFlag() {return _gflag;}

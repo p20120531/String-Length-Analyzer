@@ -51,7 +51,7 @@ def init() :
         for j in d4 :
             for k in d5 :
                 call('mkdir -p %s/%s/%s' %(i,j,k),shell=True)
-    call('mkdir -p experiment/testing/result',shell=True)
+    call('mkdir -p experiment/testing/result/all',shell=True)
 
 ##############################################################################
 # [Function Name] getDGFile
@@ -339,8 +339,8 @@ def expRecord(solverName,idx,dirName,record) :
 #                 scope      = ['all','strlen','sample']
 #                 solverList : list of solvers
 ##############################################################################
-def ConsistencyChecking(solverList,benchmark,scope) :
-    if solverList[0] != 'ic3ia' : sys.exit('[ERROR::CC] first solver is not ic3ia')
+def ConsistencyChecking(benchmark,scope,solverList) :
+    #if solverList[0] != 'ic3ia' : sys.exit('[ERROR::CC] first solver is not ic3ia')
     rstr = 'experiment/%s/result/%s' %(benchmark,scope)
     data = []
     for solver in solverList :
@@ -619,7 +619,7 @@ def opt_solve(solvers,opt) :
     dgIdxList,dgFileList = getSplitMap(f)
     for solver in solvers :
         exp(benchmark,scope,dgIdxList,dgFileList,solver)
-    ConsistencyChecking(bemchmark,scope,solvers)
+    ConsistencyChecking(benchmark,scope,solvers)
 
 def opt3(argv) :
     if   argv[0] == '--execmd' : 
