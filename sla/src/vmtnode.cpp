@@ -1,6 +1,8 @@
 #include "autMgr.h"
 #include <map>
 
+using namespace std;
+
 extern AutMgr* autmgr;
 static size_t& gflag = autmgr->getGFlag();
 
@@ -21,9 +23,9 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
 {
     #ifndef VMTNODE_NDEBUG
         cout << string(level*3,' ') << _name << " " << this << " " << Aut::getTypeStr(_type) << " " << _flag;
-        if      (_flag == gflag)     cout << " visited";
-        else                         cout << " unvisited";
-        if      (Aut::isLEAF(_type)) cout << " LEAF\n";
+        if   (_flag == gflag)            cout << " visited";
+        else                             cout << " unvisited";
+        if   (Aut::isLEAF(_type))        cout << " LEAF\n";
         else {assert(Aut::isIMD(_type)); cout << " IMD\n";}
     #endif
     /*
@@ -55,8 +57,17 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
     */
     if ( _flag == gflag ) {
         if ( Aut::isLEAF(_type) ) {
-            assert( (_type != PARAM) );
-            outFile << _name;
+            cout << "name=" << _name << " " << this << " type=" << Aut::getTypeStr(_type) << endl;
+            // type=PARAM could be refered multiple times
+            assert( (_type != NUM &&  _type != SPECIAL) );
+            if ( _type == PARAM ) {
+                assert( (_children.empty()) );
+                assert( (_source->_flag == gflag) );
+                assert( (hasParam()) );
+                writeParamBody(_source->_name,outFile);
+            }
+            else
+                outFile << _name;
         }
         else {
             assert( (_type == MODULE) );
@@ -86,6 +97,7 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
     else {
         assert( (Aut::isIMD(_type)) );
         assert( (!_children.empty()) );
+        //cout << "name=" << _name << " " << this << " type=" << Aut::getTypeStr(_type) << endl;
         outFile << "(" << _name;
         for (size_t i = 0, size = _children.size(); i < size; ++i) {
             outFile << " ";
@@ -118,34 +130,23 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
 
 VmtType VmtNode::getType(const string& name)
 {
-    if      (name == "not"  ) return NOT;
-    else if (name == "-"    ) return NEG;
-    else if (name == "and"  ) return AND;
-    else if (name == "or"   ) return OR;
-    else if (name == "+"    ) return PLUS;
-    else if (name == "<"    ) return LT;
-    else if (name == "<="   ) return LTOEQ;
-    else if (name == "="    ) return EQ;
-    else if (name == ">="   ) return MTOEQ;
-    else if (name == ">"    ) return MT;
-    else if (name == "!"    ) return EXCM;
-    else if (name == "false") return CONST0;
-    else if (name == "true" ) return CONST1;
-    else if (isNumber(name) ) return NUM;
-    else if (name == ":trans" || name == ":init" || name == ":invar-property") return SPECIAL;
-    else if (name[0] == 'x' ) return INPUT;
-    else if (name[0] == 'y' ) return EXIST;
-    else if (name[0] == 'B' ) return PREDBV;
-    else if (name[0] == 'I' ) return PREDIV;
-    else if (name[0] == 's' ) {
-        if ( *(name.end()) == 't' ) return STATE_N;
-        else                        return STATE;
-    }
-    else if (name[0] == 'n') {
-        if ( *(name.end()) == 't' ) return LEN_N;
-        else                        return LEN;
-    }
-    else return MODULE;
+    if      ( name == "not"         ) return NOT;
+    else if ( name == "-"           ) return NEG;
+    else if ( name == "and"         ) return AND;
+    else if ( name == "or"          ) return OR;
+    else if ( name == "+"           ) return PLUS;
+    else if ( name == "<"           ) return LT;
+    else if ( name == "<="          ) return LTOEQ;
+    else if ( name == "="           ) return EQ;
+    else if ( name == ">="          ) return MTOEQ;
+    else if ( name == ">"           ) return MT;
+    else if ( name == "!"           ) return EXCM;
+    else if ( name == "false"       ) return CONST0;
+    else if ( name == "true"        ) return CONST1;
+    else if ( isNumber(name)        ) return NUM;
+    else if ( Aut::isSpecialString(name) ) return SPECIAL;
+    else if ( Aut::isPISymbol(name[0])   ) Aut::getPITypeByName(name);
+    else                              return MODULE;
 }
 
 bool VmtNode::hasParam()
@@ -209,9 +210,19 @@ void VmtNode::buildParam(const size_t& level)
     // do not push CONST0 CONST1 into _paramList
     vector<set<size_t> > count(PI_NUM,set<size_t>());
     for (size_t i = 0, size = _children.size(); i < size; ++i) {
+        _children[i]->buildParam(level+1);
         const VmtType& type = _children[i]->_type;
         if ( Aut::isPI(type) ) {
             count[type].insert( _children[i]->_idx );
+        }
+        else if ( Aut::isIMD(type) || type == PARAM ){
+            for (size_t j = 0; j < PI_NUM; ++j) {
+                for (size_t k = 0; k < _children[i]->_paramList[j].size(); ++k) {
+                    if (_children[i]->_paramList[j][k]->_type != CONST0 &&
+                        _children[i]->_paramList[j][k]->_type != CONST1   )
+                        count[j].insert( _children[i]->_paramList[j][k]->_idx );
+                }
+            }
         }
     }
     // push parameters into _paramList increasingly
@@ -231,8 +242,14 @@ void VmtNode::collectPARAM(VmtNodeList& PARAMList)
         _children[i]->collectPARAM(PARAMList);
 }
 
+void VmtNode::mergeNEG2MINUS()
+{
+    
+}
+
 void VmtNode::writeParamHead(ofstream& file)
 {
+    cout << "name=" << _name << " type" << Aut::getTypeStr(_type) << endl;
     assert( (_type == MODULE) );
     bool isfirst = 1;
     #ifndef VMTNODE_NDEBUG
@@ -247,7 +264,7 @@ void VmtNode::writeParamHead(ofstream& file)
             if (!isfirst) file << " ";
             isfirst = 0;
             file << "(" << _paramList[i][j]->_name;
-            if (i == 3 || i == 5 || i == 7) {
+            if (i == LEN || i == LEN_N || i == PREDIV) {
                 file << " Int)";
             }
             else {
@@ -299,4 +316,16 @@ void VmtNode::shiftStateVar(const size_t& delta)
         if (type != STATE && type != STATE_N) continue;
         _children[i] = Aut::piList[type][ _children[i]->_idx + delta ];
     }
+}
+
+void VmtNode::traverse()
+{
+    if ( _flag == gflag ) return;
+    _flag = gflag;
+    for (size_t i = 0, size = _children.size(); i < size; ++i)
+        _children[i]->traverse();
+}
+
+void VmtNode::writeBLIF(ofstream& file)
+{
 }

@@ -1,5 +1,7 @@
 #include "autMgr.h"
 
+using namespace std;
+
 void TGEdge::print() const 
 {
     cout << "[TGEdge::print] " << _sIdx << " -> "<< _eIdx << " ";

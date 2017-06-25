@@ -3,7 +3,7 @@ import time
 import re
 import csv
 import numpy as np
-from subprocess import call
+from subprocess32 import call
 from os import listdir
 from os.path import isdir, isfile, join
 '''
@@ -14,6 +14,7 @@ import matplotlib.patches as mpat
 from matplotlib.font_manager import FontProperties
 '''
 ############################## Global Variable ###############################
+TO                      = 10
 DPI                     = 200
 ############################## Benchmark Directory ###########################
 benchmark_kaluza_dir    = ['benchmark/Kaluza/SMTLIB/sat/small'  ,
@@ -171,6 +172,7 @@ def buildMap(benchmark,scope) :
 # [  Arguments  ] dgFileList : list of dependency graph files
 ##############################################################################
 def regex2blif(dgFileList) :
+    cnt = 0
     for f in dgFileList :
         autFile = open(join(f,'aut'))
         lines = autFile.read().splitlines()
@@ -179,21 +181,21 @@ def regex2blif(dgFileList) :
             v = line.split()
             name  = join(f,v[0])
             regex = v[1]
-            print '[regex2blif] name=%s regex=%s' %(name,regex)
-            ret1 = call('java -jar %s -r %s -d %s.dot -o garbage -l FATAL' %(regex2dot_dir,regex,name),shell=True)
-            if ret1 != 0 : sys.exit('[ERROR::regex2blif] regex2dot fails')
-            ret2 = call('%s --dot2blif %s.dot %s.blif' %(sla_dir,name,name),shell=True)
-            if ret2 != 0 : sys.exit('[ERROR::regex2blif] dot2blif fails')
+            ret1 = call('java -jar %s -r %s -d %s.dot -o garbage -l FATAL' %(regex2dot_dir,regex,name),stdout=open('debug/r2d.log','w'),shell=True)
+            if ret1 != 0 : sys.exit('[ERROR::regex2blif] regex2dot fails file=%s' %(name))
+            ret2 = call('%s --dot2blif %s.dot %s.blif' %(sla_dir,name,name),stdout=open('debug/d2b.log','w'),shell=True)
+            if ret2 != 0 : sys.exit('[ERROR::regex2blif] dot2blif fails file=%s' %(name))
             if regex == '".*"' or regex == '"~\\(".*"\\)"' or regex == '""' or regex == '~\\(""\\)' : 
-                print '[regex2blif] no need to invoke abc'
                 continue
             abcCmdFile = open('abc_cmd','w')
             abcCmdFile.write('read %s.blif' %(name))
             abcCmdFile.write('\nespresso')
             abcCmdFile.write('\nwrite %s.blif' %(name))
             abcCmdFile.close()
-            ret3 = call('%s -f abc_cmd' %(abc70930_dir),shell=True)
-            if ret3 != 0 : sys.exit('[ERROR::regex2blif] abc minimization fails regex=%s' %(regex))
+            ret3 = call('%s -f abc_cmd' %(abc70930_dir),stdout=open('debug/abc.log','w'),shell=True)
+            if ret3 != 0 : sys.exit('[ERROR::regex2blif] abc minimization fails file=%s' %(regex,name))
+        cnt += 1
+    print '[INFO::regex2blif] %d cases pass' %(cnt)
 
 ##############################################################################
 # [Function Name] blif2vmt
@@ -201,6 +203,7 @@ def regex2blif(dgFileList) :
 # [  Arguments  ] dgFileList : list of dependency graph files
 ##############################################################################
 def blif2vmt(dgFileList) :
+    cnt = 0
     exePath = sla_dir
     for f in dgFileList :
         autFile = open(join(f,'aut'))
@@ -209,23 +212,24 @@ def blif2vmt(dgFileList) :
         for line in lines :
             v = line.split()
             name = join(f,v[0])
-            print '[blif2vmt] name=%s regex=%s' %(name,v[1])
-            ret = call('%s --blif2vmt %s.blif %s.vmt' %(exePath,name,name),shell=True)
-            if ret != 0 : sys.exit('[ERROR::blif2vmt] blif2vmt fails')
-
+            ret = call('%s --blif2vmt %s.blif %s.vmt' %(exePath,name,name),stdout=open('debug/b2v.log','w'),shell=True)
+            if ret != 0 : sys.exit('[ERROR::blif2vmt] blif2vmt fails file=%s' %(name))
+        cnt += 1
+    print '[INFO::blif2vmt] %d cases pass' %(cnt)
 ##############################################################################
 # [Function Name] readCmd
 # [ Description ] execute cmd file of the file list
 # [  Arguments  ] dgFileList : list of dependency graph files
 ##############################################################################
 def readCmd(dgFileList) :
+    cnt = 0
     exePath = sla_dir
     for f in dgFileList :
         cmdFile = join(f,'cmd')
-        print '[readCmd] file=%s' %(cmdFile)
-        ret = call('%s --readCmd %s' %(exePath,cmdFile),shell=True)
-        if ret != 0 : sys.exit('[ERROR::readCmd] readCmd fails')
-
+        ret = call('%s --readCmd %s' %(exePath,cmdFile),stdout=open('debug/readcmd.log','w'),shell=True)
+        if ret != 0 : sys.exit('[ERROR::readCmd] readCmd fails file=%s' %(cmdFile))
+        cnt += 1
+    print '[INFO::readCmd] %d cases pass' %(cnt)
 ##############################################################################
 # [Function Name] exp
 # [ Description ] experiment on different solvers

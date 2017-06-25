@@ -28,7 +28,6 @@
 #define AUT_PARAM_NDEBUG
 #define AUT_OP_NDEBUG
 #define AUTMGR_NDEBUG
-using namespace std;
 
 class TGEdge;
 class TGraph;
@@ -119,7 +118,7 @@ class VmtNode{
         void         write(const size_t&,ofstream&);
         const        string& getName()            {return _name;}
         void         setType(const VmtType& type) {_type = type;}
-        VmtType      getType(const string&);
+        VmtType      getType(const string& name);
     private:
         bool         hasParam();
         bool         haveSameParam(VmtNode*);
@@ -127,9 +126,13 @@ class VmtNode{
         void         clearParam(const size_t&);
         void         buildParam(const size_t&);
         void         collectPARAM(VmtNodeList&);
+        void         mergeNEG2MINUS();
         void         writeParamHead(ofstream&);
         void         writeParamBody(const string&,ofstream&);
         void         shiftStateVar(const size_t&);
+        //TODO construct sequential circuit
+        void         traverse();
+        void         writeBLIF(ofstream&);
         string       _name;
         size_t       _idx;
         VmtType      _type;
@@ -145,9 +148,6 @@ class Aut{
     public :
         Aut(){
             init();
-            //printSpecialAlphabet(EPSILON);
-            //printSpecialAlphabet(LEFT_ANGLE);
-            //printSpecialAlphabet(RIGHT_ANGLE);
         }
         Aut(const char* fileName){ 
             init(fileName);
@@ -198,21 +198,24 @@ class Aut{
         static bool     isCurPI(const VmtType&);
         static bool     isLEAF(const VmtType&);
         static bool     isIMD(const VmtType&);
+        static bool     isPISymbol(const char&);
+        static bool     isSpecialString(const string&);
         static string   getPISymbol(const VmtType&);
         static string   getPISymbol(const size_t&);
-        static VmtType  getPITypeByName(const string&);
         static string   getTypeStr(const VmtType&);
         static string   getTypeStr(const size_t&);
+        static VmtType  getPITypeByName(const string&);
         // Non-Static Member Function
         // I/O
         void            test();
         void            print() const;
         void            printPARAMList() const;
+        void            printPIList() const;
         void            parse(const char*);
         void            write(const char*);
         void            write(const string&);
-        void            writeDeclareFun(const VarList&, const bool&, ofstream&);
-        void            writeNextFun(const VarList&, int&, ofstream&);
+        void            writeDeclareFun(const VmtType&, ofstream&);
+        void            writeNextFun(const VmtType&, int&, ofstream&);
         void            writeDefineFun(VmtNode*,ofstream&,const bool& needParam=1);
         // Operations
         string          CSNSEquiv(const VmtType&);
@@ -231,7 +234,7 @@ class Aut{
         void            replace_A4(Aut*,Aut*);
     private:
         // Static Member
-        static void     expandPIList(const VmtType&);
+        static void     expandPIList(const VmtType&,const size_t&);
         static void     vmtTokenize(const string&,vector<string>&,vector<string>&);
         static VmtNode* buildVmtNode(const string&,size_t,size_t,Str2VmtNodeMap&);
         static bool     isReservedString(const string&);
@@ -261,12 +264,13 @@ class Aut{
         // Non-Static Member Function
         void            init(const string& fileName="NONAME");
         void            initVMap();
+        void            buildVMap(const VmtType&);
         void            buildVMap(const VmtNodeList&);
-        void            buildVMap(const VarList&,const bool& needNxt=0);
         void            assignGlobalPIList(const VmtType&);
         void            clearParam();
         void            buildParam();
         void            collectPARAM();
+        void            mergeNEG2MINUS();
         void            renameDef();
         void            shiftStateVar(const size_t&);
         void            parseDef(const string&, Str2VmtNodeMap&);
@@ -281,7 +285,7 @@ class Aut{
         void            renameITO1Aut();
         void            renameITOs2Aut(Aut*,Aut*);
         void            integrate(Aut*, Aut*);
-        void            integrateMerge(VarList&,const VarList&,const VmtNodeList&,const VmtNodeList&);
+        void            integrateMerge(const VmtType&,Aut*,Aut*);
         size_t          addEVar(const size_t&);
         size_t          addStateVar(const size_t&);
         void            addLVar(const size_t&);
@@ -328,5 +332,4 @@ class AutMgr{
         // Data Member
         size_t  _gflag;
 };
-
 #endif
