@@ -3,5 +3,6 @@ write D1
 replace D1 A3 A4 A5
 write D2
 intersect D2 A6
+write D3
 addpred pred
 write sink

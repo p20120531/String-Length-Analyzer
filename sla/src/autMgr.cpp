@@ -237,21 +237,14 @@ void AutMgr::readCmdFile(const char* fileName)
             Aut* a3 = new Aut( path + tokenList[3] + ".vmt" );
             Aut* ah = new Aut( path + tokenList[4] + ".vmt" );
             size_t alpha = a1->mark();
-            a1->write( path + "T1.vmt" );
-            //Aut* a4 = new Aut();
-            //a4->replace_A4(a2,ah);
             Aut* a4 = new Aut( a2, ah, REPLACE_A4 );
-            a4->write( path + "T2.vmt" );
-            //a5->intersect(a1,a4);
             Aut* a5 = new Aut( a1, a4, INTERSECT );
-            a5->write( path + "T3.vmt" );
-            //cur     = new Aut( a5, a3, alpha, REPLACE);
-            //cur->replace(a5,a3,alpha);
             cur     = new Aut( a5, a3, alpha, REPLACE);
         }
         else if (tokenList[0] == "substr") {
-            cur = new Aut( path + tokenList[1] + ".vmt", tokenList[2], tokenList[3], SUBSTR );
-            //cur->substr(tokenList[2],tokenList[3]);
+            Aut* a1 = new Aut( path + tokenList[1] + ".vmt" , tokenList[3] , PREFIX );
+            a1->write( path + tokenList[1] + "_prefix.vmt" );
+            cur = new Aut( path + tokenList[1] + "_prefix.vmt" , tokenList[2], SUFFIX );
         }
         else if (tokenList[0] == "indexof") {
             Aut* a1  = new Aut( path + tokenList[3] + ".vmt" );

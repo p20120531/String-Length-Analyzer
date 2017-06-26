@@ -8,17 +8,8 @@ static size_t& gflag = autmgr->getGFlag();
 ///////////////////////////////// Static Member ///////////////////////////////
 
 size_t   Aut::inputBitNum = INPUT_ENCODE_BIT_NUM + 1;
-//size_t   Aut::stateBitNum = INIT_PI_BIT_NUM;
-//size_t   Aut::lvarNum     = INIT_PI_BIT_NUM;
-//size_t   Aut::evarNum     = 0;
-//size_t   Aut::predBVNum   = 0;
-//size_t   Aut::predIVNum   = 0;
-//VarList  Aut::input       = Aut::initVarList(INPUT);
-//VarList  Aut::evar        = Aut::initVarList(EXIST);
-//VarList  Aut::state       = Aut::initVarList(STATE);
-//VarList  Aut::lvar        = Aut::initVarList(LEN);
-//VarList  Aut::predBV      = Aut::initVarList(PREDBV);
-//VarList  Aut::predIV      = Aut::initVarList(PREDIV);
+STRList  Aut::piSymbolS   = Aut::initPISymbolS();
+CHRList  Aut::piSymbolC   = Aut::initPISymbolC();
 VarList  Aut::piList      = Aut::initPIList();
 VmtNode* Aut::const0      = Aut::initConst(CONST0);
 VmtNode* Aut::const1      = Aut::initConst(CONST1);
@@ -34,6 +25,26 @@ void Aut::test() {
         cout << "expandCnt " << i << endl;
         expandPIList(LEN,piList[LEN].size());
     }
+}
+
+STRList Aut::initPISymbolS()
+{
+    STRList v; v.resize(PI_NUM);
+    v[INPUT ] = "x"; v[EXIST  ] = "y";
+    v[STATE ] = "s"; v[STATE_N] = "s";
+    v[LEN   ] = "n"; v[LEN_N  ] = "n";
+    v[PREDBV] = "J"; v[PREDIV ] = "K";
+    return v;
+}
+
+CHRList Aut::initPISymbolC()
+{
+    CHRList v; v.resize(PI_NUM);
+    v[INPUT ] = 'x'; v[EXIST  ] = 'y';
+    v[STATE ] = 's'; v[STATE_N] = 's';
+    v[LEN   ] = 'n'; v[LEN_N  ] = 'n';
+    v[PREDBV] = 'J'; v[PREDIV ] = 'K';
+    return v;
 }
 
 VmtNode* Aut::initConst(const VmtType& type)
@@ -94,7 +105,7 @@ VarList Aut::initPIList()
     #endif
     VarList v(PI_NUM,VmtNodeList());
     for (size_t i = 0; i < inputBitNum; ++i) {
-        v[INPUT].push_back( new VmtNode( getPISymbol(INPUT) + itos(i) , i ) );
+        v[INPUT].push_back( new VmtNode( piSymbolS[INPUT] + itos(i) , i ) );
         #ifndef AUT_NDEBUG
             cout << " " << v[INPUT][i]->_name;
         #endif
@@ -145,36 +156,21 @@ bool Aut::isIMD(const VmtType& type)
     return (type >= 30);
 }
 
+bool Aut::isOP(const VmtType& type)
+{
+    return (isIMD(type) && type != EXCM && type != MODULE);
+}
+
 bool Aut::isPISymbol(const char& c)
 {
-    return (c == 'x' || c == 'y' || c == 's' || c == 'n' || c == 'B' || c == 'K');
+    return (c == piSymbolC[INPUT]  || c == piSymbolC[EXIST] ||
+            c == piSymbolC[STATE]  || c == piSymbolC[LEN  ] ||
+            c == piSymbolC[PREDBV] || c == piSymbolC[PREDIV]  );
 }
 
 bool Aut::isSpecialString(const string& name)
 {
     return (name == ":trans" || name == ":init" || name == ":invar-property");
-}
-
-string Aut::getPISymbol(const size_t& idx)
-{
-    return getPISymbol(static_cast<VmtType>(idx));
-}
-
-string Aut::getPISymbol(const VmtType& type)
-{
-    assert( (isPI(type)) );
-    string name;
-    switch (type) {
-        case INPUT   : name = "x"; break;
-        case EXIST   : name = "y"; break;
-        case STATE   : name = "s"; break;
-        case LEN     : name = "n"; break;
-        case STATE_N : name = "s"; break;
-        case LEN_N   : name = "n"; break;
-        case PREDBV  : name = "B"; break;
-        case PREDIV  : name = "K"; break;
-    }
-    return name;
 }
 
 string Aut::getTypeStr(const size_t& idx) 
@@ -185,6 +181,7 @@ string Aut::getTypeStr(const size_t& idx)
 string Aut::getTypeStr(const VmtType& type) 
 {
     switch (type) {
+        // LEAF
         // PI
         case INPUT   : return "INPUT"  ;
         case EXIST   : return "EXIST"  ;
@@ -201,6 +198,7 @@ string Aut::getTypeStr(const VmtType& type)
         case PARAM   : return "PARAM"  ;
         case SPECIAL : return "SPECIAL";
         // IMD        
+        // OP
         case NOT     : return "NOT"    ;
         case NEG     : return "NEG"    ;
         case AND     : return "AND"    ;
@@ -212,6 +210,7 @@ string Aut::getTypeStr(const VmtType& type)
         case EQ      : return "EQ"     ;
         case MTOEQ   : return "MTOEQ"  ;
         case MT      : return "MT"     ;
+        // EXCM & MODULE
         case EXCM    : return "EXCM"   ;
         case MODULE  : return "MODULE" ;
         default      : return "INVALID";
@@ -220,18 +219,20 @@ string Aut::getTypeStr(const VmtType& type)
 
 VmtType Aut::getPITypeByName(const string& name) 
 {
-    if      (name[0] == 'x' )          return INPUT;
-    else if (name[0] == 'y' )          return EXIST;
-    else if (name[0] == 'B' )          return PREDBV;
-    else if (name[0] == 'K' )          return PREDIV;
-    else if (name[0] == 's' ) {
-        if ( *(name.rbegin()) == 't' ) return STATE_N;
-        else                           return STATE;
+    if      (name[0] == piSymbolC[INPUT] ) return INPUT;
+    else if (name[0] == piSymbolC[EXIST] ) return EXIST;
+    else if (name[0] == piSymbolC[PREDBV]) return PREDBV;
+    else if (name[0] == piSymbolC[PREDIV]) return PREDIV;
+    else if (name[0] == piSymbolC[STATE] ) 
+    {
+    if ( *(name.rbegin()) == 't' )         return STATE_N;
+    else                                   return STATE;
     }
-    else {
-        assert( (name[0] == 'n') );
-        if ( *(name.rbegin()) == 't' ) return LEN_N;
-        else                           return LEN;
+    else 
+    {
+    assert( (name[0] == piSymbolC[LEN]) );
+    if ( *(name.rbegin()) == 't' )         return LEN_N;
+    else                                   return LEN;
     }
 }
 
@@ -241,22 +242,21 @@ void Aut::expandPIList(const VmtType& type,const size_t& maxIdx)
     size_t origin = piList[type].size();
     size_t nsize  = maxIdx + 1;
     if ( nsize <= origin ) return;
-    string symbol = getPISymbol(type);
 
     piList[type].resize(nsize);
     for (size_t i = origin; i < nsize; ++i)
-        piList[type][i] = new VmtNode( symbol + itos(i) , i );
+        piList[type][i] = new VmtNode( piSymbolS[type] + itos(i) , i );
 
     if (type == STATE) {
         piList[STATE_N].resize(nsize);
         for (size_t i = origin; i < nsize; ++i) {
-            piList[STATE_N][i] = new VmtNode( "s" + itos(i) + ".next" , i );
+            piList[STATE_N][i] = new VmtNode( piSymbolS[STATE_N] + itos(i) + ".next" , i );
         }
     }
     else if (type == LEN) {
         piList[LEN_N].resize(nsize);
         for (size_t i = origin; i < nsize; ++i)
-            piList[LEN_N][i] = new VmtNode( "n" + itos(i) + ".next" , i );
+            piList[LEN_N][i] = new VmtNode( piSymbolS[LEN_N] + itos(i) + ".next" , i );
     }
 }
 
@@ -288,7 +288,7 @@ void Aut::vmtTokenize(const string& s,vector<string>& paramList, vector<string>&
                 else if (s[j] == ')') --dCnt;
             }
             j += 2;
-            if (s[j] == 'K') tokenList.push_back("");
+            if (s[j] == 'I') tokenList.push_back("");
             else if (s[j] == 'B') {
                 j += 4;
                 if (s[j] == ')') tokenList.push_back("");
@@ -484,7 +484,6 @@ void Aut::assignGlobalPIList(const VmtType& type)
     assert( (type == EXIST || type == PREDBV || type == PREDIV) );
     VmtNodeList& global =  piList[type];
     VmtNodeList& local  = _piList[type];
-    const string symbol = getPISymbol(type);
     const size_t gsize  = global.size();
     const size_t lsize  = local.size();
     global.resize( gsize + lsize );
@@ -492,7 +491,7 @@ void Aut::assignGlobalPIList(const VmtType& type)
         // rename and assign
         size_t idx      = i + gsize;
         local[i]->_idx  = idx;
-        local[i]->_name = symbol + itos(idx);
+        local[i]->_name = piSymbolS[type] + itos(idx);
         global[idx]     = local[i];
     }
 }
@@ -587,10 +586,10 @@ void Aut::renameDef()
 void Aut::shiftStateVar(const size_t& delta)
 {
     expandPIList( STATE , _stateVarNum + delta - 1 );
-    _piList[STATE].clear();
+    _piList[STATE  ].clear();
     _piList[STATE_N].clear();
     for (size_t i = delta; i < _stateVarNum + delta; ++i) {
-        _piList[STATE].push_back(piList[STATE][i]);
+        _piList[STATE  ].push_back(piList[STATE  ][i]);
         _piList[STATE_N].push_back(piList[STATE_N][i]);
     }
     ++gflag;
@@ -755,9 +754,15 @@ void Aut::integrate(Aut* a1, Aut* a2)
     _imdList = a1->_imdList;
     for (size_t i = 0, size = a2->_imdList.size(); i < size; ++i)
         _imdList.push_back(a2->_imdList[i]);
-    
-    // merget _PARAMList
+
+    // merge _predList
+    _predList = a1->_predList;
+    for (size_t i = 0, size = a2->_predList.size(); i < size; ++i)
+        _predList.push_back(a2->_predList[i]);
+
+
     #ifndef AUT_PARAM_NDEBUG
+        // merget _PARAMList
         assert( (_PARAMList.empty()) );
         for (size_t i = 0, size = a1->_PARAMList.size(); i < size; ++i)
             for (size_t j = 0, size1 = a2->_PARAMList.size(); j < size1; ++j)
@@ -808,9 +813,9 @@ size_t Aut::addStateVar(const size_t& expandNum)
     size_t svbpos = _stateVarNum;
     expandPIList( STATE , svbpos + expandNum - 1 );
     for (size_t i = svbpos, size = svbpos + expandNum; i < size; ++i) {
-        _piList[STATE].push_back(piList[STATE][i]);
+        _piList[STATE  ].push_back(piList[STATE  ][i]);
         _piList[STATE_N].push_back(piList[STATE_N][i]);
-        _vmap.insert(Str2VmtNode(piList[STATE][i]->_name,piList[STATE][i]));
+        _vmap.insert(Str2VmtNode(piList[STATE  ][i]->_name,piList[STATE  ][i]));
         _vmap.insert(Str2VmtNode(piList[STATE_N][i]->_name,piList[STATE_N][i]));
     }
     _stateVarNum += expandNum;
@@ -819,6 +824,7 @@ size_t Aut::addStateVar(const size_t& expandNum)
 
 void Aut::addLVar(const size_t& lvarIdx)
 {
+    check(this,lvarIdx);
     expandPIList( LEN , lvarIdx );
     // maintain increasing order
     bool isCurPlace = 0, isNxtPlace = 0;
@@ -841,17 +847,17 @@ void Aut::addLVar(const size_t& lvarIdx)
     _vmap.insert(Str2VmtNode(piList[LEN_N][lvarIdx]->_name,piList[LEN_N][lvarIdx]));
 }
 
-VmtNode* Aut::getI()
+VmtNode* Aut::getI() const
 {
     return _itoList[0]->_children[0]->_children[0];
 }
 
-VmtNode* Aut::getO()
+VmtNode* Aut::getO() const
 {
     return _itoList[2]->_children[0]->_children[0]->_children[0];
 }
 
-VmtNode* Aut::getT()
+VmtNode* Aut::getT() const
 {
     return _itoList[1]->_children[0]->_children[0];
 }
@@ -944,24 +950,24 @@ void Aut::parse(const char* fileName)
                 if (i > 0) cout << ", ";
                 cout << "\"" << paramList[i] << "\" ";
             }
-            cout << endl;
+            cout << "]" << endl;
         #endif
         if (tokenList[0] == "epsilon" || tokenList[0] == "leftAngle" || tokenList[0] == "rightAngle") continue;
         if (sCnt == 0) {
             char symbol = tokenList[0][0];
             // only parse current state variable
             if ( *(tokenList[0].rbegin()) == 't' ) continue;
-            if ( symbol == 'x') { ++inputCnt;      continue; }
+            if ( symbol == piSymbolC[INPUT] ) { ++inputCnt; continue; }
             
             size_t idx = stoi(tokenList[0].substr(1));
             VmtType cType,nType;
-            if      ( symbol == 's' ) { cType = STATE ; nType = STATE_N; ++_stateVarNum;}
-            else if ( symbol == 'n' ) { cType = LEN   ; nType = LEN_N  ; }
-            else if ( symbol == 'y' ) { cType = EXIST ; }
-            else if ( symbol == 'B' ) { cType = PREDBV; }
-            else    { assert( (symbol == 'K') ); cType = PREDIV; }
+            if      ( symbol == piSymbolC[STATE] ) { cType = STATE ; nType = STATE_N; ++_stateVarNum;}
+            else if ( symbol == piSymbolC[LEN]   ) { cType = LEN   ; nType = LEN_N  ; }
+            else if ( symbol == piSymbolC[EXIST] ) { cType = EXIST ; }
+            else if ( symbol == piSymbolC[PREDBV]) { cType = PREDBV; }
+            else    { assert( (symbol == piSymbolC[PREDIV]) ); cType = PREDIV; }
             
-            if ( symbol == 's' || symbol == 'n' ) {
+            if ( symbol == piSymbolC[STATE] || symbol == piSymbolC[LEN] ) {
                 expandPIList(cType,idx);
                 _piList[cType].push_back(piList[cType][idx]);
                 _piList[nType].push_back(piList[nType][idx]);
@@ -1017,12 +1023,12 @@ void Aut::parse(const char* fileName)
     #endif
 }
 
-void Aut::write(const string& fileName)
+void Aut::write(const string& fileName) const
 {
     write(fileName.c_str());
 }
 
-void Aut::write(const char* fileName)
+void Aut::write(const char* fileName) const
 {
     ofstream file(fileName);
     
@@ -1072,7 +1078,7 @@ void Aut::write(const char* fileName)
     file.close();
 }
 
-void Aut::writeDeclareFun(const VmtType& type, ofstream& file)
+void Aut::writeDeclareFun(const VmtType& type, ofstream& file) const
 {
     assert( (isCurPI(type)) );
     string dtype = (type == LEN || type == PREDIV) ? "Int" : "Bool";
@@ -1082,7 +1088,7 @@ void Aut::writeDeclareFun(const VmtType& type, ofstream& file)
     }
 }
 
-void Aut::writeNextFun(const VmtType& type, int& nxtCnt, ofstream& file)
+void Aut::writeNextFun(const VmtType& type, int& nxtCnt, ofstream& file) const
 {
     assert( (isCurPI(type)) );
     for (size_t i = 0, size = _piList[type].size(); i < size; ++i)
@@ -1091,7 +1097,7 @@ void Aut::writeNextFun(const VmtType& type, int& nxtCnt, ofstream& file)
              << _piList[type][i]->_name<< ".next))\n";
 }
 
-void Aut::writeDefineFun(VmtNode* n, ofstream& file, const bool& needParam)
+void Aut::writeDefineFun(VmtNode* n, ofstream& file, const bool& needParam) const
 {
     #ifndef AUT_NDEBUG
         cout << "[Aut::writeDefineFun] gflag=" << gflag << endl;
@@ -1113,7 +1119,7 @@ void Aut::writeDefineFun(VmtNode* n, ofstream& file, const bool& needParam)
 
 ***********************************************************************/
 
-string Aut::CSNSEquiv(const VmtType& type)
+string Aut::CSNSEquiv(const VmtType& type) const
 {
     assert( (type == STATE || type == LEN) );
     string ret;
@@ -1132,9 +1138,8 @@ void Aut::addlen(const string& lvarIdxStr)
 {
     // Add Length Variable
     size_t lvarIdx = stoi(lvarIdxStr);
-    check(this,lvarIdx);
     addLVar(lvarIdx);
-    string lv  = piList[LEN]  [lvarIdx]->_name;
+    string lv  = piList[LEN  ][lvarIdx]->_name;
     string lvn = piList[LEN_N][lvarIdx]->_name;
 
     #ifndef AUT_OP_NDEBUG
@@ -1166,6 +1171,9 @@ void Aut::intersect(Aut* a1, Aut* a2)
     // Shift State Variable of a2
     a2->shiftStateVar(a1->_stateVarNum);
     _stateVarNum = a1->_stateVarNum + a2->_stateVarNum;
+
+    string csnseq1 = a1->CSNSEquiv(STATE) + a1->CSNSEquiv(LEN);
+    string csnseq2 = a2->CSNSEquiv(STATE) + a2->CSNSEquiv(LEN);
     
     #ifndef AUT_OP_NDEBUG
         cout << "\n[Aut::intersect] shifted svar " << a1->_name << ":";
@@ -1188,8 +1196,8 @@ void Aut::intersect(Aut* a1, Aut* a2)
     defineFun( "I", "(! tmp1 :init true)", _itoList );
     
     // Transition
-    defineFun( "T1_epsilon", "(or tmpT1 (and epsilon" + a1->CSNSEquiv(STATE) + a1->CSNSEquiv(LEN) + "))", _imdList);
-    defineFun( "T2_epsilon", "(or tmpT2 (and epsilon" + a2->CSNSEquiv(STATE) + a2->CSNSEquiv(LEN) + "))", _imdList);
+    defineFun( "T1_epsilon", "(or tmpT1 (and epsilon" + csnseq1 + "))", _imdList);
+    defineFun( "T2_epsilon", "(or tmpT2 (and epsilon" + csnseq2 + "))", _imdList);
     defineFun( "tmp2", "(and T1_epsilon T2_epsilon)", _imdList);
     defineFun( "T", "(! tmp2 :trans true)", _itoList);
 
@@ -1203,6 +1211,9 @@ void Aut::intersect(Aut* a1, Aut* a2)
 void Aut::concate(Aut* a1,Aut* a2)
 {
     check(a1,a2);
+    
+    // Build PARAM Node
+    addParamNode( "I2_PARAM", a2->getI());
     
     _stateVarNum = (a1->_stateVarNum > a2->_stateVarNum)? a1->_stateVarNum : a2->_stateVarNum;
     size_t svbpos = addStateVar(1);
@@ -1224,7 +1235,6 @@ void Aut::concate(Aut* a1,Aut* a2)
     defineFun( "I", "(! tmp1 :init true)", _itoList);
     
     // Transition
-    addParamNode( "I2_PARAM", a2->getI());
     defineFun( "tmp2", "(and (not " + sa + ") (not " + san + ") tmpT1" + a2->CSNSEquiv(LEN) + ")", _imdList);
     defineFun( "tmp3", "(and " + sa + " " + san + " tmpT2" + a1->CSNSEquiv(LEN) + ")", _imdList);
     defineFun( "tmp4", "(and epsilon (not " + sa + ") " + san + " tmpO1 I2_PARAM" + CSNSEquiv(LEN) + ")", _imdList);
@@ -1273,6 +1283,10 @@ void Aut::replace_A4(Aut* a1, Aut* a2)
 {
     check(a1,a2);
     
+    // Build PARAM Nodes
+    addParamNode( "I1_PARAM" , a1->getI() );
+    addParamNode( "I2_PARAM" , a2->getI() );
+
     _stateVarNum  = (a1->_stateVarNum > a2->_stateVarNum)? a1->_stateVarNum : a2->_stateVarNum;
     size_t svbpos = addStateVar(1);
     #ifndef AUT_OP_NDEBUG
@@ -1295,8 +1309,8 @@ void Aut::replace_A4(Aut* a1, Aut* a2)
     // Transition Relation
     defineFun( "tmp2", "(and (not " + sa + ") (not " + san + ") (not " + leftAngle->_name + ") (not " + rightAngle->_name + ") tmpT2)", _imdList);
     defineFun( "tmp3", "(and " + sa + " " + san + " (not " + leftAngle->_name + ") (not " + rightAngle->_name + ") tmpT1)", _imdList);
-    defineFun( "tmp4", "(and (not " + sa + ") " + san + " " + leftAngle->_name + " tmpO2 tmpI1)", _imdList);
-    defineFun( "tmp5", "(and " + sa + " (not " + san + ") " + rightAngle->_name + " tmpO1 tmpI2)", _imdList);
+    defineFun( "tmp4", "(and (not " + sa + ") " + san + " " + leftAngle->_name + " tmpO2 I1_PARAM)", _imdList);
+    defineFun( "tmp5", "(and " + sa + " (not " + san + ") " + rightAngle->_name + " tmpO1 I2_PARAM)", _imdList);
     defineFun( "tmp6", "(or tmp2 tmp3 tmp4 tmp5)", _imdList);
     defineFun( "T", "(! tmp6 :trans true)", _itoList);
     
@@ -1314,6 +1328,14 @@ void Aut::replace(Aut* a1, Aut* a2, const size_t& alpha)
     a2->shiftStateVar(a1->_stateVarNum);
     _stateVarNum = a1->_stateVarNum + a2->_stateVarNum;
     size_t svbpos = addStateVar(1);
+    
+    // Build PARAM Nodes
+    size_t evbpos = addEVar(a1->getT()->_paramList[INPUT].size());
+    addParamNode( "I2_PARAM"   , a2->getI());
+    addParamNode( "T1_PARAM_1" , a1->getT() , LEFT_ANGLE_BRACKET_ENCODE,0);
+    addParamNode( "T1_PARAM_2" , a1->getT() , evbpos,1);
+    addParamNode( "T1_PARAM_3" , a1->getT() , RIGHT_ANGLE_BRACKET_ENCODE,0);
+    
     string sa0  = piList[STATE  ][alpha ]->_name;
     string san0 = piList[STATE_N][alpha ]->_name;
     string sa1  = piList[STATE  ][svbpos]->_name;
@@ -1336,13 +1358,6 @@ void Aut::replace(Aut* a1, Aut* a2, const size_t& alpha)
     defineFun( "I", "(! tmp1 :init true)", _itoList);
     
     // Transition Relation
-    size_t evbpos = addEVar(a1->getT()->_paramList[INPUT].size());
-    addParamNode("I2_PARAM",a2->getI());
-
-    addParamNode("T1_PARAM_1",a1->getT(),LEFT_ANGLE_BRACKET_ENCODE,0);
-    addParamNode("T1_PARAM_2",a1->getT(),evbpos,1);
-    addParamNode("T1_PARAM_3",a1->getT(),RIGHT_ANGLE_BRACKET_ENCODE,0);
-    
     defineFun( "tmp2", "(and (not " + sa0 + ") (not " + san0 + ") tmpT1 (not " + sa1 + ") (not " + san1 + ") tmpI2 I2_PARAM)", _imdList);
     defineFun( "tmp3", "(and (not " + sa0 + ") (not " + san0 + ") epsilon" + csnseq + " (not " + sa1 + ") " + san1 + " tmpI2 I2_PARAM)", _imdList);
     defineFun( "tmp4", "(and (not " + sa0 + ") (not " + san0 + ")" + csnseq + " " + sa1 + " " + san1 + " tmpT2)", _imdList);
@@ -1361,17 +1376,18 @@ void Aut::replace(Aut* a1, Aut* a2, const size_t& alpha)
 
 void Aut::prefix(const string& lvarIdxStr)
 {
+    // Build PARAM Node
     size_t evbpos  = addEVar(getT()->_paramList[INPUT].size());
     addParamNode("T1_PARAM",getT(),evbpos,1);
+    
     string csnseq  = CSNSEquiv(STATE) + CSNSEquiv(LEN);
     size_t lvarIdx = stoi(lvarIdxStr);
-    check(this,lvarIdx);
     addLVar(lvarIdx);
     size_t svbpos = addStateVar(1);
-    string sa  = piList[STATE]  [svbpos]->_name;
-    string san = piList[STATE_N][svbpos]->_name;
-    string lv  = piList[LEN]  [lvarIdx]->_name;
-    string lvn = piList[LEN_N][lvarIdx]->_name;
+    string sa  = piList[STATE  ][svbpos ]->_name;
+    string san = piList[STATE_N][svbpos ]->_name;
+    string lv  = piList[LEN    ][lvarIdx]->_name;
+    string lvn = piList[LEN_N  ][lvarIdx]->_name;
 
     string lveq    = " (= " + lvn + " " + lv + ")";
     string lvincre = " (= " + lvn + " (+ " + lv + " 1))";
@@ -1402,10 +1418,11 @@ void Aut::prefix(const string& lvarIdxStr)
 void Aut::suffix(const string& lvarIdxStr)
 {
     string csnseq  = CSNSEquiv(STATE) + CSNSEquiv(LEN);
-    size_t lvarIdx = stoi(lvarIdxStr);
-    check(this,lvarIdx);
-
-    // TODO
+    
+    // Rename ITO
+    renameITO1Aut();
+    
+    // Build PARAM Node
     size_t evbpos = addEVar(getT()->_paramList[INPUT].size());
     VmtNode* ye   = new VmtNode("YEPSILON");
     ye->addChild(new VmtNode("and"));
@@ -1426,14 +1443,21 @@ void Aut::suffix(const string& lvarIdxStr)
     _vmap.insert(Str2VmtNode("YEPSILON",ye));
 
     defineFun( "T1_epsilon", "(or tmpT1 (and epsilon" + csnseq + "))", _imdList);
-    addParamNode("T1_PARAM",_imdList.back(),evbpos,1);
-    
+    VmtNode* T1EPSILON = _imdList.back();
+    ++gflag;
+    T1EPSILON->clearParam(0);
+    ++gflag;
+    T1EPSILON->buildParam(0);
+    addParamNode("T1_PARAM",T1EPSILON,evbpos,1);
+
+    // Add STATE LEN variables
+    size_t lvarIdx = stoi(lvarIdxStr);
     addLVar(lvarIdx);
     size_t svbpos = addStateVar(1);
-    string sa  = piList[STATE]  [svbpos]->_name;
-    string san = piList[STATE_N][svbpos]->_name;
-    string lv  = piList[LEN]  [lvarIdx]->_name;
-    string lvn = piList[LEN_N][lvarIdx]->_name;
+    string sa  = piList[STATE  ][svbpos ]->_name;
+    string san = piList[STATE_N][svbpos ]->_name;
+    string lv  = piList[LEN    ][lvarIdx]->_name;
+    string lvn = piList[LEN_N  ][lvarIdx]->_name;
     
     string lveq    = " (= " + lvn + " " + lv + ")";
     string lvincre = " (= " + lvn + " (+ 1 " + lv + "))";
@@ -1441,8 +1465,6 @@ void Aut::suffix(const string& lvarIdxStr)
     #ifndef AUT_OP_NDEBUG
         cout << "[Aut::suffix] " << _name << " alpha=" << svbpos << " lvar=" << lvarIdxStr << endl;
     #endif
-    
-    renameITO1Aut();
 
     // Initial State
     defineFun( "tmp1", "(and (not " + sa + ") tmpI1)", _imdList, &Aut::setI );
@@ -1458,12 +1480,6 @@ void Aut::suffix(const string& lvarIdxStr)
     defineFun( "tmp7", "(and " + sa + " tmpO1)", _imdList, &Aut::setO );
     
     renameDef();
-}
-
-void Aut::substr(const string& n0, const string& n1)
-{
-    prefix(n1);
-    suffix(n0);
 }
 
 void Aut::addpred(const string& fileName)
@@ -1491,13 +1507,13 @@ void Aut::addpred(const string& fileName)
     
     // renaming and replace global by local
     for (size_t i = 0, size = _piList[PREDBV].size(); i < size; ++i) {
-        _piList[PREDBV][i]->_name = "B" + itos(i);
+        _piList[PREDBV][i]->_name = piSymbolS[PREDBV] + itos(i);
     }
     piList[PREDBV] = _piList[PREDBV];
 
     for (size_t i = 0, size = _piList[PREDIV].size(); i < size; ++i) {
-        _piList[PREDIV][i]->_name = "K" + itos(i);
-    }
+        _piList[PREDIV][i]->_name = piSymbolS[PREDIV] + itos(i);
+    }                                  
     piList[PREDIV] = _piList[PREDIV];
 
     // and predicates together
@@ -1654,11 +1670,8 @@ void Aut::parsePred(const string& line, size_t& pCnt, Str2VmtNodeMap& vmap)
                 
                 VmtNode* eq1   = new VmtNode("=");
                 VmtNode* plus1 = new VmtNode("+");
-                VmtNode* plus2 = new VmtNode("+");
-                plus2->addChild(i2Node);
-                plus2->addChild(new VmtNode("1"));
                 plus1->addChild(i12Node);
-                plus1->addChild(plus2);
+                plus1->addChild(i2Node);
                 eq1->addChild(piList[LEN][n1]);
                 eq1->addChild(plus1);
                 pNode1->addChild(eq1);
@@ -1718,12 +1731,20 @@ void Aut::isempty(const string& fileName)
 {
     ofstream file(fileName.c_str());
     
+    // record transitive fanin of O & T ; count adder and comparator
     ++gflag;
-    _itoList[2]->traverse();
-    _itoList[1]->traverse();
+    getO()->traverse();
+    getT()->traverse();
 
     // write Sequential BLIF
     
+    // write special alphabets (if used)
+    if ( epsilon->_flag    == gflag ) epsilon->writeBLIF(file);
+    if ( leftAngle->_flag  == gflag ) leftAngle->writeBLIF(file);
+    if ( rightAngle->_flag == gflag ) rightAngle->writeBLIF(file);
+    
+    // write adder and comparator
+
     for (size_t i = 0, size = _imdList.size(); i < size; ++i)
         if (_imdList[i]->_flag == gflag)
             _imdList[i]->writeBLIF(file);

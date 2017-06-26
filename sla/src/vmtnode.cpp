@@ -6,21 +6,24 @@ using namespace std;
 extern AutMgr* autmgr;
 static size_t& gflag = autmgr->getGFlag();
 
-void VmtNode::print(const size_t& level) 
+void VmtNode::print(const size_t& level) const
 {
-    cout << string(level*3,' ') << _name << " " << this << " " << Aut::getTypeStr(_type) << " " << _flag;
+    //cout << string(level*3,' ') << _name << " " << this << " " << Aut::getTypeStr(_type) << " " << _flag;
+    cout << string(level*3,' ') << _name << " " << Aut::getTypeStr(_type) << " " << _flag;
+    /*
     for (size_t i = 0; i < PI_NUM; ++i) {
         for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
             cout << " " << _paramList[i][j]->_name;
-    }
+    }*/
     cout << endl;
     for (size_t i = 0, size = _children.size(); i < size; ++i) {
         _children[i]->print(level+1);
     }
 }
 
-void VmtNode::write(const size_t& level,ofstream& outFile)
+void VmtNode::write(const size_t& level,ofstream& outFile) const
 {
+    cout << string(level*3,' ') << _name << " " << Aut::getTypeStr(_type) << " " << _flag << endl;
     #ifndef VMTNODE_NDEBUG
         cout << string(level*3,' ') << _name << " " << this << " " << Aut::getTypeStr(_type) << " " << _flag;
         if   (_flag == gflag)            cout << " visited";
@@ -128,7 +131,7 @@ void VmtNode::write(const size_t& level,ofstream& outFile)
     */
 }
 
-VmtType VmtNode::getType(const string& name)
+VmtType VmtNode::getType(const string& name) const
 {
     if      ( name == "not"         ) return NOT;
     else if ( name == "-"           ) return NEG;
@@ -145,11 +148,11 @@ VmtType VmtNode::getType(const string& name)
     else if ( name == "true"        ) return CONST1;
     else if ( isNumber(name)        ) return NUM;
     else if ( Aut::isSpecialString(name) ) return SPECIAL;
-    else if ( Aut::isPISymbol(name[0])   ) Aut::getPITypeByName(name);
+    else if ( Aut::isPISymbol(name[0]) ) Aut::getPITypeByName(name);
     else                              return MODULE;
 }
 
-bool VmtNode::hasParam()
+bool VmtNode::hasParam() const
 {
     for (size_t i = 0; i < PI_NUM; ++i) {
         if (!_paramList[i].empty())
@@ -158,7 +161,7 @@ bool VmtNode::hasParam()
     return 0;
 }
 
-bool VmtNode::haveSameParam(VmtNode* n)
+bool VmtNode::haveSameParam(VmtNode* n) const
 {
     for (size_t i = 0; i < PI_NUM; ++i) {
         set<string> s0,s1;
@@ -247,7 +250,7 @@ void VmtNode::mergeNEG2MINUS()
     
 }
 
-void VmtNode::writeParamHead(ofstream& file)
+void VmtNode::writeParamHead(ofstream& file) const
 {
     cout << "name=" << _name << " type" << Aut::getTypeStr(_type) << endl;
     assert( (_type == MODULE) );
@@ -277,7 +280,7 @@ void VmtNode::writeParamHead(ofstream& file)
     #endif
 }
 
-void VmtNode::writeParamBody(const string& fname, ofstream& file)
+void VmtNode::writeParamBody(const string& fname, ofstream& file) const
 {
     file << "(" << fname;
     for (size_t i = 0; i < PI_NUM; ++i) {
@@ -318,7 +321,7 @@ void VmtNode::shiftStateVar(const size_t& delta)
     }
 }
 
-void VmtNode::traverse()
+void VmtNode::traverse() const
 {
     if ( _flag == gflag ) return;
     _flag = gflag;
@@ -328,4 +331,19 @@ void VmtNode::traverse()
 
 void VmtNode::writeBLIF(ofstream& file)
 {
+    file << ".model " << _name << endl;
+    
+    // write inputs
+    file << ".inputs";
+    for (size_t i = 0; i < PI_NUM; ++i)
+        for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
+            file << " " << _paramList[i][j]->_name;
+    file << endl;
+    
+    // write output
+    file << ".outputs out" << endl;
+
+    // write subckt
+    
+    
 }

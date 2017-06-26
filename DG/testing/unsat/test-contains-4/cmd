@@ -1,6 +1,6 @@
 addlen A1 0
 write D1
-intersect A1 A2
+intersect D1 A2
 write D2
 addlen A3 1
 write D3

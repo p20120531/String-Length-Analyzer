@@ -1,5 +1,4 @@
 (set-logic QF_S)
-(set-option :produce-models true)
 
 
 (declare-fun v1 () String)
@@ -12,4 +11,3 @@
 (assert (= 3 (str.len v3)))
 
 (check-sat)
-(get-model)

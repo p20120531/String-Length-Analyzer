@@ -29,9 +29,9 @@ dg_testing_dir          = ['DG/testing/sat', 'DG/testing/unsat']
 sla_dir        = 'bin/sla'
 regex2dot_dir  = 'bin/regex2blif/target/regex2blif-0.0.1-SNAPSHOT.jar'
 abc70930_dir   = 'bin/abc70930'
-cvc4_dir       = 'bin/cvc4-2017-03-20-x86_64-linux-opt'
+cvc4_dir       = 'bin/cvc4-1.4-x86_64-linux-opt'
 norn_dir       = 'bin/norn/norn'
-z3_dir         = 'bin/z3-master/build/z3'
+z3_dir         = 'bin/z3/build/z3'
 ic3ia_dir      = 'bin/ic3ia/build/ic3ia'
 
 ##############################################################################
@@ -133,6 +133,7 @@ def buildMap(benchmark,scope) :
                 dgCnt += 1
                 mapFile.write('\n%d,%s' %(dgCnt,f))
         elif scope == 'strlen' :
+            # block 'div' here
             for f in dgFile :
                 dgCnt += 1
                 predFile = open(join(f,'pred'))
@@ -215,7 +216,7 @@ def blif2vmt(dgFileList) :
             ret = call('%s --blif2vmt %s.blif %s.vmt' %(exePath,name,name),stdout=open('debug/b2v.log','w'),shell=True)
             if ret != 0 : sys.exit('[ERROR::blif2vmt] blif2vmt fails file=%s' %(name))
         cnt += 1
-    print '[INFO::blif2vmt] %d cases pass' %(cnt)
+    print '[INFO::blif2vmt  ] %d cases pass' %(cnt)
 ##############################################################################
 # [Function Name] readCmd
 # [ Description ] execute cmd file of the file list
@@ -229,7 +230,7 @@ def readCmd(dgFileList) :
         ret = call('%s --readCmd %s' %(exePath,cmdFile),stdout=open('debug/readcmd.log','w'),shell=True)
         if ret != 0 : sys.exit('[ERROR::readCmd] readCmd fails file=%s' %(cmdFile))
         cnt += 1
-    print '[INFO::readCmd] %d cases pass' %(cnt)
+    print '[INFO::readCmd   ] %d cases pass' %(cnt)
 ##############################################################################
 # [Function Name] exp
 # [ Description ] experiment on different solvers
@@ -270,7 +271,7 @@ def expRecord(solverName,idx,dirName,record) :
     if  solverName == 'cvc4' :
         exePath     = cvc4_dir
         ts = time.time()
-        call('%s %s > out' %(exePath,f),shell=True)
+        call('%s --strings-exp %s > out' %(exePath,f),stdout=open('debug/cvc4.log','w'),shell=True)
         te = time.time()
         out = open('out')
         lines = out.read().splitlines()
@@ -282,7 +283,7 @@ def expRecord(solverName,idx,dirName,record) :
     elif solverName == 'norn' :
         exePath     =  norn_dir
         ts = time.time()
-        call('%s %s > out' %(exePath,f),shell=True)
+        call('%s %s > out' %(exePath,f),stdout=open('debug/norn.log','w'),shell=True)
         te = time.time()
         out = open('out')
         lines = out.read().splitlines()
@@ -294,7 +295,7 @@ def expRecord(solverName,idx,dirName,record) :
     elif solverName == 'z3'   :
         exePath     =  z3_dir
         ts = time.time()
-        call('%s %s > out' %(exePath,f),shell=True)
+        call('%s %s > out' %(exePath,f),stdout=open('debug/z3.log','w'),shell=True)
         te = time.time()
         out = open('out')
         lines = out.read().splitlines()
@@ -307,7 +308,7 @@ def expRecord(solverName,idx,dirName,record) :
         exePath     =  ic3ia_dir
         f = join(dirName,'sink.vmt')
         ts = time.time()
-        call('%s -w -v 2 %s > out' %(exePath,f),shell=True)
+        call('%s -w -v 2 %s > out' %(exePath,f),stdout=open('debug/ic3ia.log','w'),shell=True)
         te = time.time()
         out = open('out')
         lines = out.read().splitlines()
@@ -344,7 +345,6 @@ def expRecord(solverName,idx,dirName,record) :
 #                 solverList : list of solvers
 ##############################################################################
 def ConsistencyChecking(benchmark,scope,solverList) :
-    #if solverList[0] != 'ic3ia' : sys.exit('[ERROR::CC] first solver is not ic3ia')
     rstr = 'experiment/%s/result/%s' %(benchmark,scope)
     data = []
     for solver in solverList :
@@ -366,11 +366,12 @@ def ConsistencyChecking(benchmark,scope,solverList) :
         for j in range(len(data[i][1])) :
             if data[i][1][j] == 'x' :
                 errFree = False
-                logFile.write('case:%-6s ERROR\n' %(data[i][0][j]))
+                logFile.write('case:%-6s ERROR solver=%s\n' %(data[i][0][j],solverList[i]))
+    '''
     if not errFree :
         logFile.close()
         sys.exit('[ERROR::CC] some cases have ERROR')
-
+    '''
     allConsistent = True
     for i in range(1,len(data)) :
         for j in range(len(data[i][1])) :
@@ -563,7 +564,7 @@ def opt1(argv) :
                 --buildDG
                 --resample
                 --build      < --k | --ks | --t >
-                --clear      < --k | --ks | --t >
+                --clear      < --k | --ks | --t > (only clear map and experimental results)
                 --reset      < --k | --ks | --t >
                 --solve      < --k | --ks | --t >
                 --solve-n    < --k | --ks | --t >

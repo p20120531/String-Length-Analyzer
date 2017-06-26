@@ -23,11 +23,11 @@
 #include <cstdio>
 #include "utility.h"
 #define TGRAPH_NDEBUG
-#define VMTNODE_NDEBUG
-#define AUT_NDEBUG
+//#define VMTNODE_NDEBUG
+//#define AUT_NDEBUG
 #define AUT_PARAM_NDEBUG
 #define AUT_OP_NDEBUG
-#define AUTMGR_NDEBUG
+//#define AUTMGR_NDEBUG
 
 class TGEdge;
 class TGraph;
@@ -51,9 +51,11 @@ enum AType {
 };
 
 enum AutOpType {
-    ADDLEN, SUBSTR, INTERSECT, CONCATE, REPLACE, REPLACE_A4
+    ADDLEN, PREFIX, SUFFIX, INTERSECT, CONCATE, REPLACE, REPLACE_A4
 };
 
+typedef vector<string>        STRList;
+typedef vector<char>          CHRList;
 typedef vector<TGEdge*>       TGEdgeList;
 typedef vector<VmtNode*>      VmtNodeList;
 typedef set<VmtNode*>         VmtNodeSet;
@@ -109,37 +111,41 @@ class VmtNode{
     public:
         
         VmtNode (const string& name,const size_t& idx=0): _name(name), _idx(idx) 
-        { _paramList.assign(PI_NUM,VmtNodeList()); _type = getType(name) ; _source=0; _flag = 0; }
+        { _paramList.assign(PI_NUM,VmtNodeList()); _type = getType(name) ; 
+          _bname = ""; _bit = 0; _source=0; _flag = 0; }
 
         VmtNode (const string& name,VmtNode* source) : _name(name), _source(source)
-        { _paramList.assign(PI_NUM,VmtNodeList()); _type = PARAM; _idx = 0 ; _flag = 0; }
+        { _paramList.assign(PI_NUM,VmtNodeList()); _type = PARAM;
+          _bname = ""; _bit = 0; _idx = 0 ; _flag = 0; }
         
-        void         print(const size_t&);
-        void         write(const size_t&,ofstream&);
-        const        string& getName()            {return _name;}
-        void         setType(const VmtType& type) {_type = type;}
-        VmtType      getType(const string& name);
+        void           print   (const size_t&)           const;
+        void           write   (const size_t&,ofstream&) const;
+        void           setType (const VmtType& type)           {_type = type;}
+        VmtType        getType (const string& name)      const;
+        const string&  getName ()                        const  {return _name;}
     private:
-        bool         hasParam();
-        bool         haveSameParam(VmtNode*);
-        void         addChild(VmtNode*);
-        void         clearParam(const size_t&);
-        void         buildParam(const size_t&);
-        void         collectPARAM(VmtNodeList&);
-        void         mergeNEG2MINUS();
-        void         writeParamHead(ofstream&);
-        void         writeParamBody(const string&,ofstream&);
-        void         shiftStateVar(const size_t&);
+        bool           hasParam() const;
+        bool           haveSameParam(VmtNode*) const;
+        void           addChild(VmtNode*);
+        void           clearParam(const size_t&);
+        void           buildParam(const size_t&);
+        void           collectPARAM(VmtNodeList&);
+        void           mergeNEG2MINUS();
+        void           writeParamHead(ofstream&) const;
+        void           writeParamBody(const string&,ofstream&) const;
+        void           shiftStateVar(const size_t&);
         //TODO construct sequential circuit
-        void         traverse();
-        void         writeBLIF(ofstream&);
-        string       _name;
-        size_t       _idx;
-        VmtType      _type;
-        VmtNodeList  _children;
-        VmtNode*     _source;    // used for _type == PARAM
-        VarList      _paramList; // 0-7 follow the order of VmtType
-        size_t       _flag;
+        void           traverse() const;
+        void           writeBLIF(ofstream&);
+        string         _name;
+        string         _bname;     // name for BLIF
+        size_t         _idx;
+        size_t         _bit;       // number of bits needed for type=OP for BLIF
+        VmtType        _type;
+        VmtNodeList    _children;
+        VmtNode*       _source;    // used for _type == PARAM
+        VarList        _paramList; // 0-7 follow the order of VmtType
+        mutable size_t _flag;
 };
 
 class Aut{
@@ -158,16 +164,12 @@ class Aut{
             parse(fileName.c_str()); 
         }
         Aut ( const string& fileName, const string& lvarIdxStr, const AutOpType& type ){
-            assert( (type == ADDLEN) );
+            assert( (type == ADDLEN || type == PREFIX || type == SUFFIX) );
             init(fileName);
             parse(fileName.c_str());
-            addlen(lvarIdxStr);
-        }
-        Aut ( const string& fileName, const string& n0, const string& n1, const AutOpType& type ) {
-            assert( (type == SUBSTR) );
-            init(fileName);
-            parse(fileName.c_str());
-            substr(n0,n1);
+            if      (type == ADDLEN) addlen(lvarIdxStr);
+            else if (type == PREFIX) prefix(lvarIdxStr);
+            else                     suffix(lvarIdxStr);
         }
         Aut ( Aut* a1, Aut* a2, const size_t& alpha, const AutOpType& type) {
             assert( (type == REPLACE) );
@@ -175,21 +177,17 @@ class Aut{
             replace(a1,a2,alpha);
         }
         Aut ( Aut* a1, Aut* a2, const AutOpType& type ){
+            assert( (type == INTERSECT || type == CONCATE || type == REPLACE_A4) );
             init();
-            if (type == INTERSECT) {
-                intersect(a1,a2);
-            }
-            else if (type == CONCATE) {
-                concate(a1,a2);
-            }
-            else {
-                assert( (type == REPLACE_A4) );
-                replace_A4(a1,a2);
-            }
+            if      (type == INTERSECT) intersect(a1,a2);
+            else if (type == CONCATE  ) concate(a1,a2);
+            else                        replace_A4(a1,a2);
         }
 
         // Static Member Function
         // static member function cannot have const qualifier (don't have this)
+        static STRList  initPISymbolS();
+        static CHRList  initPISymbolC();
         static VmtNode* initConst(const VmtType&);
         static VmtNode* initSpecialAlphabet(const AType&);
         static VarList  initPIList();
@@ -198,10 +196,9 @@ class Aut{
         static bool     isCurPI(const VmtType&);
         static bool     isLEAF(const VmtType&);
         static bool     isIMD(const VmtType&);
+        static bool     isOP(const VmtType&);
         static bool     isPISymbol(const char&);
         static bool     isSpecialString(const string&);
-        static string   getPISymbol(const VmtType&);
-        static string   getPISymbol(const size_t&);
         static string   getTypeStr(const VmtType&);
         static string   getTypeStr(const size_t&);
         static VmtType  getPITypeByName(const string&);
@@ -212,19 +209,18 @@ class Aut{
         void            printPARAMList() const;
         void            printPIList() const;
         void            parse(const char*);
-        void            write(const char*);
-        void            write(const string&);
-        void            writeDeclareFun(const VmtType&, ofstream&);
-        void            writeNextFun(const VmtType&, int&, ofstream&);
-        void            writeDefineFun(VmtNode*,ofstream&,const bool& needParam=1);
+        void            write(const char*) const;
+        void            write(const string&) const;
+        void            writeDeclareFun(const VmtType&, ofstream&) const;
+        void            writeNextFun(const VmtType&, int&, ofstream&) const;
+        void            writeDefineFun(VmtNode*,ofstream&,const bool& needParam=1) const;
         // Operations
-        string          CSNSEquiv(const VmtType&);
+        string          CSNSEquiv(const VmtType&) const;
         // Unary 
         void            addlen(const string&);
         size_t          mark();
         void            prefix(const string&);
         void            suffix(const string&);
-        void            substr(const string&, const string&);
         void            addpred(const string&);
         void            isempty(const string&);
         // Binary
@@ -244,17 +240,8 @@ class Aut{
         static void     check(Aut*, Aut*, const size_t&);
         
         static size_t   inputBitNum;
-        //static size_t   evarNum;
-        //static size_t   stateBitNum;
-        //static size_t   lvarNum;
-        //static size_t   predBVNum;
-        //static size_t   predIVNum;
-        //static VarList  input;  // shared
-        //static VarList  evar;   // repeated
-        //static VarList  state;  // shared
-        //static VarList  lvar;   // non-repeated
-        //static VarList  predBV; // repeated
-        //static VarList  predIV; // repeated
+        static STRList  piSymbolS;
+        static CHRList  piSymbolC;
         static VarList  piList; // 0-7 follows the order of VmtType
         static VmtNode* const0;
         static VmtNode* const1;
@@ -289,18 +276,13 @@ class Aut{
         size_t          addEVar(const size_t&);
         size_t          addStateVar(const size_t&);
         void            addLVar(const size_t&);
-        VmtNode*        getI();
-        VmtNode*        getO();
-        VmtNode*        getT();
+        VmtNode*        getI() const;
+        VmtNode*        getO() const;
+        VmtNode*        getT() const;
         void            setI(VmtNode*);
         void            setO(VmtNode*);
         void            setT(VmtNode*);
         // Non-Static Data Member
-        //VarList         _evar;
-        //VarList         _state;
-        //VarList         _lvar;
-        //VarList         _predBV;
-        //VarList         _predIV;
         VarList         _piList;
         VmtNodeList     _imdList;
         VmtNodeList     _itoList;
@@ -308,9 +290,6 @@ class Aut{
         VmtNodeList     _PARAMList;
         Str2VmtNodeMap  _vmap;
         size_t          _stateVarNum;
-        //bool            _eUsed;
-        //bool            _lUsed;
-        //bool            _rUsed;
         string          _name;
 };
 

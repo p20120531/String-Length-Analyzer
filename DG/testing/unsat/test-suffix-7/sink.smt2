@@ -1,5 +1,4 @@
 (set-logic QF_S)
-(set-option :produce-models true)
 
 
 (declare-fun v1 () String)
@@ -13,4 +12,3 @@
 (assert (str.in.re v2 (re.union (str.to.re "aa") (str.to.re "a"))))
 
 (check-sat)
-(get-model)

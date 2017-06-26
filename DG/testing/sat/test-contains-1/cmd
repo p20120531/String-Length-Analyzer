@@ -3,5 +3,6 @@ write D1
 intersect D1 A2
 write D2
 contains D2 A3
+write D3
 addpred pred
 write sink
