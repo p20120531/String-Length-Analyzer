@@ -58,6 +58,7 @@
 (define-fun t ((x0 Bool) (s0 Bool) (s0.next Bool)) Bool (and (not x0) (not s0) s0.next))
 (define-fun o ((s0 Bool)) Bool s0)
 ;
+;
 (define-fun I () Bool (! (i s0) :init true))
 (define-fun T () Bool (! (t x0 s0 s0.next) :trans true))
 (define-fun O () Bool (! (not (o s0)) :invar-property 0))

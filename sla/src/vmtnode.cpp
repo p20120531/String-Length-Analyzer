@@ -134,7 +134,7 @@ void VmtNode::write(const size_t& level,ofstream& outFile) const
 VmtType VmtNode::getType(const string& name) const
 {
     if      ( name == "not"         ) return NOT;
-    else if ( name == "-"           ) return NEG;
+    else if ( name == "-"           ) return MINUS; // default all MINUS ; merge NEG for _predList
     else if ( name == "and"         ) return AND;
     else if ( name == "or"          ) return OR;
     else if ( name == "+"           ) return PLUS;
@@ -245,9 +245,58 @@ void VmtNode::collectPARAM(VmtNodeList& PARAMList)
         _children[i]->collectPARAM(PARAMList);
 }
 
-void VmtNode::mergeNEG2MINUS()
+void VmtNode::mergeEquivalence()
 {
+    if ( _flag == gflag ) return;
     
+    _flag = gflag;
+    if ( _type == MINUS && _children.size() == 1) _type = NEG;
+
+    for (size_t i = 0, size = _children.size(); i < size; ++i)
+        _children[i]->mergeEquivalence();
+    
+    if ( _type == PLUS ) {
+        assert( (_children.size() == 2) );
+        const VmtType& t0 = _children[0]->_type;
+        const VmtType& t1 = _children[1]->_type;
+        if ( t1 == MINUS || t0 == MINUS ) {
+            if ( t0 == MINUS ) {
+                // swap
+                VmtNode* tmp = _children[0];
+                _children[0] = _children[1];
+                _children[1] = tmp;
+            }
+            assert( (_children[1]->_children.size() == 1) );
+            const VmtType& t10 = _children[1]->_children[0]->_type;
+            assert( (Aut::isINT(t10) && t10 != LEN_N) );
+            // merge
+            _children[1] = _children[1]->_children[0];
+            _type = MINUS;
+        }
+    }
+    else if ( _type == MINUS ) {
+        assert( (_children.size() == 2) );
+        const VmtType& t0 = _children[0]->_type;
+        const VmtType& t1 = _children[1]->_type;
+        if ( t1 == MINUS ) {
+            assert( (_children[1]->_children.size() == 1) );
+            const VmtType& t10 = _children[1]->_children[0]->_type;
+            assert( (Aut::isINT(t10) && t10 != LEN_N) );
+            // merge
+            _children[1] = _children[1]->_children[0];
+            _type = PLUS;
+        }
+    }
+    else if ( _type == MT || _type == MTOEQ ) {
+        assert( (Aut::isINT(_children[0]->_type) && _children[0]->_type != LEN_N) );
+        assert( (Aut::isINT(_children[1]->_type) && _children[1]->_type != LEN_N) );
+        if ( _type == MT ) _type = LT;
+        else               _type = LTOEQ;
+        // swap
+        VmtNode* tmp = _children[0];
+        _children[0] = _children[1];
+        _children[1] = tmp;
+    }
 }
 
 void VmtNode::writeParamHead(ofstream& file) const
@@ -321,29 +370,75 @@ void VmtNode::shiftStateVar(const size_t& delta)
     }
 }
 
-void VmtNode::traverse() const
+void VmtNode::buildBLIF(int& tCnt)
 {
     if ( _flag == gflag ) return;
     _flag = gflag;
     for (size_t i = 0, size = _children.size(); i < size; ++i)
-        _children[i]->traverse();
+        _children[i]->buildBLIF(tCnt);
+    if ( Aut::isPI(_type) || _type == NUM || _type == PARAM || _type == MODULE ) _bname = _name;
+    else if ( Aut::isIMD(_type) ) _bname = "t" + itos(++tCnt);
 }
 
-void VmtNode::writeBLIF(ofstream& file)
+void VmtNode::writeMODEL(ofstream& file, const size_t& intBitNum, vector<size_t>& minSize, vector<size_t>& maxSize)
 {
-    file << ".model " << _name << endl;
-    
-    // write inputs
-    file << ".inputs";
+    file << ".model " << _name << "\n.inputs";
     for (size_t i = 0; i < PI_NUM; ++i)
         for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
             file << " " << _paramList[i][j]->_name;
-    file << endl;
-    
-    // write output
-    file << ".outputs out" << endl;
+    file << "\n.outputs out\n";
+    bool tUsed = 0, fUsed = 0;
+    writeSUBCKT(file,intBitNum,minSize,maxSize,tUsed,fUsed);
+    file << ".end\n";
+}
 
-    // write subckt
-    
-    
+void VmtNode::writeSUBCKT(ofstream& file, const size_t& intBitNum, vector<size_t>& minSize, vector<size_t>& maxSize, bool& tUsed, bool& fUsed)
+{
+    assert( (_type == NOT || _type == NEG || _type == AND || _type == OR || _type == PLUS || _type == MINUS || _type == LT || _type == LTOEQ || MODULE));
+    if ( Aut::isINT(_type) ) {
+        _bit = intBitNum;
+        return;
+    }
+    else if ( Aut::isLEAF(_type) || _type == MODULE ) {
+        return;
+    }
+    else if ( _type == NOT) {
+        assert( (_children.size() == 1) );
+        file << ".names " << _children[0]->_bname << " " << _bname
+             << "\n0 1\n";
+    }
+    else if ( _type == NEG ) {
+        
+    } 
+    else if ( _type == AND ) {
+        file << ".names";
+        for (size_t i = 0, size = _children.size(); i < size; ++i)
+            file << " " << _children[i]->_bname;
+        file << " out\n";
+        for (size_t i = 0, size = _children.size(); i < size; ++i)
+            file << "1";
+        file << " 1\n";
+    }
+    else if ( _type == OR ) {
+        file << ".names";
+        for (size_t i = 0, size = _children.size(); i < size; ++i)
+            file << " " << _children[i]->_bname;
+        file << " out\n";
+        for (size_t i = 0, size = _children.size(); i < size; ++i) {
+            string bitstr(size,'-'); 
+            bitstr[i] = '1';
+            file << bitstr << " 1" << endl;
+        }
+    }
+    else if ( _type == PLUS) {
+    }
+    else if ( _type == MINUS) {
+    }
+    else if ( _type == LT) {
+    }
+    else {
+        assert( (_type == LTOEQ) );
+    }
+    for ( size_t i = 0, size = _children.size(); i < size; ++i)
+        _children[i]->writeSUBCKT(file,intBitNum,minSize,maxSize,tUsed,fUsed);
 }

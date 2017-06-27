@@ -1,0 +1,10 @@
+(declare-variable s String)
+
+
+(assert (Contains s "<") )
+(assert (Contains s "sc") )
+(assert (Contains s "ript scr=") )
+
+
+(check-sat)
+(get-model)

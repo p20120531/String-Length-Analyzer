@@ -1,0 +1,14 @@
+(declare-variable v1 String)
+(declare-variable v3 Int)
+(declare-variable ret String)
+
+
+
+(assert (Contains v1 "<") )
+(assert (= v3 (Indexof v1 "<") ) )
+(assert (= ret (Substring v1 0 v3) ) )
+
+
+
+(check-sat)
+(get-model)

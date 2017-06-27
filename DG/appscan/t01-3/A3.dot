@@ -1,0 +1,57 @@
+digraph Automaton {
+  rankdir = LR;
+  0 [shape=doublecircle,label=""];
+  0 -> 4 [label="d"]
+  0 -> 5 [label="\u0000-c"]
+  0 -> 6 [label="e"]
+  0 -> 5 [label="f-\uffff"]
+  1 [shape=doublecircle,label=""];
+  1 -> 5 [label="f-n"]
+  1 -> 6 [label="e"]
+  1 -> 0 [label="o"]
+  1 -> 5 [label="\u0000-d"]
+  1 -> 5 [label="p-\uffff"]
+  2 [shape=doublecircle,label=""];
+  2 -> 5 [label="D-d"]
+  2 -> 5 [label="\u0000-B"]
+  2 -> 6 [label="e"]
+  2 -> 5 [label="f-\uffff"]
+  2 -> 1 [label="C"]
+  3 [shape=doublecircle,label=""];
+  3 -> 5 [label="s-\uffff"]
+  3 -> 6 [label="e"]
+  3 -> 2 [label="r"]
+  3 -> 5 [label="\u0000-N"]
+  3 -> 7 [label="O"]
+  3 -> 5 [label="P-d"]
+  3 -> 5 [label="f-q"]
+  4 [shape=doublecircle,label=""];
+  4 -> 5 [label="f-\uffff"]
+  4 -> 5 [label="\u0000-d"]
+  5 [shape=doublecircle,label=""];
+  initial [shape=plaintext,label=""];
+  initial -> 5
+  5 -> 6 [label="e"]
+  5 -> 5 [label="f-\uffff"]
+  5 -> 5 [label="\u0000-d"]
+  6 [shape=doublecircle,label=""];
+  6 -> 6 [label="e"]
+  6 -> 5 [label="\u0000-N"]
+  6 -> 5 [label="f-\uffff"]
+  6 -> 7 [label="O"]
+  6 -> 5 [label="P-d"]
+  7 [shape=doublecircle,label=""];
+  7 -> 5 [label="g-\uffff"]
+  7 -> 6 [label="e"]
+  7 -> 5 [label="\u0000-d"]
+  7 -> 8 [label="f"]
+  8 [shape=doublecircle,label=""];
+  8 -> 5 [label="g-\uffff"]
+  8 -> 6 [label="e"]
+  8 -> 5 [label="\u0000-d"]
+  8 -> 9 [label="f"]
+  9 [shape=doublecircle,label=""];
+  9 -> 3 [label="e"]
+  9 -> 5 [label="f-\uffff"]
+  9 -> 5 [label="\u0000-d"]
+}

@@ -1,0 +1,19 @@
+addlen A2 0
+write D8
+indexof D8 A9 A10 1 2
+write D1
+intersect D1 A3
+write D2
+concate A5 A10
+write D10
+intersect A4 D10
+write D3
+concate D2 D3
+write D5
+concate A1 D5
+write D6
+intersect D6 A7
+write D7
+intersect D7 A8
+addpred pred
+write sink

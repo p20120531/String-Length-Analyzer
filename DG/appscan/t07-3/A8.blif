@@ -1,0 +1,18 @@
+# Benchmark "DG/appscan/t07-3/A8" written by ABC on Wed Jun 28 03:21:22 2017
+.model DG/appscan/t07-3/A8
+.inputs x0 x1 x2 x3 x4 x5 x6 x7 s0 n0
+.outputs i o t
+.names s0 i
+0 1
+.names s0 o
+0 1
+.names x0 x1 x2 x3 x4 x5 x6 x7 s0 n0 t
+00001001-1 1
+0------0-0 1
+0----1---0 1
+0-----1--0 1
+0---0----0 1
+0--1-----0 1
+0-1------0 1
+01-------0 1
+.end

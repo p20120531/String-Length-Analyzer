@@ -206,7 +206,11 @@ void AutMgr::readCmdFile(const char* fileName)
             Aut* a3 = new Aut( sigma_star_dir );
             Aut* a4 = new Aut( sigma_star_dir );
             Aut* a5 = new Aut( a3, a2, CONCATE );
+            cout << "print a5\n";
+            a5->print();
             Aut* a6 = new Aut( a5, a4, CONCATE );
+            cout << "print a6\n";
+            a6->print();
             cur     = new Aut( a1, a6, INTERSECT );
         }
         else if (tokenList[0] == "prefixof_smt") {
@@ -278,7 +282,9 @@ void AutMgr::readCmdFile(const char* fileName)
         else if (tokenList[0] == "write") {
             cur->write( path + tokenList[1] + ".vmt" );
         }
-        else
+        else {
             cout << "[AutMgr::readCmdFile] ERROR: invalid command=" << tokenList[0] << endl;
+            return;
+        }
     }
 }

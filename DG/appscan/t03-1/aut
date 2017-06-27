@@ -1,0 +1,7 @@
+A1 ".*"
+A2 ".*"
+A3 "(\?|\;)searchLang\=(a|b|c|d|e|f|g|h|i|j|k|l|m|n)"
+A4 ".*"
+A5 ""
+A7 ".*"
+A8 "expires\=Thu\, 18 Dec 2013 12\:00\:00 UTC\;searchLang\=nb\;domain\=local\;"

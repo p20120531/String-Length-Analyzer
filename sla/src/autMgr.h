@@ -9,6 +9,8 @@
     #define MAX_ENCODE              127
 #endif
 #define PI_NUM                      8
+#define INT_BIT_NUM                 9
+#define MODULE_TYPE_NUM             5
 #define EPSILON_ENCODE              0
 #define LEFT_ANGLE_BRACKET_ENCODE   1
 #define RIGHT_ANGLE_BRACKET_ENCODE  2
@@ -21,12 +23,13 @@
 #include <assert.h>
 #include <bitset>
 #include <cstdio>
+#include <climits>
 #include "utility.h"
 #define TGRAPH_NDEBUG
 //#define VMTNODE_NDEBUG
 //#define AUT_NDEBUG
 #define AUT_PARAM_NDEBUG
-#define AUT_OP_NDEBUG
+//#define AUT_OP_NDEBUG
 //#define AUTMGR_NDEBUG
 
 class TGEdge;
@@ -44,6 +47,10 @@ enum VmtType {
     NUM   , CONST0 , CONST1 , PARAM , SPECIAL , 
     // IMD   (intermediate node)
     NOT=30, NEG    , AND    , OR    , PLUS    , MINUS , LT     , LTOEQ  , EQ, MTOEQ, MT, EXCM, MODULE
+};
+
+enum ModuleType {
+    M_EQ, M_COMP, M_INC1, M_SFA, M_AINV  
 };
 
 enum AType {
@@ -130,13 +137,14 @@ class VmtNode{
         void           clearParam(const size_t&);
         void           buildParam(const size_t&);
         void           collectPARAM(VmtNodeList&);
-        void           mergeNEG2MINUS();
+        void           mergeEquivalence();
         void           writeParamHead(ofstream&) const;
         void           writeParamBody(const string&,ofstream&) const;
         void           shiftStateVar(const size_t&);
         //TODO construct sequential circuit
-        void           traverse() const;
-        void           writeBLIF(ofstream&);
+        void           buildBLIF(int&);
+        void           writeMODEL (ofstream&,const size_t&,vector<size_t>&,vector<size_t>&);
+        void           writeSUBCKT(ofstream&,const size_t&,vector<size_t>&,vector<size_t>&,bool&,bool&);
         string         _name;
         string         _bname;     // name for BLIF
         size_t         _idx;
@@ -195,6 +203,7 @@ class Aut{
         static bool     isPI(const VmtType&);
         static bool     isCurPI(const VmtType&);
         static bool     isLEAF(const VmtType&);
+        static bool     isINT(const VmtType&);
         static bool     isIMD(const VmtType&);
         static bool     isOP(const VmtType&);
         static bool     isPISymbol(const char&);
@@ -257,7 +266,7 @@ class Aut{
         void            clearParam();
         void            buildParam();
         void            collectPARAM();
-        void            mergeNEG2MINUS();
+        void            mergeEquivalence();
         void            renameDef();
         void            shiftStateVar(const size_t&);
         void            parseDef(const string&, Str2VmtNodeMap&);

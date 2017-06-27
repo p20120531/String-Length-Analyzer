@@ -151,6 +151,11 @@ bool Aut::isLEAF(const VmtType& type)
     return (type < 30);
 }
 
+bool Aut::isINT(const VmtType& type)
+{
+    return (type == LEN || type == LEN_N || type == PREDIV || type == NUM);
+}
+
 bool Aut::isIMD(const VmtType& type)
 {
     return (type >= 30);
@@ -545,9 +550,12 @@ void Aut::collectPARAM()
         _predList[i]->collectPARAM(_PARAMList);
 }
 
-void Aut::mergeNEG2MINUS()
+void Aut::mergeEquivalence()
 {
-    return;
+    ++gflag;
+    // only predicates are needed to be merged
+    for (size_t i = 0, size = _predList.size(); i < size; ++i)
+        _predList[i]->mergeEquivalence();
 }
 
 void Aut::renameDef()
@@ -943,6 +951,7 @@ void Aut::parse(const char* fileName)
         paramList.clear();
         vmtTokenize(line,paramList,tokenList);
         #ifndef AUT_NDEBUG
+            cout << "[Aut::parse] sCnt = " << sCnt << endl;
             cout << "[Aut::parse] line = \"" << line << "\"" << endl;
             cout << "[Aut::parse] tokenList = [ \"" << tokenList[0] << "\" , \"" << tokenList[1] << "\" ]" <<endl;
             cout << "[Aut::parse] paramList = [ ";
@@ -995,8 +1004,8 @@ void Aut::parse(const char* fileName)
             //cout << "n1=" << module->_name << " n2=" << body->_name << endl;
              _vmap.insert(Str2VmtNode(module->_name,module));
             if      (sCnt == 2) _imdList.push_back(module);
-            else if (sCnt == 3) _itoList.push_back(module);
-            else if (sCnt == 4) _predList.push_back(module);
+            else if (sCnt == 3) _predList.push_back(module);
+            else if (sCnt == 4) _itoList.push_back(module);
         }
     }
     file.close();
@@ -1015,7 +1024,7 @@ void Aut::parse(const char* fileName)
     buildVMap(_imdList);
     buildVMap(_itoList);
     buildVMap(_predList);
-    mergeNEG2MINUS();
+    mergeEquivalence();
     renameDef();
     #ifndef AUT_PARAM_NDEBUG
         collectPARAM();
@@ -1069,7 +1078,7 @@ void Aut::write(const char* fileName) const
     
     for (size_t i = 0,size = _predList.size(); i < size; ++i)
         writeDefineFun(_predList[i],file);
-    if (!_predList.empty()) file << ";\n";
+    file << ";\n";
 
     // ITO cannot be specified their params
     for (size_t i = 0,size = _itoList.size(); i < size; ++i)
@@ -1731,26 +1740,36 @@ void Aut::isempty(const string& fileName)
 {
     ofstream file(fileName.c_str());
     
-    // record transitive fanin of O & T ; count adder and comparator
+    // record transitive fanin of O & T ; set _bname
     ++gflag;
-    getO()->traverse();
-    getT()->traverse();
+    int tCnt = -1;
+    getO()->buildBLIF(tCnt);
+    getT()->buildBLIF(tCnt);
 
-    // write Sequential BLIF
+    vector<size_t> maxSize(MODULE_TYPE_NUM,0);
+    vector<size_t> minSize(MODULE_TYPE_NUM,UINT_MAX);
+
+    for (size_t i = 0, size = _imdList.size(); i < size; ++i) {
+        if ( _imdList[i]->_flag == gflag ) {
+            _imdList[i]->writeMODEL( file , INT_BIT_NUM , minSize , maxSize );
+        }
+    }
+
+    for (size_t i = 0, size = _predList.size(); i < size; ++i) {
+        if ( _predList[i]->_flag == gflag ) {
+            _predList[i]->writeMODEL( file , INT_BIT_NUM + 1 , minSize, maxSize );
+        }
+    }
+    // write Sequential Module
     
     // write special alphabets (if used)
-    if ( epsilon->_flag    == gflag ) epsilon->writeBLIF(file);
-    if ( leftAngle->_flag  == gflag ) leftAngle->writeBLIF(file);
-    if ( rightAngle->_flag == gflag ) rightAngle->writeBLIF(file);
-    
+    /*
+    if ( epsilon->_flag    == gflag ) epsilon->writeMODEL(file);
+    if ( leftAngle->_flag  == gflag ) leftAngle->writeMODEL(file);
+    if ( rightAngle->_flag == gflag ) rightAngle->writeMODEL(file);
+    */
     // write adder and comparator
-
-    for (size_t i = 0, size = _imdList.size(); i < size; ++i)
-        if (_imdList[i]->_flag == gflag)
-            _imdList[i]->writeBLIF(file);
-    for (size_t i = 0, size = _predList.size(); i < size; ++i)
-        if (_predList[i]->_flag == gflag)
-            _predList[i]->writeBLIF(file);
     
+
     file.close();
 }

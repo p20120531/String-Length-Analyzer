@@ -1,0 +1,20 @@
+
+;(declare-fun parameter () String)
+;(declare-fun a () String)
+;(declare-fun index () Int)
+(declare-fun sli () String)
+
+
+
+
+;(assert (= parameter "eOfferCode") )
+;(assert (= index (Indexof a "eOfferCode") ) )
+
+;(assert (= index (- 0 1) ) )
+(assert (= sli "") )
+
+(assert (not (= sli "") ) )
+
+
+(check-sat)
+(get-model)

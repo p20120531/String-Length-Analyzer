@@ -1,0 +1,12 @@
+(declare-variable v1 String)
+(declare-variable ret String)
+
+
+
+(assert (not (Contains v1 "<") ) )
+(assert (= ret v1) )
+
+
+
+(check-sat)
+(get-model)

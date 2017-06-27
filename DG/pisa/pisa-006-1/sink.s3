@@ -1,0 +1,33 @@
+(declare-variable s String)
+(declare-variable filename_0 String)
+(declare-variable filename_1 String)
+(declare-variable filename_2 String)
+(declare-variable i1 Int)
+(declare-variable i2 Int)
+(declare-variable i3 Int)
+(declare-variable tmpStr0 String)
+(declare-variable tmpStr1 String)
+(declare-variable tmpStr2 String)
+
+
+
+(assert (= filename_0 s) )
+(assert (Contains filename_0 "/") )
+(assert (= filename_0 (Concat tmpStr0 (Concat "/" tmpStr1) ) ) )
+(assert (not (Contains tmpStr1 "/") ) )
+(assert (= i1 (Length tmpStr0) ) )
+
+(assert (not (= i1 (- 0 1) ) ) )
+(assert (= i2 (- (Length filename_0) i1) ) )
+(assert (= filename_1 (Substring filename_0 i1 i2) ) )
+
+(assert (= i3 (Indexof filename_1 ".") ) )
+
+(assert (not (= i3 (- 0 1) ) ) )
+(assert (= filename_2 (Substring filename_1 0 i3) ) )
+
+(assert (Contains filename_2 "../") )
+
+
+(check-sat)
+(get-model)

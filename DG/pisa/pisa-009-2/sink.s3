@@ -1,0 +1,12 @@
+(declare-variable s String)
+(declare-variable ret0 String)
+(declare-variable ret1 String)
+
+(assert (= ret0 (ReplaceAll (ReplaceAll  s  "<"  "&lt;")  ">"  "&gt;") ) )
+
+(assert (= ret1 (Concat  ret0  "<br/>") ) )
+
+(assert (Contains ret1 ">") )
+
+(check-sat)
+(get-model)
