@@ -1,7 +1,0 @@
-indexof A1 A2 A3 0 1
-write D1
-indexof D1 A4 A5 2 3
-write D2
-indexof D2 A6 A7 4 5
-addpred pred
-write sink

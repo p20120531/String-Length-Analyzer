@@ -1,0 +1,19 @@
+[inconsistent cases]
+    benchmark pisa
+        t005-2 : smt2-indexof return -1
+        t005-8 : smt2-indexof return -1
+        t008-1 : smt2-replace(first) ic3-replace(all) cause inconsistency
+        t008-2 : smt2-replace(first) ic3-replace(all) cause inconsistency
+    benchmark appscan
+
+[escaping characters]
+    benchmark pisa
+        pisa-008-1/aut : A10 , A12
+        pisa-008-2/aut : A10 , A12
+        pisa-010-1/aut : A2
+        pisa-011-1/aut : A1  , A4
+    benchmark appscan
+        t07-1/aut      : A8  , A9
+        t07-2/aut      : A2  , A7  , A8  , A11
+        t07-3/aut      : A2  , A7  , A8  , A11
+        t08-1/aut      : A2  , A4  , A7  , A8  , A12

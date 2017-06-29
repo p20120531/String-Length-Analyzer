@@ -1,9 +1,0 @@
-intersect A2 A3
-write D1
-suffixof_smt A1 D1
-write D2
-suffixof_smt A4 A5
-write D3
-intersect D2 D3
-addpred pred
-write sink
