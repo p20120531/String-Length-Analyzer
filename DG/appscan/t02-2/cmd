@@ -1,0 +1,17 @@
+addlen A2 0
+write D1
+intersect D1 A3
+write D2
+concate A5 A8
+write D7
+intersect A4 D7
+write D3
+intersect D3 A6
+write D4
+concate D2 D4
+write D5
+concate A1 D5
+write D6
+intersect D6 A7
+addpred pred
+write sink

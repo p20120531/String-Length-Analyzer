@@ -1,0 +1,5 @@
+notcontains A1 A3
+write D1
+notcontains D1 A5
+addpred pred
+write sink

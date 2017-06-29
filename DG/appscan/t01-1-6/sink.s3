@@ -1,0 +1,33 @@
+
+(declare-fun parameter () String)
+(declare-fun a () String)
+(declare-fun index () Int)
+(declare-fun str1 () String)
+(declare-fun index1 () Int)
+(declare-fun sli () String)
+(declare-fun index2 () Int)
+
+
+
+
+;(assert (= parameter "eOfferCode") )
+;(assert (= index (Indexof a "eOfferCode") ) )
+(assert (not (Contains a "eOfferCode") ) ) ; for indexof
+(assert (= index (- 0 1) ) ) ; for indexof
+
+(assert (not (= index (- 0 1) ) ) )
+(assert (= str1 (Substring a index (- (Length a) index) ) ) )
+(assert (= index1 (Indexof str1 "&") ) )
+(assert (Contains str1 "&") ) ; for indexof
+
+(assert (= index1 (- 0 1) ) )
+;(assert (= index2 (Indexof str1 "=") ) )
+(assert (not (Contains str1 "=") ) ) ; for indexof
+(assert (= index2 (- 0 1) ) ) ; for indexof
+
+(assert (= sli (Substring str1 (+ index2 1) (- (Length str1) (+ index2 1) ) ) ) )
+(assert (not (= sli "") ) )
+
+
+(check-sat)
+(get-model)

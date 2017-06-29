@@ -1,0 +1,5 @@
+indexof A1 A2 A3 0 1
+write D1
+notcontains D1 A5
+addpred pred
+write sink

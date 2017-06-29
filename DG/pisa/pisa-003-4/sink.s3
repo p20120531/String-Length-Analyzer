@@ -1,0 +1,16 @@
+(declare-variable s String)
+(declare-variable var String)
+(declare-variable ret String)
+
+
+
+(assert (not (Contains s "<") ) )
+(assert (not (Contains s ">") ) )
+(assert (= ret s) )
+(assert (= var (Concat "<scr" "ipt") ) )
+(assert (Contains s var) )
+(assert (not (= ret "x") ) )
+
+
+(check-sat)
+(get-model)

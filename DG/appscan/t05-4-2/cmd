@@ -1,0 +1,11 @@
+addlen A2 0
+write D8
+notcontains D8 A10
+write D1
+intersect D1 A3
+write D2
+substr D2 3 4
+write D3
+intersect D3 A1
+addpred pred
+write sink

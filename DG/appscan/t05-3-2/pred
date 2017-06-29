@@ -1,0 +1,10 @@
+(declare-fun idx1 () Int)
+(declare-fun len1 () Int)
+(declare-fun i1 () Int)
+;
+(assert (= i1 (- 0 1)))
+(assert (= idx1 (+ i1 1)))
+(assert (= len1 (str.len cookie_part2))) ; len 0
+(assert (> idx1 0))
+(assert (> len1 idx1))
+(assert (> len1 11))

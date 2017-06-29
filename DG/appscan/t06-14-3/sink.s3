@@ -1,0 +1,34 @@
+
+;(declare-fun src () String)
+(declare-fun URL () String)
+;(declare-fun ret () String)
+;(declare-fun pred () Bool)
+;(declare-fun p1 () Bool)
+(declare-fun i1 () Int)
+(declare-fun i2 () Int)
+
+
+;(assert (= p1 (EndsWith  src  "_hA") ) )
+;(assert (= pred  (or (EndsWith  src  "_ha") (EndsWith  src "_Ha") (EndsWith  src "_HA") p1 ) ) )
+
+
+;(assert (= src "") )
+;(assert (not (> (Indexof URL "www.ha45.com/index.html") (- 0 1) ) ) )
+(assert (not (> i1 (- 0 1))))
+;(assert (= i1 (Indexof URL "www.ha45.com/index.html")))
+(assert (not (Contains URL "www.ha45.com/index.html") ) ) ; for indexof
+(assert (= i1 (- 0 1) ) ) ; for indexof
+
+;(assert (> (Indexof URL "www.ha45.com/index.htm") (- 0 1) ) )
+(assert (> i2 (- 0 1)))
+(assert (= i2 (Indexof URL "www.ha45.com/index.htm")))
+(assert (Contains URL "www.ha45.com/index.htm") ) ; for indexof
+
+;(assert (= ret "srcieak_ha") )
+
+
+;(assert (EndsWith ret "_ha") )
+;(assert (not (= src "") ) )
+
+(check-sat)
+(get-model)

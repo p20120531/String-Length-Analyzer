@@ -1,0 +1,14 @@
+(declare-variable s String)
+(declare-variable ret String)
+
+
+(assert (not (Contains s "<") ) )
+(assert (not (Contains s ">") ) )
+(assert (= ret s) )
+(assert (Contains s "sc") )
+(assert (Contains s "ript scr=") )
+(assert (not (= ret "x") ) )
+
+
+(check-sat)
+(get-model)

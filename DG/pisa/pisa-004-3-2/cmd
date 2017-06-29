@@ -1,0 +1,27 @@
+notcontains A1 A13
+write D1
+addlen A2 0
+write D2
+notcontains A4 A5
+write D3
+concate A3 D3
+write D4
+concate D2 D4
+write D5
+intersect D1 D5
+write D6
+contains D6 A6
+write D7
+intersect D7 A7
+write D8
+intersect D8 A8
+write D9
+notcontains D9 A10
+write D10
+substr D10 3 4
+write D11
+intersect D11 A11
+write D12
+contains D12 A12
+addpred pred
+write sink

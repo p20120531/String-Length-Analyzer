@@ -1,0 +1,4 @@
+(declare-fun index () Int)
+;
+(assert (= index (- 0 1)))
+(assert (= index (- 0 1)))

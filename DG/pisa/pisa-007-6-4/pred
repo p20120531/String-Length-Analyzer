@@ -1,0 +1,10 @@
+(declare-fun ii1 () Int)
+(declare-fun i0 () Int)
+(declare-fun i1 () Int)
+(declare-fun i2 () Int)
+(declare-fun i3 () Int)
+;
+(assert (= i0 (- 0 1)))
+(assert (= i0 (- 0 1)))
+(assert (= i3 (- 0 1)))
+(assert (= i3 (- 0 1)))

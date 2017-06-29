@@ -1,0 +1,2 @@
+A1 ".*"
+A3 ~\(".*www\.ha45\.com\/index\.html.*"\)

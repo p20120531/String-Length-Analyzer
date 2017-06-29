@@ -1,0 +1,15 @@
+(declare-fun ii1 () Int)
+(declare-fun i0 () Int)
+(declare-fun i1 () Int)
+(declare-fun i2 () Int)
+(declare-fun i3 () Int)
+;
+(assert (= i0 (- 0 1)))
+(assert (not (= i0 (- 0 1))))
+(assert (= i1 (- 0 1)))
+(assert (= ii1 (str.len filename_0))) ; len 0
+(assert (= i2 (- ii1 i1)))
+(assert (str.substr filename_0 i1 i2)) ; substr 2 3
+(assert (= i3 (str.indexof filename_1 "." 0))) ; indexof 4 5
+(assert (not (= i3 (- 0 1))))
+(assert (str.substr filename_1 0 i3)) ; substr 6 7
