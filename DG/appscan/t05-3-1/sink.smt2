@@ -9,6 +9,7 @@
 (declare-fun idx1 () Int)
 (declare-fun len1 () Int)
 (declare-fun l1 () String)
+(declare-fun i1 () Int)
 
 
 

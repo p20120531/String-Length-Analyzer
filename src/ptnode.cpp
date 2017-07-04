@@ -172,6 +172,7 @@ void PTNode::writeCVC4PredVar()
     assert((_type == VAR_BOOL || _type == VAR_INT));
     Str2TypeMap& dgTypeMap  = dg->getTypeMap();
     vector<string>& cvc4PredList = dg->getCVC4PredList();
+    vector<string>& s3PredList   = dg->getS3PredList();
     set<string>& bvPredSet  = dg->getBVPredSet();
     set<string>& ivPredSet  = dg->getIVPredSet();
     set<string>::iterator kt;
@@ -207,6 +208,7 @@ void PTNode::writeCVC4PredVar()
             if (s[0] == 'd' && s[1] == 'i' && s[2] == 'v') continue;
             s += ")";
             cvc4PredList.push_back(s);
+            s3PredList.push_back(s);
         }
     }
     //}

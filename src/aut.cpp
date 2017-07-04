@@ -7,6 +7,7 @@ static size_t& gflag = autmgr->getGFlag();
 
 ///////////////////////////////// Static Member ///////////////////////////////
 
+string   Aut::BLIFIndent  = " \\\n" + string(7,' ');
 size_t   Aut::inputBitNum = INPUT_ENCODE_BIT_NUM + 1;
 STRList  Aut::piSymbolS   = Aut::initPISymbolS();
 CHRList  Aut::piSymbolC   = Aut::initPISymbolC();
@@ -151,6 +152,11 @@ bool Aut::isLEAF(const VmtType& type)
     return (type < 30);
 }
 
+bool Aut::isCONST(const VmtType& type)
+{
+    return (type == CONST0 || type == CONST1);
+}
+
 bool Aut::isINT(const VmtType& type)
 {
     return (type == LEN || type == LEN_N || type == PREDIV || type == NUM);
@@ -159,6 +165,22 @@ bool Aut::isINT(const VmtType& type)
 bool Aut::isPREDINT(const VmtType& type)
 {
     return (type == LEN || type == PREDIV || type == NUM);
+}
+
+bool Aut::isPARAMINT(const VmtType& type)
+{
+    return (type == LEN || type == LEN_N || type == PREDIV);
+}
+
+bool Aut::isPARAMBOOL(const VmtType& type)
+{
+    return (type == INPUT || type == EXIST || type == STATE || type == STATE_N || type == PREDBV);
+}
+
+bool Aut::isRETBOOL(const VmtType& type)
+{
+    return (type == PARAM || type == MODULE || type == NOT || type == AND   || type == OR ||
+            type == LT    || type == LTOEQ  || type == EQ  || type == MTOEQ || type == MT  );
 }
 
 bool Aut::isIMD(const VmtType& type)
@@ -171,9 +193,19 @@ bool Aut::isOP(const VmtType& type)
     return (isIMD(type) && type != EXCM && type != MODULE);
 }
 
+bool Aut::isARITH(const VmtType& type)
+{
+    return (type == PLUS || type == MINUS || type == NEG);
+}
+
 bool Aut::isSO(const VmtType& type)
 {
-    assert( ( type != SPECIAL && type != MT && type != MTOEQ && type != EXCM ) );
+    return (isRETBOOL(type) || isPARAMBOOL(type) || isCONST(type));
+}
+
+bool Aut::isMO(const VmtType& type)
+{
+    return (isPARAMINT(type) || type == NUM || isARITH(type));
 }
 
 bool Aut::isPISymbol(const char& c)
@@ -560,12 +592,12 @@ void Aut::collectPARAM()
         _predList[i]->collectPARAM(_PARAMList);
 }
 
-void Aut::mergeEquivalence()
+void Aut::spotNEG()
 {
     ++gflag;
-    // only predicates are needed to be merged
+    // NEGs only appear in predicates
     for (size_t i = 0, size = _predList.size(); i < size; ++i)
-        _predList[i]->mergeEquivalence();
+        _predList[i]->spotNEG();
 }
 
 void Aut::renameDef()
@@ -1034,7 +1066,7 @@ void Aut::parse(const char* fileName)
     buildVMap(_imdList);
     buildVMap(_itoList);
     buildVMap(_predList);
-    mergeEquivalence();
+    spotNEG();
     renameDef();
     #ifndef AUT_PARAM_NDEBUG
         collectPARAM();
@@ -1144,11 +1176,11 @@ string Aut::CSNSEquiv(const VmtType& type) const
     string ret;
     if (type == STATE) {
         for (size_t i = 0; i < _stateVarNum; ++i)
-            ret += " (= " + _piList[STATE][i]->_name + " " + _piList[STATE_N][i]->_name + ")";
+            ret += " (= " + _piList[STATE_N][i]->_name + " " + _piList[STATE][i]->_name + ")";
     }
     else {
         for (size_t i = 0, size = _piList[LEN].size(); i < size; ++i)
-            ret += " (= " + _piList[LEN][i]->_name + " " + _piList[LEN_N][i]->_name + ")";
+            ret += " (= " + _piList[LEN_N][i]->_name + " " + _piList[LEN][i]->_name + ")";
     }
     return ret;
 }
@@ -1479,7 +1511,7 @@ void Aut::suffix(const string& lvarIdxStr)
     string lvn = piList[LEN_N  ][lvarIdx]->_name;
     
     string lveq    = " (= " + lvn + " " + lv + ")";
-    string lvincre = " (= " + lvn + " (+ 1 " + lv + "))";
+    string lvincre = " (= " + lvn + " (+ " + lv + " 1))";
 
     #ifndef AUT_OP_NDEBUG
         cout << "[Aut::suffix] " << _name << " alpha=" << svbpos << " lvar=" << lvarIdxStr << endl;
@@ -1560,7 +1592,7 @@ void Aut::addpred(const string& fileName)
     _predList.push_back(n1);
     setI(n1);
     renameDef();
-    print();
+    //print();
 }
 
 void Aut::parseDef(const string& line, Str2VmtNodeMap& vmap)
@@ -1750,36 +1782,350 @@ void Aut::isempty(const string& fileName)
 {
     ofstream file(fileName.c_str());
     
-    // record transitive fanin of O & T ; set _bname
+    // set _bname of special VmtNodes and PIs
+    for (size_t i = 0; i < PI_NUM; ++i)
+        for (size_t j = 0, size = _piList[i].size(); j < size; ++j)
+            _piList[i][j]->_bname = _piList[i][j]->_name;
+    const0->_bname     = "const0"    ;
+    const1->_bname     = "const1"    ;
+    epsilon->_bname    = "epsilon"   ;
+    leftAngle->_bname  = "leftAngle" ;
+    rightAngle->_bname = "rightAngle";
+    _imdList.push_back(epsilon);
+    _imdList.push_back(leftAngle);
+    _imdList.push_back(rightAngle);
+    
+    // label transitive fanin of O & T ; set _bname ; set _bit to LEN/LEN_N/NUM
     ++gflag;
     int tCnt = -1;
     getO()->buildBLIF(tCnt);
     getT()->buildBLIF(tCnt);
 
-    vector<size_t> maxSize(MODULE_TYPE_NUM,0);
-    vector<size_t> minSize(MODULE_TYPE_NUM,UINT_MAX);
+    cout << "[setBitNum]\n";
 
+    // no cyclic dependency issue for _imdList
+    for (size_t i = 0, size = _imdList.size(); i < size; ++i)
+        if (_imdList[i]->_flag == gflag) {
+            cout << "imdList no" << i << endl;
+            _imdList[i]->_children[0]->setBitNum();
+        }
+
+    // assume no cyclic dependency of Int variables in _predList
+    for (size_t i = 0; i < PI_NUM; ++i) {
+        if ( i != LEN && i != LEN_N && i != PREDIV) continue;
+        cout << getTypeStr(i) << " :";
+        for (size_t j = 0, size = _piList[i].size(); j < size; ++j)
+            cout << " " << _piList[i][j]->_name << "=" << _piList[i][j]->getBit();
+        cout << endl;
+    }
+    size_t cnt = 0;
+    bool isUpdate = 1;
+    while (isUpdate) {
+        assert((cnt < 5));
+        ++cnt;
+        isUpdate = 0;
+        // bottom-up
+        cout << "bottom-up\n";
+        for (size_t i = 0, size = _predList.size(); i < size; ++i)
+            if (_predList[i]->_flag == gflag) {
+                _predList[i]->_children[0]->setBitNumUP(isUpdate);
+            }
+        // top-down
+        cout << "top-down\n";
+        for (size_t i = 0, size = _predList.size(); i < size; ++i)
+            if (_predList[i]->_flag == gflag) {
+                _predList[i]->_children[0]->setBitNumDN(isUpdate);
+            }
+    }
+    cout << "ggout\n";
+    
+    vector<set<size_t> > sizeMap(MODULE_TYPE_NUM,set<size_t>());
+
+    // write sequential circuit
+    
+    file << ".model sink\n"
+         << ".inputs";
+    for (size_t i = 0; i < PI_NUM; ++i) {
+        // inputs : INPUT, EXIST, STATE_N, LEN_N, PREDBV, PREDIV
+        if ( i == STATE || i == LEN ) continue;
+        for (size_t j = 0, size = _piList[i].size(); j < size; ++j) {
+            if ( i == LEN_N || i == PREDIV ) {
+                for (size_t k = 0; k < _piList[i][j]->_bit; ++k)
+                    file << " " << _piList[i][j]->_bname << "_" << k;
+                file << BLIFIndent;
+            }
+            else {
+                file << " " << _piList[i][j]->_bname;
+            }
+        }
+        if ( i != LEN_N && i != PREDIV && !_piList[i].empty() )
+            file << BLIFIndent;
+    }
+    file << "\n.outputs Oisempty"
+         << "\n.subckt " << getT()->_bname << BLIFIndent;
+    assert( (getT()->_paramList[PREDBV].empty()) );
+    assert( (getT()->_paramList[PREDIV].empty()) );
+    for (size_t i = 0; i < PI_NUM; ++i) {
+        const VmtNodeList& v = getT()->_paramList[i];
+        for (size_t j = 0, size = v.size(); j < size; ++j) {
+            if ( i == LEN || i == LEN_N ) {
+                for (size_t k = 0; k < v[j]->_bit; ++k)
+                    file << " " << v[j]->_bname << "_" << k
+                         << "=" << v[j]->_bname << "_" << k;
+                file << BLIFIndent;
+            }
+            else
+                file << " " << v[j]->_bname << "=" << v[j]->_bname;
+        }
+        if ( i != LEN && i != LEN_N && !v.empty() )
+            file << BLIFIndent;
+    }
+    file << " " << getT()->_bname << "_0" << "=Tori\n"
+         << "\n# overflow condidion for LEN , LEN_N\n";
+    
+    assert( (_piList[LEN].size() == _piList[LEN_N].size()) );
+    if ( !_piList[LEN].empty() ) {
+        sizeMap[M_EQ].insert(LVAR_BIT_NUM);
+        file << "\n.names const1\n1";
+    }
+    cout << "numOfLEN=" << _piList[LEN].size() << endl;
+
+    for (size_t i = 0, size = _piList[LEN].size(); i < size; ++i) {
+        const size_t bit = LVAR_BIT_NUM;
+        file << "\n.subckt " << bit << "bEQ" << BLIFIndent;
+        writeFAList(LVAR_BIT_NUM,"a",_piList[LEN][i],file);
+        writeFAList(LVAR_BIT_NUM,"b","const1",file);
+        file << " out=e" << i << "_0";
+    }
+    
+    for (size_t i = 0, size = _piList[LEN_N].size(); i < size; ++i) {
+        const size_t bit = LVAR_BIT_NUM;
+        file << "\n.subckt " << bit << "bEQ";
+        writeFAList(LVAR_BIT_NUM,"a",_piList[LEN_N][i],file);
+        writeFAList(LVAR_BIT_NUM,"b","const1",file);
+        file << " out=e" << i << "_1";
+    }
+    for (size_t i = 0, size = _piList[LEN].size(); i < size; ++i) {
+        file << "\n.names e" << i << "_0 e" << i << "_1 e" << i
+             << "\n 00 1"
+             << "\n 01 1"
+             << "\n 11 1";
+    }
+    file << "\n.names";
+    for (size_t i = 0, size = _piList[LEN].size(); i < size; ++i)
+        file << " e" << i;
+    file << " Tori T\n"
+         << string(_piList[LEN].size(),'1') << "1 1";
+
+    assert( (getO()->_paramList[INPUT].empty()) );
+    assert( (getO()->_paramList[EXIST].empty()) );
+    assert( (getO()->_paramList[STATE_N].empty()) );
+    assert( (getO()->_paramList[LEN_N].empty()) );
+    file << "\n.subckt " << getO()->_bname << BLIFIndent;
+    for (size_t i = 0; i < PI_NUM; ++i) {
+        const VmtNodeList& v = getO()->_paramList[i];
+        for (size_t j = 0, size = v.size(); j < size; ++j) {
+            if ( i == LEN || i == PREDIV ) {
+                for (size_t k = 0; k < v[j]->_bit; ++k)
+                    file << " " << v[j]->_bname << "_" << k
+                         << "=" << v[j]->_bname << "_" << k;
+                file << BLIFIndent;
+            }
+            else
+                file << " " << v[j]->_bname << "=" << v[j]->_bname;
+        }
+        if ( i != LEN && i !=PREDIV && !v.empty() )
+            file << BLIFIndent;
+    }
+    file << " " << getO()->_bname << "_0=O";
+    for (size_t i = 0, size = _piList[STATE].size(); i < size; ++i)
+        file << "\n.latch " << _piList[STATE_N][i]->_bname 
+             << " "         << _piList[STATE][i]->_bname
+             << " 0";
+    for (size_t i = 0, size = _piList[LEN].size(); i < size; ++i)
+        for (size_t j = 0; j < _piList[LEN][i]->_bit; ++j)
+            file << "\n.latch " << _piList[LEN_N][i]->_bname << "_" << j
+                 << " "         << _piList[LEN][i]->_bname   << "_" << j
+                 << " 0";
+    file << "\n.latch K Z 1"
+         << "\n.names T Z K"
+         << "\n11 1"
+         << "\n.names O Z Oisempty"
+         << "\n11 1"
+         << "\n.end\n"
+         << "\n# imdList\n";
+    // write submodels
     for (size_t i = 0, size = _imdList.size(); i < size; ++i) {
         if ( _imdList[i]->_flag == gflag ) {
-            _imdList[i]->writeMODEL( file , INT_BIT_NUM , minSize , maxSize );
+            _imdList[i]->writeMODEL( file , sizeMap );
         }
     }
-
+    file << "# predList\n";
     for (size_t i = 0, size = _predList.size(); i < size; ++i) {
         if ( _predList[i]->_flag == gflag ) {
-            _predList[i]->writeMODEL( file , INT_BIT_NUM + 1 , minSize, maxSize );
+            cout << "predList no." << i << endl;
+            _predList[i]->writeMODEL( file , sizeMap, 1 );
         }
     }
-    // write Sequential Module
     
-    // write special alphabets (if used)
-    /*
-    if ( epsilon->_flag    == gflag ) epsilon->writeMODEL(file);
-    if ( leftAngle->_flag  == gflag ) leftAngle->writeMODEL(file);
-    if ( rightAngle->_flag == gflag ) rightAngle->writeMODEL(file);
-    */
-    // write adder and comparator
-    
+    file << "# modules\n";
+    bool needUSFA = 0, needUHA = 0;
+    if ( !sizeMap[M_SFA].empty() ) needUSFA = 1;
+    if ( !sizeMap[M_EQ].empty()  ) 
+    if ( !sizeMap[M_INC1].empty()) needUHA  = 1;
 
+
+    cout << "needUSFA=" << needUSFA << " needUHA=" << needUHA << endl;
+    cout << "SFA :";
+    for (set<size_t>::iterator it = sizeMap[M_SFA].begin(); it != sizeMap[M_SFA].end(); ++it)
+        cout << " " << *it;
+    cout << "\nEQ :";
+    for (set<size_t>::iterator it = sizeMap[M_EQ].begin(); it != sizeMap[M_EQ].end(); ++it)
+        cout << " " << *it;
+    cout << "\nINC1 :";
+    for (set<size_t>::iterator it = sizeMap[M_INC1].begin(); it != sizeMap[M_INC1].end(); ++it)
+        cout << " " << *it;
+    cout << endl;
+
+    if ( needUSFA ) writeUSFA(file);
+    if ( needUHA  ) writeUHA(file);
+
+    for (set<size_t>::iterator it = sizeMap[M_SFA].begin(); it != sizeMap[M_SFA].end(); ++it)
+        writeSFA(*it,file);
+    for (set<size_t>::iterator it = sizeMap[M_EQ].begin(); it != sizeMap[M_EQ].end(); ++it)
+        writeEQ(*it,file);
+    for (set<size_t>::iterator it = sizeMap[M_INC1].begin(); it != sizeMap[M_INC1].end(); ++it)
+        writeINC1(*it,file);
+    
     file.close();
+}
+
+void Aut::writeFAList(const size_t& bitNum, const string& lhs, const string& rhs, ofstream& file)
+{
+    // rhs is CONST0 or CONST1
+    for (int i = bitNum - 1; i >= 0; --i)
+        file << " " << lhs << i << "=" << rhs;
+    file << BLIFIndent;
+}
+
+void Aut::writeFAList(const size_t& bitNum, const string& lhs, VmtNode* rhsNode, ofstream& file)
+{
+    // rhs no need to be padded
+    for (int i = bitNum - 1; i >= 0; --i)
+        file << " " << lhs << i << "=" << rhsNode->_bname << "_" << i;
+    file << BLIFIndent;
+}
+
+void Aut::writeFAList(bool& tUsed,bool& fUsed,const size_t& bitNum, const string& lhs, VmtNode* rhsNode, ofstream& file)
+{
+    // rhs needed to be padded with CONST0 or CONST1
+    for (int i = bitNum - 1; i >= 0; --i) {
+        if ( i >= rhsNode->_bit ) {
+            fUsed = 1;
+            file << " " << lhs << i << "=const0";
+        }
+        else {
+            if ( rhsNode->_type == NUM ){
+                file << " " << lhs << i;
+                if ( rhsNode->_bname[ rhsNode->_bit-i-1 ] == '1') {tUsed = 1; file << "=const1";}
+                else                                              {fUsed = 1; file << "=const0";}
+            }
+            else {
+                file << " " << lhs << i << "=" << rhsNode->_bname << "_" << i;
+            }
+        }
+    }
+    file << BLIFIndent;
+}
+
+void Aut::writeUSFA(ofstream& file)
+{
+    file << ".model SFA\n"
+         << ".inputs a b cin sign\n"
+         << ".outputs cout\n"
+         << ".names b sign bs\n"
+         << "01 1\n"
+         << "10 1\n"
+         << ".names bs cin k\n"
+         << "01 1\n"
+         << "10 1\n"
+         << ".names a k s\n"
+         << "01 1\n"
+         << "10 1\n"
+         << ".names a bs cin cout\n"
+         << "11- 1\n"
+         << "1-1 1\n"
+         << "-11 1\n"
+         << ".end\n";
+}
+
+void Aut::writeUHA(ofstream& file)
+{
+    file << ".model HA\n"
+         << ".inputs a b\n"
+         << ".outputs s c\n"
+         << ".names a b s\n"
+         << "01 1\n"
+         << "10 1\n"
+         << ".names a b c\n"
+         << "11 1\n"
+         << ".end\n";
+}
+
+void Aut::writeSFA(const size_t& bitNum, ofstream& file)
+{
+    file << ".model " << bitNum << "bSFA"
+         << "\n.inputs";
+    for (int i = bitNum - 1; i >= 0; --i) file << " a" << i;
+    for (int i = bitNum - 1; i >= 0; --i) file << " b" << i;
+    file << " sign"
+         << "\n.outputs";
+    for (int i = bitNum - 1; i >= 0; --i) file << " s" << i;
+    file << " cout";
+
+    file << "\n.subckt SFA a=a0 b=b0 cin=sign cout=c1";
+    for (size_t i = 1; i < bitNum - 1; ++i)
+        file << "\n.subckt SFA a=a" << i << " b=b" << i << " cin=c" << i 
+             << " sign=sign cout=c" << i + 1;
+    file << "\n.subckt SFA a=a" << bitNum - 1 << " b=b" << bitNum - 1 
+         << " cin=c" << bitNum - 1 << " sign=sign cout=cout"
+         << "\n.end\n";
+}
+
+void Aut::writeEQ(const size_t& bitNum, ofstream& file)
+{
+    file << ".model " << bitNum << "bEQ"
+         << "\n.inputs";
+    for (int i = bitNum - 1; i >= 0; --i) file << " a" << i;
+    for (int i = bitNum - 1; i >= 0; --i) file << " b" << i;
+    file << "\n.outputs out";
+    for (size_t i = 0; i < bitNum; ++i) {
+        file << "\n.names a" << i << " b" << i << " e" << i
+             << "\n00 1"
+             << "\n11 1";
+    }
+    file << "\n.names";
+    for (int i = bitNum - 1; i >= 0; --i) file << " e" << i;
+    file << " out\n"
+         << string(bitNum,'1') << " 1"
+         << "\n.end\n";
+}
+
+void Aut::writeINC1(const size_t& bitNum, ofstream& file)
+{
+    file << ".model " << bitNum << "bINC1"
+         << "\n.inputs";
+    for (int i = bitNum - 1; i >= 0; --i) file << " a" << i;
+    for (int i = bitNum - 1; i >= 0; --i) file << " b" << i;
+    file << "\n.outputs out"
+         << "\n.subckt " << bitNum << "bEQ";
+    for (int i = bitNum - 1; i >= 0; --i) file << " a" << i << "=s" << i;
+    for (int i = bitNum - 1; i >= 0; --i) file << " b" << i << "=b" << i;
+    file << " out=out"
+         << "\n.subckt HA a=a0 b=const1 s=s0 c=c1";
+    for (size_t i = 1; i < bitNum; ++i)
+        file << "\n.subckt HA a=a" << i << " b=c" << i << " s=s" << i << " c=c" << i + 1;
+    file << "\n.names const1"
+         << "\n1"
+         << "\n.end\n";
 }

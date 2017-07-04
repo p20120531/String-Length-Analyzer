@@ -78,7 +78,7 @@ class DGNode {
         void renameLengthVar (size_t&);
         void writeCmdFile (ofstream&,ofstream&);
         void writeCVC4File();
-        void writeCVC4LeafNode(string&);
+        void writeCVC4LeafNode(string&,string&);
         void lcTraversal (Str2UintMap&,size_t&)const;
     private:
         string        _name;    // NEW_STR_n / NEW_RE_n for extra nodes
@@ -110,6 +110,8 @@ class DG {
         Str2UintMap& getLengthVarCntMap() {return _lengthVarCntMap;}
         vector<string>& getCVC4StrList() {return _cvc4StrList;}
         vector<string>& getCVC4PredList() {return _cvc4PredList;}
+        vector<string>& getS3StrList() {return _s3StrList;}
+        vector<string>& getS3PredList() {return _s3PredList;}
         set<string>& getBVStrSet() {return _bvStrSet;}
         set<string>& getIVStrSet() {return _ivStrSet;}
         set<string>& getBVPredSet() {return _bvPredSet;}
@@ -132,6 +134,8 @@ class DG {
         Str2UintMap    _lengthVarCntMap;
         vector<string> _cvc4StrList;
         vector<string> _cvc4PredList;
+        vector<string> _s3StrList;
+        vector<string> _s3PredList;
         set<string>    _bvStrSet;
         set<string>    _ivStrSet;
         set<string>    _bvPredSet;

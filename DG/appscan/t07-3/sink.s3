@@ -8,9 +8,9 @@
 
 (assert (= selKeyword_value (Concat p1 (Concat p2 p3) ) ) )
 
-(assert (str.in.re  p1  (Star (Union " " "\t") ) ) )
+(assert (In  p1  (Star (Union " " "\t") ) ) )
 
-(assert (str.in.re  p3  (Star (Union " " "\t") ) ) )
+(assert (In  p3  (Star (Union " " "\t") ) ) )
 
 (assert (not (EndsWith p2 " ") ) )
 

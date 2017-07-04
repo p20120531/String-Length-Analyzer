@@ -144,17 +144,27 @@ void DGNode::printAssertionList() const
         (*it)->findLeader()->printAssertionList();
 }
 
-void DGNode::writeCVC4LeafNode(string& s)
+void DGNode::writeCVC4LeafNode(string& cvc4str,string& s3str)
 {
     if (_type == AUT_CONCATE) {
-        s += " (re.++";
-        for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it)
-            (*it)->findLeader()->writeCVC4LeafNode(s);
-        s += ")";
+        //cvc4str += " (re.++";
+        //s3str   += " (Concat";
+        cvc4str += " (str.to.re \"";
+        s3str   += " \"";
+        for (DGNodeList::iterator it=_children.begin(); it!=_children.end(); ++it) {
+            //(*it)->findLeader()->writeCVC4LeafNode(cvc4str,s3str);
+            const string& regex = (*it)->findLeader()->_regex;
+            assert((regex.at(0)=='\"' && regex.at(regex.size()-1)=='\"'));
+            cvc4str += regex.substr(1,regex.size()-2);
+            s3str   += regex.substr(1,regex.size()-2);
+        }
+        cvc4str += "\")";
+        s3str   += "\"";
     }
     else if (_type == CONST_STRING) {
         assert((_children.size() == 0));
-        s += " (str.to.re " + _regex + ")";
+        cvc4str += " (str.to.re " + _regex + ")";
+        s3str   += " " + _regex;
     }
     else {
         #ifndef _NLOG_
@@ -169,8 +179,10 @@ void DGNode::writeCVC4File()
     assert((_flag != gflag));
     _flag = gflag;
     Str2TypeMap& typeMap = dg->getTypeMap();
-    vector<string>& cvc4StrList = dg->getCVC4StrList();
+    vector<string>& cvc4StrList  = dg->getCVC4StrList();
     vector<string>& cvc4PredList = dg->getCVC4PredList();
+    vector<string>& s3StrList    = dg->getS3StrList();
+    vector<string>& s3PredList   = dg->getS3PredList();
     set<string>& bvStrSet = dg->getBVStrSet(); 
     set<string>& ivStrSet = dg->getIVStrSet(); 
 
@@ -179,22 +191,31 @@ void DGNode::writeCVC4File()
     assert((_type == AUT_CONCATE || _type == AUT_INTER || _type == AUT_COMPLE || _type == CONST_STRING || _type == VAR_STRING));
     typeMap.insert(Str2Type(_name,VAR_STRING));
     
-    if (_type == AUT_CONCATE) 
+    if (_type == AUT_CONCATE) {
         cvc4StrList.push_back("(assert (= "+_name+" (str.++ "+_children[0]->findLeader()->_name+" "+_children[1]->findLeader()->_name+")))");
+        s3StrList.push_back("(assert (= "+_name+" (Concat "+_children[0]->findLeader()->_name+" "+_children[1]->findLeader()->_name+")))");
+    }
     else if (_type == AUT_INTER) {
         assert((_children.size() == 2));
         cvc4StrList.push_back("(assert (= "+_name+" "+_children[0]->findLeader()->_name+"))");
         cvc4StrList.push_back("(assert (= "+_children[0]->findLeader()->_name+" "+_children[1]->findLeader()->_name+"))");
+        s3StrList.push_back("(assert (= "+_name+" "+_children[0]->findLeader()->_name+"))");
+        s3StrList.push_back("(assert (= "+_children[0]->findLeader()->_name+" "+_children[1]->findLeader()->_name+"))");
     }
     else if (_type == AUT_COMPLE) {
         assert((_children.size() == 1));
-        string s = "(assert (not (str.in.re " + _name;
-        _children[0]->findLeader()->writeCVC4LeafNode(s);
-        s += ")))";
-        cvc4StrList.push_back(s);
+        string cvc4str = "(assert (not (str.in.re " + _name;
+        string s3str   = "(assert (not (In " + _name;
+        _children[0]->findLeader()->writeCVC4LeafNode(cvc4str,s3str);
+        cvc4str += ")))";
+        s3str   += ")))";
+        cvc4StrList.push_back(cvc4str);
+        s3StrList.push_back(s3str);
     }    
-    else if (_type == CONST_STRING)
+    else if (_type == CONST_STRING) {
         cvc4StrList.push_back("(assert (= "+_name+" "+_regex+"))");
+        s3StrList.push_back("(assert (= "+_name+" "+_regex+"))");
+    }
     else {
         assert((_type == VAR_STRING));
         /*
@@ -209,6 +230,7 @@ void DGNode::writeCVC4File()
         const Type& type = (*it).second->getType();
         if (type == CONST_INT) {
             cvc4PredList.push_back("(assert (= "+(*it).second->getName()+" (str.len "+_name+"))) ; len "+itos(_lengthVarCnt));
+            s3PredList.push_back("(assert (= "+(*it).second->getName()+" (Length "+_name+"))) ; len "+itos(_lengthVarCnt));
             //cvc4PredList.push_back("(assert (= "+(*it).second->getName()+" (str.len "+_name+"))) ; cstrlen "+itos(_lengthVarCnt));
         }
         else {
@@ -221,6 +243,7 @@ void DGNode::writeCVC4File()
                 s += ") ; len "+itos(_lengthVarCnt);
                 //s += ") ; vstrlen "+itos(_lengthVarCnt);
                 cvc4PredList.push_back(s);
+                s3PredList.push_back(s);
             }
             else {
                 #ifndef _NLOG_
@@ -241,6 +264,7 @@ void DGNode::writeCVC4File()
             //s += ")";
             string s = "(assert " + (*it).second->getName() + ")";
             cvc4PredList.push_back(s);
+            s3PredList.push_back(s);
             (*it).second->setFlag(gflag);
             (*it).second->writeCVC4PredVar();
             /*

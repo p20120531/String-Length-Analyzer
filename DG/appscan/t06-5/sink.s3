@@ -16,7 +16,7 @@
 
 (assert (not (= src "") ) )
 ;(assert (not pred) )
-(= ret (Concat src "_ha") )
+(assert (= ret (Concat src "_ha") ) )
 
 
 (assert (EndsWith ret "_ha") )

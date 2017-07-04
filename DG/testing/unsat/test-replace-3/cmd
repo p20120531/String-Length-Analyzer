@@ -5,5 +5,7 @@ write D2
 intersect D2 A6
 write D3
 addlen D3 0
+write D4
 addpred pred
 write sink
+isempty D4

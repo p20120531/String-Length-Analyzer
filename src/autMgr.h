@@ -9,8 +9,8 @@
     #define MAX_ENCODE              127
 #endif
 #define PI_NUM                      8
-#define INT_BIT_NUM                 9
-#define MODULE_TYPE_NUM             5
+#define LVAR_BIT_NUM                9
+#define MODULE_TYPE_NUM             3
 #define EPSILON_ENCODE              0
 #define LEFT_ANGLE_BRACKET_ENCODE   1
 #define RIGHT_ANGLE_BRACKET_ENCODE  2
@@ -26,11 +26,11 @@
 #include <climits>
 #include "utility.h"
 #define TGRAPH_NDEBUG
-//#define VMTNODE_NDEBUG
-//#define AUT_NDEBUG
+#define VMTNODE_NDEBUG
+#define AUT_NDEBUG
 #define AUT_PARAM_NDEBUG
-//#define AUT_OP_NDEBUG
-//#define AUTMGR_NDEBUG
+#define AUT_OP_NDEBUG
+#define AUTMGR_NDEBUG
 
 class TGEdge;
 class TGraph;
@@ -50,7 +50,7 @@ enum VmtType {
 };
 
 enum ModuleType {
-    M_EQ, M_COMP, M_INC1, M_SFA, M_AINV  
+    M_SFA, M_EQ, M_INC1
 };
 
 enum AType {
@@ -119,13 +119,14 @@ class VmtNode{
         
         VmtNode (const string& name,const size_t& idx=0): _name(name), _idx(idx) 
         { _paramList.assign(PI_NUM,VmtNodeList()); _type = getType(name) ; 
-          _bname = ""; _bit = 0; _source=0; _flag = 0; }
+          _bname = ""; _bit = 0; _pad = 0; _source=0; _flag = 0; }
 
         VmtNode (const string& name,VmtNode* source) : _name(name), _source(source)
         { _paramList.assign(PI_NUM,VmtNodeList()); _type = PARAM;
-          _bname = ""; _bit = 0; _idx = 0 ; _flag = 0; }
+          _bname = ""; _bit = 0; _pad = 0; _idx = 0 ; _flag = 0; }
         
         void           print   (const size_t&)           const;
+        void           printPARAM   ()           const;
         void           write   (const size_t&,ofstream&) const;
         void           setType (const VmtType& type)           {_type = type;}
         VmtType        getType (const string& name)      const;
@@ -137,18 +138,24 @@ class VmtNode{
         void           clearParam(const size_t&);
         void           buildParam(const size_t&);
         void           collectPARAM(VmtNodeList&);
-        void           mergeEquivalence();
+        void           spotNEG();
         void           writeParamHead(ofstream&) const;
         void           writeParamBody(const string&,ofstream&) const;
         void           shiftStateVar(const size_t&);
+        size_t         getBit() const;
+        void           setBit(const size_t&,bool&);
         //TODO construct sequential circuit
         void           buildBLIF(int&);
-        void           writeMODEL (ofstream&,const size_t&,vector<size_t>&,vector<size_t>&);
-        void           writeSUBCKT(ofstream&,const size_t&,vector<size_t>&,vector<size_t>&,bool&,bool&);
+        void           setBitNum(); 
+        void           setBitNumUP(bool&);
+        void           setBitNumDN(bool&);
+        void           writeMODEL (ofstream&,vector<set<size_t> >&,const bool& isPred=0);
+        void           writeSUBCKT(ofstream&,vector<set<size_t> >&,bool&,bool&,const bool& isPred=0);
         string         _name;
         string         _bname;     // name for BLIF
         size_t         _idx;
-        size_t         _bit;       // number of bits needed for type=OP for BLIF
+        size_t         _bit;       // number of fanout bits for type=OP for BLIF
+        size_t         _pad;       // number of padding zeros for type=(LEN|NUM)
         VmtType        _type;
         VmtNodeList    _children;
         VmtNode*       _source;    // used for _type == PARAM
@@ -194,6 +201,7 @@ class Aut{
 
         // Static Member Function
         // static member function cannot have const qualifier (don't have this)
+        static string   BLIFIndent;
         static STRList  initPISymbolS();
         static CHRList  initPISymbolC();
         static VmtNode* initConst(const VmtType&);
@@ -203,11 +211,17 @@ class Aut{
         static bool     isPI(const VmtType&);
         static bool     isCurPI(const VmtType&);
         static bool     isLEAF(const VmtType&);
+        static bool     isCONST(const VmtType&);
         static bool     isINT(const VmtType&);
         static bool     isPREDINT(const VmtType&);
+        static bool     isPARAMINT(const VmtType&);
+        static bool     isPARAMBOOL(const VmtType&);
+        static bool     isRETBOOL(const VmtType&);
         static bool     isIMD(const VmtType&);
         static bool     isOP(const VmtType&);
+        static bool     isARITH(const VmtType&);
         static bool     isSO(const VmtType&);
+        static bool     isMO(const VmtType&);
         static bool     isPISymbol(const char&);
         static bool     isSpecialString(const string&);
         static string   getTypeStr(const VmtType&);
@@ -222,9 +236,6 @@ class Aut{
         void            parse(const char*);
         void            write(const char*) const;
         void            write(const string&) const;
-        void            writeDeclareFun(const VmtType&, ofstream&) const;
-        void            writeNextFun(const VmtType&, int&, ofstream&) const;
-        void            writeDefineFun(VmtNode*,ofstream&,const bool& needParam=1) const;
         // Operations
         string          CSNSEquiv(const VmtType&) const;
         // Unary 
@@ -249,6 +260,15 @@ class Aut{
         static void     check(Aut*, const size_t&);
         static void     check(Aut*, Aut*);
         static void     check(Aut*, Aut*, const size_t&);
+        static void     writeFAList(const size_t&,const string&,const string&,ofstream&);
+        static void     writeFAList(const size_t&,const string&,VmtNode*,ofstream&);
+        static void     writeFAList(bool&,bool&,const size_t&,const string&,VmtNode*,ofstream&);
+        static void     writeINPUTList(const size_t&,const VarList&,ofstream&);
+        static void     writeUSFA(ofstream&);
+        static void     writeUHA(ofstream&);
+        static void     writeSFA(const size_t&,ofstream&);
+        static void     writeEQ(const size_t&,ofstream&);
+        static void     writeINC1(const size_t&,ofstream&);
         
         static size_t   inputBitNum;
         static STRList  piSymbolS;
@@ -268,7 +288,7 @@ class Aut{
         void            clearParam();
         void            buildParam();
         void            collectPARAM();
-        void            mergeEquivalence();
+        void            spotNEG();
         void            renameDef();
         void            shiftStateVar(const size_t&);
         void            parseDef(const string&, Str2VmtNodeMap&);
@@ -279,6 +299,9 @@ class Aut{
         void            defineFun(const string&, const string&, VmtNodeList&, void (Aut::*)(VmtNode*));
         void            addParamNode(const string&, VmtNode*);
         void            addParamNode(const string&, VmtNode*, const size_t&, const bool&);
+        void            writeDeclareFun(const VmtType&, ofstream&) const;
+        void            writeNextFun(const VmtType&, int&, ofstream&) const;
+        void            writeDefineFun(VmtNode*,ofstream&,const bool& needParam=1) const;
         void            renameITO(const string&, VmtNode*);
         void            renameITO1Aut();
         void            renameITOs2Aut(Aut*,Aut*);

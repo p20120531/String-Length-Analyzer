@@ -192,16 +192,7 @@ void TGraph::parse(const char* fileName)
     }
     file.close();
     
-    if (maxStateIdx == 0)
-        _stateBitNum = 1;
-    else {
-        _stateBitNum = 0;
-        size_t tmp = maxStateIdx;
-        while (tmp % 2 != 0 || tmp / 2 != 0) {
-            ++_stateBitNum;
-            tmp /= 2;
-        }
-    }
+    _stateBitNum = binaryEncodedBitNum(maxStateIdx);
 
     for (size_t i = 0; i <= maxStateIdx; ++i)
         _stateBitStringList.push_back(Uint2BitString(i,_stateBitNum));

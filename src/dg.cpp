@@ -66,7 +66,10 @@ void DG::writeCmdFile ()
     ofstream cmdFile(cmdstr.c_str());
     ofstream autFile(autstr.c_str());
     _sink->findLeader()->writeCmdFile(cmdFile,autFile);
-    cmdFile << "addpred" << endl << "write sink" << endl;
+    cmdFile << "write beforeaddpred\n"
+            << "addpred\n"
+            << "write sink\n"
+            << "isempty beforeaddpred";
     cmdFile.close();
     autFile.close();
 }
@@ -77,9 +80,10 @@ void DG::writeCVC4File(const IMP& curimp)
         splitLine(logFile,"DG::writeCVC4File");
     #endif
     string cvc4str = _path + "sink.smt2";
-    string defstr  = _path + "def";
+    string s3str   = _path + "sink.s3";
     string predstr = _path + "pred";
     ofstream cvc4File(cvc4str.c_str());
+    ofstream s3File(s3str.c_str());
     //ofstream defFile(defstr.c_str());
     ofstream predFile(predstr.c_str());
 
@@ -108,12 +112,14 @@ void DG::writeCVC4File(const IMP& curimp)
     }
     for (vector<string>::iterator it=boolList.begin(); it!=boolList.end(); ++it) {
         cvc4File << "(declare-fun " << *it << " () Bool)" << endl;
+        s3File   << "(declare-variable " << *it << " Bool)" << endl;
         //defFile << "(declare-fun " << *it << " () Bool)" << endl;
         predFile << "(declare-fun " << *it << " () Bool)" << endl;
     }
     for (vector<string>::iterator it=intList.begin(); it!=intList.end(); ++it) {
         Str2UintMap::iterator jt=_lengthVarCntMap.find(*it);
         cvc4File << "(declare-fun " << *it << " () Int)" << endl;
+        s3File   << "(declare-variable " << *it << " Int)" << endl;
         //defFile << "(declare-fun " << *it << " () Int)";
         predFile << "(declare-fun " << *it << " () Int)" << endl;
         // append extra length variable information
@@ -129,10 +135,14 @@ void DG::writeCVC4File(const IMP& curimp)
         }*/
     }
     predFile << ";" << endl;
-    for (vector<string>::iterator it=strList.begin(); it!=strList.end(); ++it)
+    for (vector<string>::iterator it=strList.begin(); it!=strList.end(); ++it) {
         cvc4File << "(declare-fun " << *it << " () String)" << endl;
+        s3File   << "(declare-variable " << *it << " String)" << endl;
+    }
     for (vector<string>::iterator it=_cvc4StrList.begin(); it!=_cvc4StrList.end(); ++it)
         cvc4File << *it << endl;
+    for (vector<string>::iterator it=_s3StrList.begin(); it!=_s3StrList.end(); ++it)
+        s3File << *it << endl;
     
     // Handle Assertion Repetition
     if (curimp.first != 0) {
@@ -152,6 +162,25 @@ void DG::writeCVC4File(const IMP& curimp)
         }
         if (!alreadyExist) {
             _cvc4PredList.push_back(s);
+        }
+    }
+    if (curimp.first != 0) {
+        string s;
+        if (curimp.second) {
+            s = "(assert " + curimp.first->getName() + ")";
+        }
+        else {
+            s = "(assert (not " + curimp.first->getName() + "))";
+        }
+        bool alreadyExist = 0;
+        for (vector<string>::iterator it=_s3PredList.begin(); it!=_s3PredList.end(); ++it) {
+            if (s == *it) {
+                alreadyExist = 1;
+                break;
+            }
+        }
+        if (!alreadyExist) {
+            _s3PredList.push_back(s);
         }
     }
     
@@ -182,8 +211,28 @@ void DG::writeCVC4File(const IMP& curimp)
         }
     }
     
+    set<string> ibvSet2;
+    for (vector<string>::iterator it=_s3PredList.begin(); it!=_s3PredList.end(); ++it) {
+        string name;
+        if (isAssertion(*it,name)) {
+            if ((ibvSet2.find(name) != ibvSet2.end())) {
+                _s3PredList.erase(it);
+                --it;
+            }
+            else {
+                ibvSet2.insert(name);
+                s3File << *it << endl;
+            }
+        }
+        else {
+            s3File << *it << endl;
+        }
+    }
+    
     cvc4File << "(check-sat)";
     cvc4File.close();
+    s3File << "(check-sat)";
+    s3File.close();
 }
 bool DG::isAssertion(const string& pred, string& name) {
     size_t size = pred.size();

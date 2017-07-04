@@ -6,3 +6,4 @@ intersect D2 A6
 write D3
 addpred pred
 write sink
+isempty D3

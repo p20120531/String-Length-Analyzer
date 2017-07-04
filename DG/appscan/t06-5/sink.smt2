@@ -19,7 +19,7 @@
 
 (assert (not (= src "") ) )
 ;(assert (not pred) )
-(= ret (str.++ src "_ha") )
+(assert (= ret (str.++ src "_ha") ) )
 
 
 (assert (str.suffixof "_ha" ret) )

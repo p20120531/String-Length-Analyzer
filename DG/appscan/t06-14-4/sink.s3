@@ -4,6 +4,8 @@
 ;(declare-fun ret () String)
 ;(declare-fun pred () Bool)
 ;(declare-fun p1 () Bool)
+(declare-fun i1 () Int)
+(declare-fun i2 () Int)
 
 
 ;(assert (= p1 (EndsWith  src  "_hA") ) )

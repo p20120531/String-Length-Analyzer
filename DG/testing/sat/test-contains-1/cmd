@@ -6,3 +6,4 @@ contains D2 A3
 write D3
 addpred pred
 write sink
+isempty D3

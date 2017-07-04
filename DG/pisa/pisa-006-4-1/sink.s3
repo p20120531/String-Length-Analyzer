@@ -12,7 +12,7 @@
 
 (assert (= filename_0 s) )
 (assert (Contains filename_0 "/") )
-(assert (= filename_0 (Concat tmpStr0 (str.++ "/" tmpStr1) ) ) )
+(assert (= filename_0 (Concat tmpStr0 (Concat "/" tmpStr1) ) ) )
 (assert (not (Contains tmpStr1 "/") ) )
 (assert (= i1 (Length tmpStr0) ) )
 

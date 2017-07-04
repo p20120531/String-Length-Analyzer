@@ -178,9 +178,11 @@ void AutMgr::readCmdFile(const char* fileName)
     #ifdef UTF16_ENCODE
         string sigma_star_dir = "special_regex/sigma_star_16.vmt";
         string alphabet_dir   = "special_regex/alphabet_16.vmt";
+        string epsilon_dir    = "special_regex/epsilon_16.vmt";
     #else
         string sigma_star_dir = "special_regex/sigma_star_7.vmt";
         string alphabet_dir   = "special_regex/alphabet_7.vmt";
+        string epsilon_dir    = "special_regex/epsilon_7.vmt";
     #endif
     string path(fileName);
     path = path.substr(0,path.find_last_of("/")) + "/";
@@ -206,11 +208,7 @@ void AutMgr::readCmdFile(const char* fileName)
             Aut* a3 = new Aut( sigma_star_dir );
             Aut* a4 = new Aut( sigma_star_dir );
             Aut* a5 = new Aut( a3, a2, CONCATE );
-            cout << "print a5\n";
-            a5->print();
             Aut* a6 = new Aut( a5, a4, CONCATE );
-            cout << "print a6\n";
-            a6->print();
             cur     = new Aut( a1, a6, INTERSECT );
         }
         else if (tokenList[0] == "prefixof_smt") {
@@ -275,6 +273,21 @@ void AutMgr::readCmdFile(const char* fileName)
         }
         else if (tokenList[0] == "read") {
             cur = new Aut( path + tokenList[1] + ".vmt" );
+        }
+        else if (tokenList[0] == "isempty") {
+            Aut* a1 = new Aut( epsilon_dir );
+            Aut* a2 = new Aut( path + tokenList[1] + ".vmt" );
+            cur     = new Aut( a1, a2, CONCATE );
+            cur->addpred( path + "pred" );
+            cur->write  ( path + "fin.vmt" );
+            cur->isempty( path + "sink.blif" );
+            
+            string abcFileName = path + "sink.abc";
+            ofstream abcFile( abcFileName.c_str() );
+            abcFile << "read " << path << "sink.blif\n"
+                    << "strash\n"
+                    << "pdr";
+            abcFile.close();
         }
         else if (tokenList[0] == "addpred") {
             cur->addpred( path + "pred" );

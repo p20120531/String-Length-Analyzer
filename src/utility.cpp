@@ -75,6 +75,10 @@ void str2tokens(const string& s, const string& delimiters, vector<string>& token
 
 string Uint2BitString(const size_t& n, const size_t& bitNum)
 {
+    size_t prod = 1;
+    for (size_t i = 0; i < bitNum; ++i) prod *= 2;
+    assert( ( n < prod ) );
+
     string bitstr (bitNum,'0');
     size_t tmp = n, j = bitNum;
     while (tmp % 2 != 0 || tmp / 2 != 0) {
@@ -83,4 +87,17 @@ string Uint2BitString(const size_t& n, const size_t& bitNum)
         tmp /= 2;
     }
     return bitstr;
+}
+
+size_t binaryEncodedBitNum(const size_t& num)
+{
+    if (num == 0) return 1;
+    else {
+        size_t tmp = num, bitNum = 0;
+        while (tmp % 2 != 0 || tmp / 2 != 0) {
+            ++bitNum;
+            tmp /= 2;
+        }
+        return bitNum;
+    }
 }

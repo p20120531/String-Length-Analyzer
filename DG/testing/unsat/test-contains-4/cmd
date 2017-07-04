@@ -5,5 +5,7 @@ write D2
 addlen A3 1
 write D3
 contains D2 D3
+write D4
 addpred pred
 write sink
+isempty D4

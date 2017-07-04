@@ -7,12 +7,12 @@
     benchmark appscan
 
 [escaping characters]
-    benchmark pisa
+    benchmark pisa     : double quote
         pisa-008-1/aut : A10 , A12
         pisa-008-2/aut : A10 , A12
         pisa-010-1/aut : A2
         pisa-011-1/aut : A1  , A4
-    benchmark appscan
+    benchmark appscan  : tab
         t07-1/aut      : A8  , A9
         t07-2/aut      : A2  , A7  , A8  , A11
         t07-3/aut      : A2  , A7  , A8  , A11
