@@ -1,9 +1,9 @@
-(declare-variable s0 String)
-(declare-variable s1 String)
-(declare-variable s2 String)
-(declare-variable s3 String)
-(declare-variable s4 String)
-(declare-variable ret String)
+(declare-fun s0 () String)
+(declare-fun s1 () String)
+(declare-fun s2 () String)
+(declare-fun s3 () String)
+(declare-fun s4 () String)
+(declare-fun ret () String)
 
 
 

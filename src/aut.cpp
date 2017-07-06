@@ -7,6 +7,7 @@ static size_t& gflag = autmgr->getGFlag();
 
 ///////////////////////////////// Static Member ///////////////////////////////
 
+//string   Aut::BLIFIndent  = "";
 string   Aut::BLIFIndent  = " \\\n" + string(7,' ');
 size_t   Aut::inputBitNum = INPUT_ENCODE_BIT_NUM + 1;
 STRList  Aut::piSymbolS   = Aut::initPISymbolS();
@@ -181,6 +182,17 @@ bool Aut::isRETBOOL(const VmtType& type)
 {
     return (type == PARAM || type == MODULE || type == NOT || type == AND   || type == OR ||
             type == LT    || type == LTOEQ  || type == EQ  || type == MTOEQ || type == MT  );
+}
+
+bool Aut::isPREDRETBOOL(const VmtType& type)
+{
+    return (type == PREDBV || type == CONST0 || type == CONST1 || type == NOT   || type == AND || type == OR ||
+            type == LT     || type == LTOEQ  || type == EQ     || type == MTOEQ || type == MT                 );
+}
+
+bool Aut::isPREDRETINT(const VmtType& type)
+{
+    return (type == LEN || type == PREDIV || type == NUM || type == NEG || type == PLUS || type == MINUS);
 }
 
 bool Aut::isIMD(const VmtType& type)
@@ -1318,7 +1330,7 @@ size_t Aut::mark()
     defineFun( "tmp1", "(and (not " + sa + ") tmpI1)", _imdList, &Aut::setI );
 
     // Transition Relation
-    defineFun( "tmp2", "(and (= " + sa + " " + san + ") (not " + leftAngle->_name + ") (not " + rightAngle->_name + ") tmpT1)", _imdList);
+    defineFun( "tmp2", "(and (= " + san + " " + sa + ") (not " + leftAngle->_name + ") (not " + rightAngle->_name + ") tmpT1)", _imdList);
     defineFun( "tmp3", "(or (and (not " + sa + ") " + san + " " + leftAngle->_name + ") (and " + sa + " (not " + san + ") " + rightAngle->_name + "))", _imdList);
     defineFun( "tmp4", "(and" + sveq + lveq + " tmp3)", _imdList);
     defineFun( "tmp5", "(or tmp2 tmp4)", _imdList, &Aut::setT);
@@ -1455,8 +1467,11 @@ void Aut::prefix(const string& lvarIdxStr)
     // Transition Relation
     defineFun( "T1_epsilon", "(or tmpT1 (and epsilon" + csnseq + "))", _imdList);
     
-    defineFun( "tmp2", "(or (and (not epsilon)" + lvincre + ") (and epsilon" + lveq + "))", _imdList);
-    defineFun( "tmp3", "(and (not " + sa + ") (not " + san + ") T1_epsilon tmp2)", _imdList);
+    defineFun( "tmp20", "(and (not epsilon)" + lvincre + ")", _imdList);
+    defineFun( "tmp21", "(and epsilon" + lveq + ")", _imdList);
+    defineFun( "tmp22", "(or tmp20 tmp21)", _imdList);
+
+    defineFun( "tmp3", "(and (not " + sa + ") (not " + san + ") T1_epsilon tmp22)", _imdList);
     defineFun( "tmp4", "(and (not " + sa + ") " + san + " epsilon" + csnseq + lveq + ")", _imdList);
     defineFun( "tmp5", "(and " + sa + " " + san + " epsilon T1_PARAM" + lveq + ")", _imdList);
     defineFun( "tmp6", "(or tmp3 tmp4 tmp5)", _imdList, &Aut::setT );
@@ -1521,8 +1536,11 @@ void Aut::suffix(const string& lvarIdxStr)
     defineFun( "tmp1", "(and (not " + sa + ") tmpI1)", _imdList, &Aut::setI );
     
     // Transition Relation
-    defineFun( "tmp2", "(or (and (not YEPSILON)" + lvincre + ") (and YEPSILON" + lveq + "))", _imdList);
-    defineFun( "tmp3", "(and (not " + sa + ") (not " + san + ") epsilon T1_PARAM tmp2)", _imdList);
+    defineFun( "tmp20", "(and (not YEPSILON)" + lvincre + ")", _imdList);
+    defineFun( "tmp21", "(and YEPSILON" + lveq + ")", _imdList);
+    defineFun( "tmp23", "(or tmp20 tmp21)", _imdList);
+
+    defineFun( "tmp3", "(and (not " + sa + ") (not " + san + ") epsilon T1_PARAM tmp23)", _imdList);
     defineFun( "tmp4", "(and (not " + sa + ") " + san + " epsilon" + csnseq + lveq + ")", _imdList);
     defineFun( "tmp5", "(and " + sa + " " + san + " tmpT1" + lveq + ")", _imdList);
     defineFun( "tmp6", "(or tmp3 tmp4 tmp5)", _imdList, &Aut::setT );
@@ -1545,6 +1563,7 @@ void Aut::addpred(const string& fileName)
     size_t sCnt = 0, pCnt = 0;
     // using a stand-alone vmap to prevent naming collision
     Str2VmtNodeMap predVMap;
+    cout << "pvmap in addpred " << &predVMap << endl;
     while (getline(file,line)) {
         if (line == ";") {
             ++sCnt; continue;
@@ -1564,6 +1583,7 @@ void Aut::addpred(const string& fileName)
 
     for (size_t i = 0, size = _piList[PREDIV].size(); i < size; ++i) {
         _piList[PREDIV][i]->_name = piSymbolS[PREDIV] + itos(i);
+        _piList[PREDIV][i]->_idx  = i;
     }                                  
     piList[PREDIV] = _piList[PREDIV];
 
@@ -1591,12 +1611,24 @@ void Aut::addpred(const string& fileName)
     }
     _predList.push_back(n1);
     setI(n1);
+    cout << "g1\n";
+    for (size_t i = 0, size = _predList.size(); i < size; ++i) {
+        _predList[i]->print(0);
+        _predList[i]->printPARAM();
+    }
+    cout << "ADDPRED BEGIN\n";
     renameDef();
+    cout << "ADDPRED END\n";
+    for (size_t i = 0, size = _predList.size(); i < size; ++i) {
+        _predList[i]->print(0);
+        _predList[i]->printPARAM();
+    }
     //print();
 }
 
 void Aut::parseDef(const string& line, Str2VmtNodeMap& vmap)
 {
+    cout << "pvmap in parseDef " << &vmap << endl;
     #ifndef AUT_OP_NDEBUG
         cout << "[Aut::parseDef] line = \"" << line << "\"" << endl;
     #endif
@@ -1616,6 +1648,7 @@ void Aut::parseDef(const string& line, Str2VmtNodeMap& vmap)
     #endif
 
     VmtNode* n = new VmtNode(name);
+    cout << "insert " << name << endl;
     vmap.insert(Str2VmtNode(name,n));
 
     assert( (type == "Bool" || type == "Int") );
@@ -1632,6 +1665,7 @@ void Aut::parseDef(const string& line, Str2VmtNodeMap& vmap)
 
 void Aut::parsePred(const string& line, size_t& pCnt, Str2VmtNodeMap& vmap)
 {
+    cout << "pvmap in parsepred " << &vmap << endl;
     #ifndef AUT_OP_NDEBUG
         cout << "[Aut::parsePred] line = \"" << line << "\"" << endl;
     #endif
@@ -1677,8 +1711,8 @@ void Aut::parsePred(const string& line, size_t& pCnt, Str2VmtNodeMap& vmap)
 
                 VmtNode* alias = 0;
                 Str2VmtNodeMap::iterator it = vmap.find(aname);
-                if (it == vmap.end()) alias = new VmtNode(aname);
-                else                  alias = it->second;
+                if (it == vmap.end()) {alias = new VmtNode(aname); cout << "not found " << aname << endl;}
+                else                  {alias = it->second; cout << "find " << aname << endl;}
 
                 VmtNode* eq = new VmtNode("=");
                 eq->addChild(alias);
@@ -1893,23 +1927,23 @@ void Aut::isempty(const string& fileName)
     for (size_t i = 0, size = _piList[LEN].size(); i < size; ++i) {
         const size_t bit = LVAR_BIT_NUM;
         file << "\n.subckt " << bit << "bEQ" << BLIFIndent;
-        writeFAList(LVAR_BIT_NUM,"a",_piList[LEN][i],file);
-        writeFAList(LVAR_BIT_NUM,"b","const1",file);
+        writeFAList(bit,"a",_piList[LEN][i],file);
+        writeFAList(bit,"b","const1",file);
         file << " out=e" << i << "_0";
     }
     
     for (size_t i = 0, size = _piList[LEN_N].size(); i < size; ++i) {
         const size_t bit = LVAR_BIT_NUM;
         file << "\n.subckt " << bit << "bEQ";
-        writeFAList(LVAR_BIT_NUM,"a",_piList[LEN_N][i],file);
-        writeFAList(LVAR_BIT_NUM,"b","const1",file);
+        writeFAList(bit,"a",_piList[LEN_N][i],file);
+        writeFAList(bit,"b","const1",file);
         file << " out=e" << i << "_1";
     }
     for (size_t i = 0, size = _piList[LEN].size(); i < size; ++i) {
         file << "\n.names e" << i << "_0 e" << i << "_1 e" << i
-             << "\n 00 1"
-             << "\n 01 1"
-             << "\n 11 1";
+             << "\n00 1"
+             << "\n01 1"
+             << "\n11 1";
     }
     file << "\n.names";
     for (size_t i = 0, size = _piList[LEN].size(); i < size; ++i)
@@ -2038,11 +2072,47 @@ void Aut::writeFAList(bool& tUsed,bool& fUsed,const size_t& bitNum, const string
     file << BLIFIndent;
 }
 
+void Aut::writeFAListARITH(bool& tUsed,bool& fUsed,const size_t& bitNum, const string& lhs, VmtNode* rhsNode, ofstream& file)
+{
+    if ( rhsNode->_type == NUM ) {
+        for (int i = bitNum - 1; i >= 0; --i) {
+            if ( i >= rhsNode->_bit ) {
+                fUsed = 1;
+                file << " " << lhs << i << "=const0";
+            }
+            else {
+                file << " " << lhs << i;
+                if ( rhsNode->_bname[ rhsNode->_bit-i-1 ] == '1') {tUsed = 1; file << "=const1";}
+                else                                              {fUsed = 1; file << "=const0";}
+            }
+        }
+    }
+    else if ( rhsNode->_type == LEN ) {
+        for (int i = bitNum - 1; i >= 0; --i) {
+            if ( i >= rhsNode->_bit ) {
+                fUsed = 1;
+                file << " " << lhs << i << "=const0";
+            }
+            else {
+                file << " " << lhs << i << "=" << rhsNode->_bname << "_" << i;
+            }
+        }
+    }
+    else {
+        assert( (rhsNode->_type == PREDIV || Aut::isARITH(rhsNode->_type)) );
+        file << " " << lhs << bitNum - 1 << "=" << rhsNode->_bname << "_" << bitNum - 2;
+        for (int i = bitNum - 2; i >= 0; --i) {
+            file << " " << lhs << i << "=" << rhsNode->_bname << "_" << i;
+        }
+    }
+    file << BLIFIndent;
+}
+
 void Aut::writeUSFA(ofstream& file)
 {
     file << ".model SFA\n"
          << ".inputs a b cin sign\n"
-         << ".outputs cout\n"
+         << ".outputs s cout\n"
          << ".names b sign bs\n"
          << "01 1\n"
          << "10 1\n"
@@ -2063,11 +2133,11 @@ void Aut::writeUHA(ofstream& file)
 {
     file << ".model HA\n"
          << ".inputs a b\n"
-         << ".outputs s c\n"
+         << ".outputs s cout\n"
          << ".names a b s\n"
          << "01 1\n"
          << "10 1\n"
-         << ".names a b c\n"
+         << ".names a b cout\n"
          << "11 1\n"
          << ".end\n";
 }
@@ -2083,12 +2153,12 @@ void Aut::writeSFA(const size_t& bitNum, ofstream& file)
     for (int i = bitNum - 1; i >= 0; --i) file << " s" << i;
     file << " cout";
 
-    file << "\n.subckt SFA a=a0 b=b0 cin=sign cout=c1";
+    file << "\n.subckt SFA a=a0 b=b0 cin=sign sign=sign s=s0 cout=c1";
     for (size_t i = 1; i < bitNum - 1; ++i)
         file << "\n.subckt SFA a=a" << i << " b=b" << i << " cin=c" << i 
-             << " sign=sign cout=c" << i + 1;
+             << " sign=sign s=s" << i << " cout=c" << i + 1;
     file << "\n.subckt SFA a=a" << bitNum - 1 << " b=b" << bitNum - 1 
-         << " cin=c" << bitNum - 1 << " sign=sign cout=cout"
+         << " cin=c" << bitNum - 1 << " sign=sign s=s" << bitNum - 1 << " cout=cout"
          << "\n.end\n";
 }
 
@@ -2122,9 +2192,9 @@ void Aut::writeINC1(const size_t& bitNum, ofstream& file)
     for (int i = bitNum - 1; i >= 0; --i) file << " a" << i << "=s" << i;
     for (int i = bitNum - 1; i >= 0; --i) file << " b" << i << "=b" << i;
     file << " out=out"
-         << "\n.subckt HA a=a0 b=const1 s=s0 c=c1";
+         << "\n.subckt HA a=a0 b=const1 s=s0 cout=c1";
     for (size_t i = 1; i < bitNum; ++i)
-        file << "\n.subckt HA a=a" << i << " b=c" << i << " s=s" << i << " c=c" << i + 1;
+        file << "\n.subckt HA a=a" << i << " b=c" << i << " s=s" << i << " cout=c" << i + 1;
     file << "\n.names const1"
          << "\n1"
          << "\n.end\n";

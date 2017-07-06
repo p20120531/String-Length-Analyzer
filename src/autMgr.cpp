@@ -246,6 +246,14 @@ void AutMgr::readCmdFile(const char* fileName)
         else if (tokenList[0] == "substr") {
             Aut* a1 = new Aut( path + tokenList[1] + ".vmt" , tokenList[3] , PREFIX );
             a1->write( path + tokenList[1] + "_prefix.pfx" );
+            
+            Aut* a2 = new Aut( epsilon_dir );
+            Aut* a3 = new Aut( path + tokenList[1] + "_prefix.pfx" );
+            Aut* a4 = new Aut( a2, a3, CONCATE );
+            //a4->addpred( path + "pred" );
+            a4->write  ( path + "pfx.vmt" );
+            a4->isempty( path + "pfx.blif" );
+            
             cur = new Aut( path + tokenList[1] + "_prefix.pfx" , tokenList[2], SUFFIX );
         }
         else if (tokenList[0] == "indexof") {

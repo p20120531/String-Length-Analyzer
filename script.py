@@ -9,7 +9,7 @@ from subprocess32 import TimeoutExpired
 from os import listdir
 from os.path import isdir, isfile, join
 ############################## Global Variable ###############################
-TO                      = 10
+Default_TO              = 10
 DPI                     = 200
 ############################## Benchmark Directory ###########################
 benchmark_kaluza_dir    = ['benchmark/Kaluza/SMTLIB/sat/small'  ,
@@ -26,7 +26,7 @@ benchmark_dir           = {'Kaluza' : dg_kaluza_dir,'testing' : dg_testing_dir,'
 benchmark_set           = (['Kaluza','testing','pisa','appscan'])
 benchmark_abbr_set      = (['--k','--ks','--t','--p','--a'])
 ############################## Binary Directory ##############################
-sla_dir                 = 'bin/sla2'
+sla_dir                 = 'bin/sla'
 regex2dot_dir           = 'bin/regex2blif/target/regex2blif-0.0.1-SNAPSHOT.jar'
 abc70930_dir            = 'bin/abc70930/abc'
 
@@ -36,16 +36,18 @@ norn_dir                = 'bin/norn/norn'
 z3_dir                  = 'bin/z3/build/z3'
 s3p_dir                 = 'bin/S3P-bin-220617-1/run.py'
 ABC_dir                 = 'abc'
-fat_dir                 = 'bin/'
+fat_dir                 = 'bin/FAT/FAT'
 ic3ia_dir               = 'bin/ic3ia/build/ic3ia'
 
-solver_dir              = {'cvc4':cvc4_dir,'norn':norn_dir,'z3':z3_dir,'s3p':s3p_dir,'ic3ia':ic3ia_dir,'abc':abc_dir,'ABC':ABC_dir}
-solver_opt              = {'cvc4':'--strings-exp','norn':'','z3':'','s3p':'-f','ic3ia':'-w -v 2','abc':'-f','ABC':'-i'}
+solver_dir              = {'cvc4':'./' + cvc4_dir,'norn':'./'+norn_dir,'z3':'./'+z3_dir,'s3p':'./'+s3p_dir,
+                           'ic3ia':'./'+ic3ia_dir,'abc':'./'+abc_dir,'ABC':ABC_dir,'fat':'./'+fat_dir}
+solver_opt              = {'cvc4':'--strings-exp','norn':'','z3':'','s3p':'-f','ic3ia':'-w -v 2','abc':'-f','ABC':'-i','fat':'-model'}
 #solver_set              = (['cvc4','z3','s3p','ic3ia'])
-solver_set              = (['cvc4','norn','z3','s3p','ic3ia','abc','ABC'])
-solver_list             = ['ic3ia','abc','z3','cvc4','ABC','s3p','norn']
+solver_set              = (['cvc4','norn','z3','s3p','ic3ia','abc','ABC','fat'])
+solver_list             = ['ic3ia','abc','z3','cvc4','ABC','fat','s3p','norn']
+exp_solver_list         = ['ic3ia','z3','cvc4','ABC','fat','s3p','norn']
 
-extention               = {'cvc4':'smt2','norn':'smt2','z3':'smt2','s3p':'s3','ic3ia':'vmt','abc':'abc','ABC':'smt2'}
+extention               = {'cvc4':'smt2','norn':'smt2','z3':'smt2','s3p':'s3','ic3ia':'vmt','abc':'abc','ABC':'smt2','fat':'s3'}
 ##############################################################################
 # [Function Name] file2lines
 # [ Description ] parse file into list of lines
@@ -275,6 +277,7 @@ def dot2blif(dgFileList) :
     tmp = 'tmp/abc_cmd'
     cnt = 0
     for f in dgFileList :
+        print ('fileCnt = %d' %(cnt))
         lines = file2lines( join(f,'aut') )
         for line in lines :
             name = line[ 0 : line.find(' ') ]
@@ -284,7 +287,7 @@ def dot2blif(dgFileList) :
             elif fchr == "\'" : regex = line[ line.find("\'")  : line.rfind("\'") + 1 ]
             else              : regex = line[ line.find('~')   : line.rfind(')') + 1  ]
             
-            print ('aut_name = %-4s regex = %s' %(name,regex))
+            #print ('    aut_name = %-10s regex = %s' %(name,regex))
             
             ret1 = call('./%s --dot2blif %s.dot %s.blif' %(sla_dir,drkt,drkt),stdout=open('dbg/d2b.log','w'),shell=True)
             if ret1 != 0 : sys.exit('[ERROR::dot2blif] dot2blif fails file=%s' %(drkt))
@@ -295,7 +298,7 @@ def dot2blif(dgFileList) :
             abcCmdFile.write('\nwrite %s.blif' %(drkt))
             abcCmdFile.close()
             ret2 = call('./%s -f %s' %(abc70930_dir,tmp),stdout=open('dbg/abc.log','w'),shell=True)
-            if ret2 != 0 : sys.exit('[ERROR::dot2blif] abc minimization fails file=%s' %(regex,drkt))
+            if ret2 != 0 : sys.exit('[ERROR::dot2blif] abc minimization fails file=%s' %(drkt))
         cnt += 1
     print ('[INFO::dot2blif] %d cases pass' %(cnt))
 
@@ -308,6 +311,7 @@ def blif2vmt(dgFileList) :
     cnt = 0
     exePath = sla_dir
     for f in dgFileList :
+        print ('fileCnt = %d' %(cnt))
         lines = file2lines( join(f,'aut') )
         for line in lines :
             drkt = join( f , line[ 0 : line.find(' ')] )
@@ -358,14 +362,14 @@ def expParam(benchmark,scope,solver) :
     if solver == 'ic3ia' or solver == 'abc': header ='id,sat,time,step'
     return recordName,header
 
-def expSingle(dgFileDir,TO=10) :
+def expSingle(dgFileDir,TO) :
     if dgFileDir[-1] == '/' : dgFileDir = dgFileDir[0:dgFileDir.rfind('/')]
     fileName = dgFileDir[dgFileDir.rfind('/') + 1:]
     call('mkdir -p experiment/single/%s' %(fileName),shell=True)
     record = open('experiment/single/%s/all_solver.csv' %(fileName),'w')
-    record.write('file : %s TO=%ss' %(fileName,TO))
+    record.write('file : %s TO=%.2fs' %(fileName,TO))
     record.write('\nidx,sat,time[,step]')
-    for solver in solver_set :
+    for solver in exp_solver_list :
         record.write('\n%s' %(solver))
         expRecord(solver,'1',dgFileDir,record,TO)
 
@@ -378,7 +382,7 @@ def expRecord(solver,idx,dirName,record,TO) :
     tmpPath = 'tmp/exp'
     try : 
         ts  = time.time()
-        call('./%s %s %s' %(exePath,option,f),timeout=TO,stdout=open(tmpPath,'w'),shell=True)
+        call('%s %s %s' %(exePath,option,f),timeout=TO,stdout=open(tmpPath,'w'),shell=True)
         te  = time.time()
     except TimeoutExpired :
         if   solver == 'ic3ia': record.write('\n%s,t,0.0,0' %(idx))
@@ -404,19 +408,22 @@ def expRecord(solver,idx,dirName,record,TO) :
 def exp_cvc4(idx,dt,lines,record) :
     if   lines[0] == 'sat'   : sat = '1'
     elif lines[0] == 'unsat' : sat = '0'
-    else                     : sat = 'x'
+    else                     : sat = 'x';\
+                               dt  = 0.0
     record.write('\n%s,%s,%.6f' %(idx,sat,dt))
 
 def exp_norn(idx,dt,lines,record) :
     if   lines[0] == 'sat'   : sat = '1'
     elif lines[0] == 'unsat' : sat = '0'
-    else                     : sat = 'x'
+    else                     : sat = 'x';\
+                               dt  = 0.0
     record.write('\n%s,%s,%.6f' %(idx,sat,dt))
 
 def exp_z3(idx,dt,lines,record) :
     if   lines[0] == 'sat'   : sat = '1'
     elif lines[0] == 'unsat' : sat = '0'
-    else                     : sat = 'x'
+    else                     : sat = 'x';\
+                               dt  = 0.0
     record.write('\n%s,%s,%.6f' %(idx,sat,dt))
 
 def exp_s3p(idx,dt,lines,record) :
@@ -432,19 +439,26 @@ def exp_s3p(idx,dt,lines,record) :
         if line == '>> UNSAT':
             sat = '0'
             break
-    
+    if sat == 'x' : dt = 0.0
     record.write('\n%s,%s,%.6f' %(idx,sat,dt))
 
 def exp_ABC(idx,dt,lines,record) :
+    if len(lines) < 2 : 
+        record.write('\n%s,x,0.0' %(idx))
+        return
     if   lines[1].find('is_sat: SAT'  ) != -1 : sat = '1'
     elif lines[1].find('is_sat: UNSAT') != -1 : sat = '0'
-    else                                      : sat = 'x'
+    else                                      : sat = 'x';\
     record.write('\n%s,%s,%.6f' %(idx,sat,dt))
 
 def exp_fat(idx,dt,lines,record) :
-    if   lines[0] == 'sat'   : sat = '1'
-    elif lines[0] == 'unsat' : sat = '0'
-    else                     : sat = 'x'
+    sat = 'x'
+    for i in range(1,len(lines)+1) :
+        if   lines[-i].find('>> SAT')   != -1 : sat = '1';\
+                                                break
+        elif lines[-i].find('>> UNSAT') != -1 : sat = '0';\
+                                                break
+    if sat == 'x' : dt = 0.0
     record.write('\n%s,%s,%.6f' %(idx,sat,dt))
 
 def exp_abc(idx,dt,lines,record) :
@@ -463,15 +477,18 @@ def exp_abc(idx,dt,lines,record) :
                 epos = v[1].rfind(']')
                 step = v[1][bpos:epos]
     else : 
-        sat = 'x'
+        sat  = 'x'
         step = 'x'
+        dt   = 0.0
     record.write('\n%s,%s,%.6f,%s' %(idx,sat,dt,step))
 
 def exp_ic3ia(idx,dt,lines,record) :
     if   lines[-1] == 'safe'   : sat = '0'
     elif lines[-1] == 'unsafe' : sat = '1'
-    else                       : sat = 'x'
+    else                       : sat = 'x';\
+                                 dt  = 0.0
     #TODO safe <-> frame , unsafe <-> step
+    print ('sat=%s' %(sat))
     step = 'x'
     if sat == '1' :
         for i in range(1,len(lines)+1) :
@@ -655,14 +672,14 @@ def plotCumTime(benchmark,r_dir,data,solvers) :
     from matplotlib.font_manager import FontProperties
     # plot cumulative time vs case index
     
-    colorMap = {'ic3ia' : (0.0,1.0,0.0), 
-                'cvc4'  : (1.0,0.0,0.0),
-                'z3'    : (0.0,0.0,1.0),
-                'norn'  : (0.8,0.7,0.0),
-                's3p'   : (0.9,0.5,0.1),
-                'ABC'   : (1.0,0.0,0.0),
-                'fat'   : (0.0,1.0,0.0),
-                'abc'   : (0.0,0.0,1.0)}
+    colorMap = {'ic3ia' : (0.5,0.5,0.5), 
+                'abc'   : (0.0,0.0,1.0),
+                'z3'    : (0.0,1.0,0.0),
+                'cvc4'  : (0.0,1.0,1.0),
+                's3p'   : (1.0,0.0,0.0),
+                'ABC'   : (1.0,0.0,1.0),
+                'fat'   : (1.0,1.0,0.0),
+                'norn'  : (1.0,1.0,1.0)}
 
     csum = []
     for i in range(len(data)) :
@@ -752,31 +769,33 @@ def opt3(argv) :
                                  opt_execmd(argv[2],dgFiles)
     elif argv[0] == '--solve'  : 
         t = benchmark_scope(argv[1])
-        if len(argv) == 3 : opt_solve(t[0],t[1],argv[2],10)
-        else              : opt_solve(t[0],t[1],argv[2],argv[3])
+        if len(argv) == 3 : opt_solve(t[0],t[1],argv[2],Default_TO)
+        else              : opt_solve(t[0],t[1],argv[2],float(argv[3]))
     elif argv[0] == '--single' :
         if argv[2] == '--reset' :
             call('rm %s/*.dot %s/*.blif %s/*.vmt' %(argv[1],argv[1],argv[1]), shell=True)
         elif argv[2] == '--solve' :
-            if len(argv) == 4 : TO = float(argv[3])
-            expSingle(argv[1],TO)
+            if len(argv) == 3 : expSingle(argv[1],Default_TO)
+            else              : expSingle(argv[1],float(argv[3]))
         else :
             dgFileList = [argv[1]]
             opt_execmd(argv[2],dgFileList)
     elif argv[0] == '--mapFile' :
         scope = argv[1][argv[1].rfind('/')+1:]
         dgIdxList,dgFileList = getSplitMap('%s' %(argv[1]))
+        #for i in range(len(dgIdxList)) :
+            #print ('%-8s %s' %(dgIdxList[i],dgFileList[i]))
         if argv[2] == '--reset' :
             for dg in dgFileList : 
                 call('rm %s/*.dot %s/*.blif %s/*.vmt' %(dg,dg,dg), shell=True)
         elif argv[2] == '--solve' :
             call('mkdir -p experiment/Kaluza/result/%s' %(scope))
             if len(argv) == 4 : TO = float(argv[3])
-            for solver in solver_list :
+            else              : TO = Default_TO
+            for solver in exp_solver_list :
                 exp('Kaluza',scope,dgIdxList,dgFileList,solver,TO)
         else :
             opt_execmd(argv[2],dgFileList)
-        
     else : sys.exit('[ERROR::opt3] invalid opt=%s' %(argv[0]))
 
 def opt_execmd(opt,dgFileList) :
@@ -795,8 +814,8 @@ def opt_reset(benchmark,scope) :
     for dgFile in dgFileList :
         call('rm %s/*.dot %s/*.blif %s/*.vmt' %(dgFile,dgFile,dgFile), shell=True)
 
-def opt_solve(benchmark,scope,opt,TO=10) :
-    if opt == '--all' : solvers = solver_list
+def opt_solve(benchmark,scope,opt,TO) :
+    if opt == '--all' : solvers = exp_solver_list
     else              : solvers = [ opt[ opt.rfind('-') + 1 : ] ]
     dgIdxList, dgFileList = getSplitMap('experiment/%s/%s' %(benchmark,scope))
     for solver in solvers :

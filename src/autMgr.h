@@ -217,6 +217,8 @@ class Aut{
         static bool     isPARAMINT(const VmtType&);
         static bool     isPARAMBOOL(const VmtType&);
         static bool     isRETBOOL(const VmtType&);
+        static bool     isPREDRETBOOL(const VmtType&);
+        static bool     isPREDRETINT(const VmtType&);
         static bool     isIMD(const VmtType&);
         static bool     isOP(const VmtType&);
         static bool     isARITH(const VmtType&);
@@ -263,6 +265,7 @@ class Aut{
         static void     writeFAList(const size_t&,const string&,const string&,ofstream&);
         static void     writeFAList(const size_t&,const string&,VmtNode*,ofstream&);
         static void     writeFAList(bool&,bool&,const size_t&,const string&,VmtNode*,ofstream&);
+        static void     writeFAListARITH(bool&,bool&,const size_t&,const string&,VmtNode*,ofstream&);
         static void     writeINPUTList(const size_t&,const VarList&,ofstream&);
         static void     writeUSFA(ofstream&);
         static void     writeUHA(ofstream&);

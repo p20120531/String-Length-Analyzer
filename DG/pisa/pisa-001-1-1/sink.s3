@@ -1,6 +1,6 @@
-(declare-variable v1 String)
-(declare-variable v3 Int)
-(declare-variable ret String)
+(declare-fun v1 () String)
+(declare-fun v3 () Int)
+(declare-fun ret () String)
 
 
 

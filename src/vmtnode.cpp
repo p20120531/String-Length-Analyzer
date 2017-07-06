@@ -23,6 +23,7 @@ void VmtNode::print(const size_t& level) const
 
 void VmtNode::printPARAM() const
 {
+    cout << "name=" << _name << endl;
     for (size_t i = 0; i < PI_NUM; ++i) {
         cout << Aut::getTypeStr(i) << " :";
         for (size_t j = 0, size = _paramList[i].size(); j < size; ++j)
@@ -428,7 +429,7 @@ void VmtNode::setBitNumUP(bool& isUpdate)
 {
     assert( (_type != EXCM && _type != SPECIAL) );
     if ( Aut::isLEAF(_type) || _type == MODULE ) {
-        if ( !Aut::isINT(_type) ) _bit = 1;
+        if ( !Aut::isPREDINT(_type) ) _bit = 1;
         return;
     }
     for (size_t i = 0, size = _children.size(); i < size; ++i)
@@ -536,6 +537,7 @@ void VmtNode::writeMODEL(ofstream& file, vector<set<size_t> >& sizeMap, const bo
 void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& tUsed, bool& fUsed, const bool& isPred)
 {
     cout << "    name=" << _name << " bname=" << _bname << " type=" << Aut::getTypeStr(_type) << "isPred=" << isPred << endl;
+    assert( (_type != EXCM && _type != SPECIAL) );
     if ( Aut::isLEAF(_type) && _type != PARAM ) return;
     if ( _type == MODULE ) {
         assert( (getBit() == 1) );
@@ -565,6 +567,7 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
     else if ( _type == PARAM ) {
         assert( (getBit() == 1) );
         assert( (!isPred) );
+        assert( (_children.empty()) );
         assert( (_source->_type == MODULE) );
         assert( (_paramList[PREDBV].empty()) );
         assert( (_paramList[PREDIV].empty()) );
@@ -608,9 +611,10 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
                     assert( (pv.size() == sv.size()) );
                     for (size_t j = 0, size = pv.size(); j < size; ++j) {
                         if ( Aut::isPARAMINT(type) ) {
-                            for (size_t k = 0; k < pv[j]->_bit; ++k)
+                            for (size_t k = 0; k < pv[j]->_bit; ++k) {
                                 file << " " << sv[j]->_bname << "_" << k
                                      << "=" << pv[j]->_bname << "_" << k;
+                            }
                             file << Aut::BLIFIndent;
                         }
                         else {
@@ -625,8 +629,12 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
         else {
             // T(<special_alphabet>,...)
             assert( (!_paramList[INPUT].empty()) );
-            for (size_t i = 0, size = _paramList[INPUT].size(); i < size; ++i)
-                assert( (_paramList[INPUT][i] == Aut::const0 || _paramList[INPUT][i] == Aut::const1) );
+            for (size_t i = 0, size = _paramList[INPUT].size(); i < size; ++i) {
+                const VmtType& type = _paramList[INPUT][i]->_type;
+                assert( (Aut::isCONST(type)) );
+                if ( type == CONST1 ) tUsed = 1;
+                else                  fUsed = 1;
+            }
             for (size_t i = 0; i < PI_NUM; ++i) {
                 const VmtType type = static_cast<VmtType>(i);
                 const VmtNodeList& pv = _paramList[i];
@@ -634,9 +642,10 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
                 assert( (pv.size() == sv.size()) );
                 for (size_t j = 0, size = pv.size(); j < size; ++j) {
                     if ( Aut::isPARAMINT(type) ) {
-                        for (size_t k = 0; k < pv[j]->_bit; ++k)
+                        for (size_t k = 0; k < pv[j]->_bit; ++k) {
                             file << " " << sv[j]->_bname << "_" << k
                                  << "=" << pv[j]->_bname << "_" << k;
+                        }
                         file << Aut::BLIFIndent;
                     }
                     else {
@@ -666,14 +675,14 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
         assert( (_children.size() == 1) );
         const VmtType& type = _children[0]->_type;
         assert( (Aut::isPREDINT(type)) );
-        const size_t ibit = _bit - 1;
-        fUsed = 1;
+        const size_t ibit = getBit();
+        tUsed = 1;
         file << ".subckt " << ibit << "bSFA" << Aut::BLIFIndent;
         Aut::writeFAList(ibit,"a","const0",file);
-        Aut::writeFAList(tUsed,fUsed,ibit,"b",_children[0],file);
+        Aut::writeFAListARITH(tUsed,fUsed,ibit,"b",_children[0],file);
         file << " sign=const1";
         Aut::writeFAList(ibit,"s",this,file);
-        file << " cout=" << _bname << "_" << ibit << endl;
+        file << endl;
         sizeMap[M_SFA].insert(ibit);
     }
     else if ( _type == AND ) {
@@ -704,7 +713,7 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
         for (size_t i = 0, size = _children.size(); i < size; ++i) {
             string bitstr(size,'-'); 
             bitstr[i] = '1';
-            file << bitstr << " 1" << endl;
+            file << bitstr << " 1\n";
         }
     }
     else if ( _type == PLUS || _type == MINUS ) {
@@ -714,14 +723,14 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
         const VmtType& type1 = _children[1]->_type;
         assert( (Aut::isPREDINT(type0) || Aut::isARITH(type0)));
         assert( (Aut::isPREDINT(type1) || Aut::isARITH(type1)));
-        const size_t ibit = _bit - 1;
+        const size_t ibit = getBit();
         file << ".subckt " << ibit << "bSFA" << Aut::BLIFIndent;
-        Aut::writeFAList(tUsed,fUsed,ibit,"a",_children[0],file);
-        Aut::writeFAList(tUsed,fUsed,ibit,"b",_children[1],file);
+        Aut::writeFAListARITH(tUsed,fUsed,ibit,"a",_children[0],file);
+        Aut::writeFAListARITH(tUsed,fUsed,ibit,"b",_children[1],file);
         if ( _type == PLUS ) { fUsed = 1; file << " sign=const0"; }
         else                 { tUsed = 1; file << " sign=const1"; }
         Aut::writeFAList(ibit,"s",this,file);
-        file << " cout=" << _bname << "_" << ibit << endl;
+        file << endl;
         sizeMap[M_SFA].insert(ibit);
     }
     else if ( _type == LT || _type == MTOEQ ) {
@@ -731,19 +740,18 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
         const VmtType& type1 = _children[1]->_type;
         assert( (Aut::isPREDINT(type0) || Aut::isARITH(type0)));
         assert( (Aut::isPREDINT(type1) || Aut::isARITH(type1)));
-        const size_t&  bit0  = _children[0]->getBit();
-        const size_t&  bit1  = _children[1]->getBit();
-        const size_t&  ibit  = (bit0 > bit1) ? bit0 : bit1;
+        assert( (_children[0]->getBit() == _children[1]->getBit()) );
+        const size_t   ibit  = _children[0]->getBit() + 1;
         file << ".subckt " << ibit << "bSFA" << Aut::BLIFIndent;
-        Aut::writeFAList(tUsed,fUsed,ibit,"a",_children[0],file);
-        Aut::writeFAList(tUsed,fUsed,ibit,"b",_children[1],file);
+        Aut::writeFAListARITH(tUsed,fUsed,ibit,"a",_children[0],file);
+        Aut::writeFAListARITH(tUsed,fUsed,ibit,"b",_children[1],file);
         tUsed = 1;
         file << " sign=const1";
         if ( _type == LT ) {
-            file << " cout=" << _bname << "_0" << endl;
+            file << " s" << ibit - 1 << "=" << _bname << "_0" << endl;
         }
         else {
-            file << " cout="  << _bname << "_0_0\n"
+            file << " s" << ibit - 1 << "=" << _bname << "_0_0\n"
                  << ".names " << _bname << "_0_0 " << _bname << "_0\n"
                  << "0 1\n";
         }
@@ -756,19 +764,18 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
         const VmtType& type1 = _children[1]->_type;
         assert( (Aut::isPREDINT(type0) || Aut::isARITH(type0)));
         assert( (Aut::isPREDINT(type1) || Aut::isARITH(type1)));
-        const size_t&  bit0  = _children[0]->getBit();
-        const size_t&  bit1  = _children[1]->getBit();
-        const size_t&  ibit  = (bit0 > bit1) ? bit0 : bit1;
+        assert( (_children[0]->getBit() == _children[1]->getBit()) );
+        const size_t   ibit  = _children[0]->getBit() + 1;
         file << ".subckt " << ibit << "bSFA" << Aut::BLIFIndent;
-        Aut::writeFAList(tUsed,fUsed,ibit,"a",_children[1],file);
-        Aut::writeFAList(tUsed,fUsed,ibit,"b",_children[0],file);
+        Aut::writeFAListARITH(tUsed,fUsed,ibit,"a",_children[1],file);
+        Aut::writeFAListARITH(tUsed,fUsed,ibit,"b",_children[0],file);
         tUsed = 1;
         file << " sign=const1";
         if ( _type == MT ) {
-            file << " cout=" << _bname << "_0" << endl;
+            file << " s" << ibit - 1 << "=" << _bname << "_0" << endl;
         }
         else {
-            file << " cout="  << _bname << "_0_0\n"
+            file << " s" << ibit - 1 << "=" << _bname << "_0_0\n"
                  << ".names " << _bname << "_0_0 " << _bname << "_0\n"
                  << "0 1\n";
         }
@@ -780,65 +787,66 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
         assert( (_children.size() == 2) );
         const VmtType& type0 = _children[0]->_type;
         const VmtType& type1 = _children[1]->_type;
-        if ( !isPred && type0 == LEN_N ){
-            if ( type1 == PLUS ) {
-                // INC1
-                VmtNode* cur = _children[1]->_children[0];
-                VmtNode* nxt = _children[0];
-                const size_t ibit = LVAR_BIT_NUM;
-                file << ".subckt " << ibit << "bINC1" << Aut::BLIFIndent;
-                Aut::writeFAList(ibit,"a",cur,file);
-                Aut::writeFAList(ibit,"b",nxt,file);
-                file << " out=" << _bname << "_0\n";
-                sizeMap[M_INC1].insert(ibit);
-                sizeMap[M_EQ].insert(ibit);
-            }
-            else {
-                assert( (type1 == LEN) );
-                const size_t ibit = LVAR_BIT_NUM;
-                file << ".subckt " << ibit << "bEQ" << Aut::BLIFIndent;
-                Aut::writeFAList(ibit,"a",_children[0],file);
-                Aut::writeFAList(ibit,"b",_children[1],file);
-                file << " out=" << _bname << "_0\n";
-                sizeMap[M_EQ].insert(ibit);
-            }
-            // early return
-            return;
-        }
-        else {
-            const size_t& bit0 = _children[0]->getBit();
-            const size_t& bit1 = _children[1]->getBit();
-            const size_t  ibit = (bit0 > bit1) ? bit0 : bit1;
-            if ( Aut::isSO(type0) ) {
-                assert( Aut::isSO(type1) );
-                assert( (bit0 == 1) );
-                assert( (bit1 == 1) );
-                file << ".names";
-                if ( Aut::isPARAMBOOL(type0) || Aut::isCONST(type0) ) 
-                    file << " " << _children[0]->_bname;
-                else {
-                    assert( (Aut::isRETBOOL(type0)) );
-                    file << " " << _children[0]->_bname << "_0";
-                }
-                if ( Aut::isPARAMBOOL(type1) || Aut::isCONST(type1) )
-                    file << " " << _children[1]->_bname;
-                else {
-                    assert( (Aut::isRETBOOL(type1)) );
-                    file << " " << _children[1]->_bname << "_0";
-                }
-                file << " " << _bname << "_0"
-                     << "\n00 1"
+
+        if ( isPred ) {
+            if ( Aut::isPREDRETBOOL(type0) ) {
+                assert( (Aut::isPREDRETBOOL(type1)) );
+                file << ".names " << _children[0]->_bname;
+                if ( type0 != PREDBV && type0 != CONST0 && type0 != CONST1 ) file << "_0";
+                file << " "       << _children[1]->_bname;
+                if ( type1 != PREDBV && type1 != CONST0 && type1 != CONST1 ) file << "_0";
+                file << " " << _bname << "_0";
+                file << "\n00 1"
                      << "\n11 1\n";
             }
             else {
-                assert( (Aut::isMO(type0)) );
-                assert( (Aut::isMO(type1)) );
+                assert( (Aut::isPREDRETINT(type0)) );
+                assert( (Aut::isPREDRETINT(type1)) );
+                const size_t bit0 = _children[0]->getBit();
+                const size_t bit1 = _children[1]->getBit();
+                assert( (bit0 == bit1) );
+                const size_t ibit = bit0;
                 file << ".subckt " << ibit << "bEQ" << Aut::BLIFIndent;
                 Aut::writeFAList(tUsed,fUsed,ibit,"a",_children[0],file);
                 Aut::writeFAList(tUsed,fUsed,ibit,"b",_children[1],file);
                 file << " out=" << _bname << "_0\n";
                 sizeMap[M_EQ].insert(ibit);
             }
+            
+        }
+        else {
+            if ( type0 == LEN_N ) {
+                if ( type1 ==  LEN ) {
+                    assert( (_children[0]->_bit == LVAR_BIT_NUM) );
+                    assert( (_children[1]->_bit == LVAR_BIT_NUM) );
+                    const size_t ibit = LVAR_BIT_NUM;
+                    file << ".subckt " << ibit << "bEQ" << Aut::BLIFIndent;
+                    Aut::writeFAList(ibit,"a",_children[0],file);
+                    Aut::writeFAList(ibit,"b",_children[1],file);
+                    file << " out=" << _bname << "_0\n";
+                    sizeMap[M_EQ].insert(ibit);
+                }
+                else {
+                    assert( (type1 == PLUS) );
+                    assert( (_children[0]->_bit == LVAR_BIT_NUM) );
+                    assert( (_children[1]->_children[0]->_bit == LVAR_BIT_NUM));
+                    const size_t ibit = LVAR_BIT_NUM;
+                    file << ".subckt " << ibit << "bINC1" << Aut::BLIFIndent;
+                    Aut::writeFAList(ibit,"a",_children[1]->_children[0],file);
+                    Aut::writeFAList(ibit,"b",_children[0],file);
+                    file << " out=" << _bname << "_0\n";
+                    sizeMap[M_EQ].insert(ibit);
+                    sizeMap[M_INC1].insert(ibit);
+                }
+            }
+            else {
+                assert( (type0 == STATE_N && type1 == STATE) );
+                file << ".names " << _children[0]->_bname << " " << _children[1]->_bname 
+                     << " "       << _bname << "_0"
+                     << "\n00 1"
+                     << "\n11 1\n";
+            }
+            return;
         }
     }
 
