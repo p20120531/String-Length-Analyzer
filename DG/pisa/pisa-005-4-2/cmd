@@ -17,5 +17,7 @@ write D10
 notcontains D10 A10
 write D11
 intersect D11 A11
-addpred pred
+write beforeaddpred
+addpred
 write sink
+isempty beforeaddpred

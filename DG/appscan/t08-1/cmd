@@ -21,5 +21,7 @@ write D10
 intersect D1 D10
 write D11
 intersect D11 A13
+write beforeaddpred
 addpred
 write sink
+isempty beforeaddpred

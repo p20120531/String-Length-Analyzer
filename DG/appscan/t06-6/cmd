@@ -3,5 +3,7 @@ write D1
 intersect D1 A4
 write D2
 suffixof_smt A1 D2
-addpred pred
+write beforeaddpred
+addpred
 write sink
+isempty beforeaddpred

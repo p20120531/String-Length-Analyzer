@@ -1,9 +1,4 @@
-(declare-variable ret String)
-
-
+(declare-fun ret () String)
 (assert (= ret "x" ) )
 (assert (not (= ret "x") ) )
-
-
 (check-sat)
-(get-model)

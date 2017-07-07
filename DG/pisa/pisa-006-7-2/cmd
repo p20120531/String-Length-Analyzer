@@ -11,5 +11,7 @@ write D11
 intersect D11 A11
 write D12
 contains D12 A12
-addpred pred
+write beforeaddpred
+addpred
 write sink
+isempty beforeaddpred

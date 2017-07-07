@@ -1,3 +1,5 @@
 notcontains A1 A3
-addpred pred
+write beforeaddpred
+addpred
 write sink
+isempty beforeaddpred

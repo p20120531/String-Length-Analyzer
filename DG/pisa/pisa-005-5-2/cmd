@@ -13,5 +13,7 @@ write D11
 substr D11 5 6
 write D12
 intersect D12 A11
-addpred pred
+write beforeaddpred
+addpred
 write sink
+isempty beforeaddpred

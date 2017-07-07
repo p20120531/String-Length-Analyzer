@@ -7,5 +7,7 @@ write D2
 substr D2 3 4
 write D3
 intersect D3 A1
-addpred pred
+write beforeaddpred
+addpred
 write sink
+isempty beforeaddpred

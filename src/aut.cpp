@@ -608,8 +608,10 @@ void Aut::spotNEG()
 {
     ++gflag;
     // NEGs only appear in predicates
-    for (size_t i = 0, size = _predList.size(); i < size; ++i)
+    for (size_t i = 0, size = _predList.size(); i < size; ++i) {
+        cout <<  "Aut::spotneg\n";
         _predList[i]->spotNEG();
+    }
 }
 
 void Aut::renameDef()
@@ -1578,6 +1580,7 @@ void Aut::addpred(const string& fileName)
     // renaming and replace global by local
     for (size_t i = 0, size = _piList[PREDBV].size(); i < size; ++i) {
         _piList[PREDBV][i]->_name = piSymbolS[PREDBV] + itos(i);
+        _piList[PREDBV][i]->_idx  = i;
     }
     piList[PREDBV] = _piList[PREDBV];
 
@@ -1617,6 +1620,7 @@ void Aut::addpred(const string& fileName)
         _predList[i]->printPARAM();
     }
     cout << "ADDPRED BEGIN\n";
+    spotNEG();
     renameDef();
     cout << "ADDPRED END\n";
     for (size_t i = 0, size = _predList.size(); i < size; ++i) {
@@ -1835,6 +1839,7 @@ void Aut::isempty(const string& fileName)
     getO()->buildBLIF(tCnt);
     getT()->buildBLIF(tCnt);
 
+    #ifndef FORCE_ASSIGNED
     cout << "[setBitNum]\n";
 
     // no cyclic dependency issue for _imdList
@@ -1855,7 +1860,7 @@ void Aut::isempty(const string& fileName)
     size_t cnt = 0;
     bool isUpdate = 1;
     while (isUpdate) {
-        assert((cnt < 5));
+        //assert((cnt < 5));
         ++cnt;
         isUpdate = 0;
         // bottom-up
@@ -1872,7 +1877,8 @@ void Aut::isempty(const string& fileName)
             }
     }
     cout << "ggout\n";
-    
+    #endif
+
     vector<set<size_t> > sizeMap(MODULE_TYPE_NUM,set<size_t>());
 
     // write sequential circuit
@@ -2100,10 +2106,15 @@ void Aut::writeFAListARITH(bool& tUsed,bool& fUsed,const size_t& bitNum, const s
     }
     else {
         assert( (rhsNode->_type == PREDIV || Aut::isARITH(rhsNode->_type)) );
+        #ifndef FORCE_ASSIGNED
         file << " " << lhs << bitNum - 1 << "=" << rhsNode->_bname << "_" << bitNum - 2;
         for (int i = bitNum - 2; i >= 0; --i) {
             file << " " << lhs << i << "=" << rhsNode->_bname << "_" << i;
         }
+        #else
+        for (int i = bitNum - 1; i >= 0; --i)
+            file << " " << lhs << i << "=" << rhsNode->_bname << "_" << i;
+        #endif
     }
     file << BLIFIndent;
 }

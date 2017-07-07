@@ -13,5 +13,7 @@ write D6
 intersect D6 A7
 write D7
 intersect D7 A8
-addpred pred
+write beforeaddpred
+addpred
 write sink
+isempty beforeaddpred

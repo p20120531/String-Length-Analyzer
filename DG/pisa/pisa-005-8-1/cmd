@@ -7,5 +7,7 @@ write D10
 indexof D10 A9 A10 0 1
 write D11
 intersect D11 A11
-addpred pred
+write beforeaddpred
+addpred
 write sink
+isempty beforeaddpred

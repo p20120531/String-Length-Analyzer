@@ -258,9 +258,10 @@ void VmtNode::collectPARAM(VmtNodeList& PARAMList)
 
 void VmtNode::spotNEG()
 {
+    cout << "spotneg name=" << _name << " type=" << Aut::getTypeStr(_type) << endl;
     if ( _flag == gflag ) return;
     _flag = gflag;
-    if ( _type == MINUS && _children.size() == 1) _type = NEG;
+    if ( _type == MINUS && _children.size() == 1) { cout << "change to NEG\n";_type = NEG;}
     for (size_t i = 0, size = _children.size(); i < size; ++i)
         _children[i]->spotNEG();
 }
@@ -368,35 +369,67 @@ void VmtNode::buildBLIF(int& tCnt)
     if ( _flag == gflag ) return;
     _flag = gflag;
     cout << "[buildBLIF] " << _name << endl;
-    if ( Aut::isOP(_type) )
+    if ( Aut::isOP(_type) ) {
         _bname = "t" + itos(++tCnt);
+        #ifdef FORCE_ASSIGNED
+        if ( Aut::isARITH(_type) ) _bit = FORCE_SIGNED_BIT_NUM + LVAR_BIT_NUM;
+        else {
+            assert( (_type == NOT   || _type == AND || _type == OR || _type == LT    ||
+                     _type == LTOEQ || _type == EQ  || _type == MT || _type == MTOEQ   ) );
+            _bit = 1;
+        }
+        #endif
+    }
     else if ( _type == PARAM ) {
         assert( (_source->_type == MODULE) );
         //_source->_flag  = gflag;
         //_source->_bname = _source->_name;
         _bname = "t" + itos(++tCnt);
+        #ifdef FORCE_ASSIGNED
+        _bit = 1;
+        #endif
         _source->buildBLIF(tCnt);
     }
     else if ( _type == NUM ) {
         const size_t n = stoi(_name);
         _bit   = binaryEncodedBitNum( n );
         _bname = Uint2BitString( n , _bit );
+        #ifdef FORCE_ASSIGNED
+        assert( (FORCE_SIGNED_BIT_NUM + LVAR_BIT_NUM >= _bit) );
+        _pad   = FORCE_SIGNED_BIT_NUM + LVAR_BIT_NUM - _bit;
+        #endif
     }
     else if ( Aut::isCONST(_type) ) {
         _bit  = 1;
     }
     else if ( _type == LEN || _type == LEN_N ) {
         _bit   = LVAR_BIT_NUM;
+        #ifdef FORCE_ASSIGNED
+        _pad   = FORCE_SIGNED_BIT_NUM;
+        #else
         _pad   = 1;
+        #endif
+        _bname = _name;
+    }
+    else if ( _type == PREDIV ) {
+        #ifdef FORCE_ASSIGNED
+        _bit   = FORCE_SIGNED_BIT_NUM + LVAR_BIT_NUM;
+        #endif
         _bname = _name;
     }
     else if ( _type == MODULE ) {
         if ( this != Aut::epsilon && this != Aut::leftAngle && this != Aut::rightAngle ) _bname = _name;
+        #ifdef FORCE_ASSIGNED
+        _bit = 1;
+        #endif
     }
     else {
         // _bit of PREDIV is set in setBit()
-        assert( (_type == INPUT || _type == EXIST || _type == STATE || _type == STATE_N || _type == PREDBV || _type == PREDIV) );
+        assert( (_type == INPUT || _type == EXIST || _type == STATE || _type == STATE_N || _type == PREDBV) );
         _bname = _name;
+        #ifdef FORCE_ASSIGNED
+        _bit = 1;
+        #endif
     }
     for (size_t i = 0, size = _children.size(); i < size; ++i)
         _children[i]->buildBLIF(tCnt);
@@ -741,7 +774,12 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
         assert( (Aut::isPREDINT(type0) || Aut::isARITH(type0)));
         assert( (Aut::isPREDINT(type1) || Aut::isARITH(type1)));
         assert( (_children[0]->getBit() == _children[1]->getBit()) );
+        #ifdef FORCE_ASSIGNED
+        const size_t   ibit  = _children[0]->getBit();
+        assert( (ibit == FORCE_SIGNED_BIT_NUM + LVAR_BIT_NUM) );
+        #else
         const size_t   ibit  = _children[0]->getBit() + 1;
+        #endif
         file << ".subckt " << ibit << "bSFA" << Aut::BLIFIndent;
         Aut::writeFAListARITH(tUsed,fUsed,ibit,"a",_children[0],file);
         Aut::writeFAListARITH(tUsed,fUsed,ibit,"b",_children[1],file);
@@ -765,7 +803,12 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
         assert( (Aut::isPREDINT(type0) || Aut::isARITH(type0)));
         assert( (Aut::isPREDINT(type1) || Aut::isARITH(type1)));
         assert( (_children[0]->getBit() == _children[1]->getBit()) );
+        #ifdef FORCE_ASSIGNED
+        const size_t   ibit  = _children[0]->getBit();
+        assert( (ibit == FORCE_SIGNED_BIT_NUM + LVAR_BIT_NUM) );
+        #else
         const size_t   ibit  = _children[0]->getBit() + 1;
+        #endif
         file << ".subckt " << ibit << "bSFA" << Aut::BLIFIndent;
         Aut::writeFAListARITH(tUsed,fUsed,ibit,"a",_children[1],file);
         Aut::writeFAListARITH(tUsed,fUsed,ibit,"b",_children[0],file);

@@ -1,5 +1,6 @@
 #ifndef _AUT_MGR_
 #define _AUT_MGR_
+#define FORCE_ASSIGNED
 //#define UTF16_ENCODE
 #ifdef  UTF16_ENCODE
     #define INPUT_ENCODE_BIT_NUM    16
@@ -11,6 +12,7 @@
 #define PI_NUM                      8
 #define LVAR_BIT_NUM                9
 #define MODULE_TYPE_NUM             3
+#define FORCE_SIGNED_BIT_NUM        3
 #define EPSILON_ENCODE              0
 #define LEFT_ANGLE_BRACKET_ENCODE   1
 #define RIGHT_ANGLE_BRACKET_ENCODE  2

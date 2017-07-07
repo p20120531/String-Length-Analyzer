@@ -1,12 +1,6 @@
-(declare-variable s String)
-(declare-variable var String)
-
-
-
+(declare-fun s () String)
+(declare-fun var () String)
 (assert (Contains s ">") )
 (assert (= var (Concat "<scr" "ipt") ) )
 (assert (Contains s var) )
-
-
 (check-sat)
-(get-model)

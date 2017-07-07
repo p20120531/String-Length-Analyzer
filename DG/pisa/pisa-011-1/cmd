@@ -9,5 +9,7 @@ write D4
 replace D4 A6 A7 A8
 write D5
 intersect D5 A9
-addpred pred
+write beforeaddpred
+addpred
 write sink
+isempty beforeaddpred

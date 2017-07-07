@@ -5,5 +5,7 @@ write D2
 intersect A5 D2
 write D3
 contains D1 D3
-addpred pred
+write beforeaddpred
+addpred
 write sink
+isempty beforeaddpred

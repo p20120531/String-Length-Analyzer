@@ -19,5 +19,7 @@ write D9
 concate D1 D9
 write D10
 intersect D10 A12
-addpred pred
+write beforeaddpred
+addpred
 write sink
+isempty beforeaddpred
