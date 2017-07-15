@@ -10,7 +10,7 @@ from os import listdir
 from os.path import isdir, isfile, join
 ############################## Global Variable ###############################
 Default_TO              = 20
-DPI                     = 200
+DPI                     = 400
 ############################## Benchmark Directory ###########################
 benchmark_kaluza_dir    = ['benchmark/Kaluza/SMTLIB/sat/small'  ,
                            'benchmark/Kaluza/SMTLIB/sat/big'    ,
@@ -44,8 +44,8 @@ solver_dir              = {'cvc4':'./' + cvc4_dir,'norn':'./'+norn_dir,'z3':'./'
 solver_opt              = {'cvc4':'--strings-exp','norn':'','z3':'','s3p':'-f','ic3ia':'-w -v 2','abc':'-f','ABC':'-i','fat':'-model'}
 #solver_set              = (['cvc4','z3','s3p','ic3ia'])
 solver_set              = (['cvc4','norn','z3','s3p','ic3ia','abc','ABC','fat'])
-solver_list             = ['ic3ia','abc','z3','cvc4','ABC','fat','s3p','norn']
-exp_solver_list         = ['ic3ia','abc','z3','cvc4','s3p','norn']
+solver_list             = ['ic3ia','abc','z3','cvc4','norn','ABC','s3p','fat']
+exp_solver_list         = ['ic3ia','abc','z3','cvc4','s3p','norn','ABC','fat']
 repall_solver_list      = ['ic3ia','abc','ABC','fat','s3p']
 
 extention               = {'cvc4':'smt2','norn':'smt2','z3':'smt2','s3p':'s3','ic3ia':'vmt','abc':'abc','ABC':'smt2','fat':'s3'}
@@ -131,33 +131,42 @@ def getSplitMap(mapFileName) :
 def getExpResult(benchmark,scope) :
     r_dir   = 'experiment/%s/result/%s' %(benchmark,scope)
     solvers = [ f[0:f.find('.')] for f in listdir(r_dir) if isfile(join(r_dir,f)) and f[f.rfind('.')+1:]=='csv']
-    data = []
+    data,ret_solvers = [],[]
     for solver in solvers :
-        data.append(getData('%s/%s.csv' %(r_dir,solver)))
-    return r_dir,data,solvers
+        #if solver == 'ABC' or solver == 'fat' or solver == 's3p' : continue
+        #if solver == 'ABC' or solver == 'fat'  : continue
+        data.append(getData(benchmark,'%s/%s.csv' %(r_dir,solver)))
+        ret_solvers.append(solver)
+    
+    return r_dir,data,ret_solvers
 
 ##############################################################################
 # [Function Name] getData
 # [ Description ] return experimental results
 # [  Arguments  ] fileName : csv file
 ##############################################################################
-def getData(fileName) :
-    isIc3ia = False
+def getData(benchmark,fileName) :
+    pisa_mute_set    = (['1','2','3','4','5','6'])
+    appscan_mute_set = (['43','45','47','52','65','66','72'])
+    recStep = False
     solver = fileName[ fileName.rfind('/') + 1 : fileName.rfind('.') ]
     if solver not in solver_set : sys.exit('[ERROR::getData] invalid solver=%s' %(solver))
-    if solver == 'ic3ia' : isIc3ia = True
+    if solver == 'ic3ia' or solver == 'abc': recStep = True
     idx,sat,time,step = [],[],[],[]
     with open(fileName,'r') as  csvfile :
         csvreader = csv.reader(csvfile)
         csvreader.next()
         csvreader.next()
         for row in csvreader :
-            #print row
+            if benchmark == 'pisa' :
+                if row[0] in pisa_mute_set : continue
+            elif benchmark == 'appscan' :
+                if row[0] in appscan_mute_set : continue
             idx.append(row[0])
             sat.append(row[1])
             time.append(row[2])
-            if isIc3ia : step.append(row[3])
-    if isIc3ia :
+            if recStep : step.append(row[3])
+    if recStep :
         return idx,sat,time,step
     else :
         return idx,sat,time
@@ -396,7 +405,7 @@ def expRecord(solver,idx,dirName,record,TO) :
             call('%s %s %s' %(exePath,option,f),timeout=TO,stdout=open(tmpPath,'w'),shell=True)
             te  = time.time()
     except TimeoutExpired :
-        if   solver == 'ic3ia': record.write('\n%s,t,0.0,0' %(idx))
+        if   solver == 'ic3ia' or solver == 'abc' : record.write('\n%s,t,0.0,0' %(idx))
         else                  : record.write('\n%s,t,0.0'   %(idx))
     else :
         lines = file2lines(tmpPath)
@@ -431,10 +440,11 @@ def exp_norn(idx,dt,lines,record) :
     record.write('\n%s,%s,%.6f' %(idx,sat,dt))
 
 def exp_z3(idx,dt,lines,record) :
-    if   lines[0] == 'sat'   : sat = '1'
-    elif lines[0] == 'unsat' : sat = '0'
-    else                     : sat = 'x';\
-                               dt  = 0.0
+    sat = 'x'
+    for line in lines :
+        if   line == 'sat'   : sat = '1'
+        elif line == 'unsat' : sat = '0'
+    if sat == 'x' : dt = 0.0
     record.write('\n%s,%s,%.6f' %(idx,sat,dt))
 
 def exp_s3p(idx,dt,lines,record) :
@@ -463,11 +473,15 @@ def exp_ABC(idx,dt,lines,record) :
 
 def exp_fat(idx,dt,lines,record) :
     sat = 'x'
+    splitlinefound = False
     for i in range(1,len(lines)+1) :
-        if   lines[-i].find('>> SAT')   != -1 : sat = '1';\
-                                                break
-        elif lines[-i].find('>> UNSAT') != -1 : sat = '0';\
-                                                break
+        if lines[-i] == '================================================' :
+            splitlinefound = True
+        if splitlinefound :
+            if   lines[-i].find('>> SAT')   != -1 : sat = '1';\
+                                                    break
+            elif lines[-i].find('>> UNSAT') != -1 : sat = '0';\
+                                                    break
     if sat == 'x' : dt = 0.0
     record.write('\n%s,%s,%.6f' %(idx,sat,dt))
 
@@ -535,6 +549,17 @@ def ConsistencyChecking(benchmark,scope) :
             sys.exit("[ERROR::CC] number of cases not match")
     logFile.write('number of cases match\n')
     
+    if benchmark == 'replace_involved' :
+        for i in range(len(solvers)) :
+            if solvers[i] == 'ic3ia' :
+                z3Idx = i
+                break
+    else :
+        for i in range(len(solvers)) :
+            if solvers[i] == 'z3' :
+                z3Idx = i
+                break
+
     solverNum = len(solvers)
     caseNum   = len(data[0][0])
 
@@ -566,6 +591,25 @@ def ConsistencyChecking(benchmark,scope) :
         logFile.close()
         sys.exit('[ERROR::CC] some cases have ERROR')
     '''
+    # SAT/UNSAT Checking
+    satCnt,unsatCnt,icCnt = [],[],[]
+    for i in range(solverNum) :
+        satn,unsatn,icn = 0,0,0
+        for j in range(caseNum) :
+            if data[i][1][j] == '1' :
+                if data[z3Idx][1][j] == '0' :
+                    icn += 1
+                else :
+                    satn += 1
+            elif data[i][1][j] == '0' :
+                if data[z3Idx][1][j] == '1' :
+                    icn += 1
+                else :
+                    unsatn += 1
+        satCnt.append(satn)
+        unsatCnt.append(unsatn)
+        icCnt.append(icn)
+
     # Exclusive Checking
     exCase = [0] * len(data)
     for i in range(caseNum) :
@@ -585,23 +629,42 @@ def ConsistencyChecking(benchmark,scope) :
                 if data[j][1][i] == '0' :
                     exCase[j] += 1
     
-    statsFile = open('%s/stats' %(r_dir),'w')
-    statsFile.write('%-8s %-10s %-10s %-10s %-10s\n' %(benchmark,'Error','Timeout','Exclusive','Solved'))
-    for i in range(len(data)) :
-        tmp = len(data[0][0]) - (errCnt[i]+toCnt[i])
-        statsFile.write('%-8s %-10s %-10s %-10s %-10s\n' %(solvers[i],errCnt[i],toCnt[i],exCase[i],tmp))
-    statsFile.close()
+    # Record Cumulative Time
+    crt = []
+    for i in range(solverNum) :
+        time = 0
+        for j in range(caseNum) :
+            if data[i][1][j] != 't' and data[i][1][j] != 'x' :
+                if   data[i][1][j] == '1' :
+                    if data[z3Idx][1][j] == '0' : continue
+                elif data[i][1][j] == '0' :
+                    if data[z3Idx][1][j] == '1' : continue
+                time += float(data[i][2][j])
+        crt.append(time)
 
     # Consistency Checking
     icset = set()
     allConsistent = True
-    for i in range(1,solverNum) :
+    for i in range(solverNum) :
         for j in range(caseNum) :
-            if data[0][1][j] != data[i][1][j] and data[0][1][j] != 't' and data[i][1][j] != 't' and data[0][1][j] != 'x' and data[i][1][j] != 'x' :
+            if ( data[i][1][j] != data[z3Idx][1][j] and 
+                 data[i][1][j] != 'x' and data[i][1][j] != 't' and
+                 data[z3Idx][1][j] != 'x' and data[z3Idx][1][j] != 't' ) :
                 allConsistent = False
                 icset.add(data[i][0][j])
+    
+    # Write Statistics
+    statsFile = open('%s/stats' %(r_dir),'w')
+    statsFile.write('benchmark                    : %s\n' %(benchmark))
+    statsFile.write('timeout                      : %.6f (s)\n' %(Default_TO))
+    statsFile.write('number of all cases          : %d\n' %(caseNum))
+    statsFile.write('number of inconsistent cases : %d\n\n' %(len(icset)))
+    statsFile.write('%-8s %-10s %-10s %-10s %-10s %-15s %-10s %-10s\n' %('solver','Abort','Timeout','SAT','UNSAT','Inconsistent','Exclusive','Cumulative Time'))
+    for i in range(len(data)) :
+        statsFile.write('%-8s %-10s %-10s %-10s %-10s %-15s %-10s %-10s\n' %(solvers[i],errCnt[i],toCnt[i],satCnt[i],unsatCnt[i],icCnt[i],exCase[i],crt[i]))
+    statsFile.close()
 
-    for i in icset :
+    for i in sorted(map(int,list(icset))) :
         logFile.write('case:%-6s inconsistent\n' %(i))
 
     if allConsistent :
@@ -619,38 +682,44 @@ def ConsistencyChecking(benchmark,scope) :
 #                 scope     = ['all','strlen','sample']
 ##############################################################################
 def plot(benchmark,scope) :
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpat
+    from matplotlib.font_manager import FontProperties
     
     r_dir,data,solvers = getExpResult(benchmark,scope)
     
+    for i in range(len(solvers)) :
+        if solvers[i] == 'z3' :
+            z3Idx = i
+            break
+    
+    solverNum = len(solvers)
+    caseNum   = len(data[0][0])
+    
     # trim and sort
     trim = []
-    for i in range(len(data)) :
+    for i in range(solverNum) :
         idx,sat,time = [],[],[]
-        for j in range(len(data[i][1])) :
+        for j in range(caseNum) :
             if data[i][1][j] != 't' and data[i][1][j] != 'x' :
+                if   data[i][1][j] == '1' :
+                    if data[z3Idx][1][j] == '0' : continue
+                elif data[i][1][j] == '0' :
+                    if data[z3Idx][1][j] == '1' : continue
                 idx.append(data[i][0][j])
                 sat.append(data[i][1][j])
                 time.append(float(data[i][2][j]))
         time.sort()
-        print ('solver=%s' %(solvers[i]))
-        for t in time :
-            print ('%.4f' %(t))
         trim.append(time)
     
-    plotCumTime(benchmark,r_dir,trim,solvers)
+    plotCumTime(benchmark,r_dir,trim,solvers,plt,mpat)
+    
+    for i in range(len(solvers)) :
+        if solvers[i] == 'ic3ia' or solvers[i] == 'abc' :
+            plotScatter(benchmark,r_dir,data[i],solvers[i],plt,mpat)
 
-    # TODO plot time vs step scatter for ic3ia unsafe case
-    '''
-    unsafeStep,unsafeTime = [],[]
-    for i in range(len(ic3[3])) :
-        if ic3[1][i] == '0' :
-            if ic3[3][i] == 'x' :
-                sys.exit('[ERROR::CCandPlot] ic3ia : idx=%s unsafe case must have step != \'x\'' %(ic3[0][i]))
-            unsafeStep.append(ic3[3][i])
-            unsafeTime.append(ic3[2][i])
-    print (unsafeStep)
-    print (unsafeTime)
-    '''
     '''
     unsafeStep = np.array(unsafeStep).astype(float)
     unsafeTime = np.array(unsafeTime).astype(float)
@@ -674,45 +743,113 @@ def plot(benchmark,scope) :
     plt.clf()
     '''
 
-def plotCumTime(benchmark,r_dir,data,solvers) :
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    import matplotlib.patches as mpat
-    from matplotlib.font_manager import FontProperties
-    # plot cumulative time vs case index
+def plotScatter(benchmark,r_dir,data,solver,plt,mpat) :
+    unsat,sat = [ [] for x in range(2) ] , [ [] for x in range(2) ]
+    for i in range(len(data[1])) :
+        if   data[1][i] == '0' :
+            unsat[0].append(data[3][i])
+            unsat[1].append(data[2][i])
+        elif data[1][i] == '1' :
+            sat[0].append(data[3][i])
+            sat[1].append(data[2][i])
+
+    plt.scatter(sat[0],sat[1],c='b')
+    plt.title('%s (SAT Cases) %s : Time vs Step Scatter Plot (# of case = %d)' %(benchmark.title(),solver.title(),len(sat[0])))
+    plt.xlabel('Step Count')
+    plt.ylabel('Run Time (s)')
+    plt.savefig('%s/sat_step_%s.jpg' %(r_dir,solver),dpi=DPI)
+    plt.cla()
+    plt.clf()
     
-    colorMap = {'ic3ia' : (0.0,0.0,0.0), 
-                'abc'   : (0.0,0.0,1.0),
-                'z3'    : (0.0,1.0,0.0),
-                'cvc4'  : (0.0,1.0,1.0),
-                's3p'   : (1.0,0.0,0.0),
-                'ABC'   : (1.0,0.0,1.0),
-                'fat'   : (1.0,1.0,0.0),
-                'norn'  : (0.3,0.6,1.0)}
+    plt.scatter(unsat[0],unsat[1],c='b')
+    plt.title('%s (UNSAT Cases) %s : Time vs Frame Scatter Plot (# of case = %d)' %(benchmark.title(),solver.title(),len(unsat[0])))
+    plt.xlabel('Frame Index')
+    plt.ylabel('Run Time (s)')
+    plt.savefig('%s/unsat_frame_%s.jpg' %(r_dir,solver),dpi=DPI)
+    plt.cla()
+    plt.clf()
+
+def plotCumTime(benchmark,r_dir,data,solvers,plt,mpat) :
+    # plot cumulative time vs case index
+    from matplotlib.lines import Line2D
+    import colorsys
+    import math
+    
+    markers = []
+    for m in Line2D.markers :
+        try:
+            if len(m) == 1 and m != ' ':
+                markers.append(m)
+        except TypeError :
+            pass
+
+    N = 8
+    #HSV_tuples = [(x*1.0/N, 0.5, x*(1.0-1.0/N)) for x in range(N)]
+    HSV_tuples = [(abs(math.sin(x*math.pi/N)), 0.5, abs(math.cos(x*math.pi/N))) for x in range(N)]
+    rgb = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples)
+    k = 256.0
+    colorMap = {'Slender-u' : (96/k,104/k,128/k), 
+                'Slender-b'   : (220/k,20/k,60/k),
+                'Z3STR3' : (121/k,128/k,32/k),
+                'CVC4'  : (204/k,0/k,255/k),
+                'S3P'   : (0/k,255/k,170/k),
+                'ABC'   : (255/k,136/k,0/k),
+                'TRAU'   : (0/k,204/k,255/k),
+                'Norn'  : (34/k,139/k,34/k)}
+    '''
+    colorMap = {'ic3ia' : rgb[0], 
+                'abc'   : rgb[1],
+                'z3'    : rgb[2],
+                'cvc4'  : rgb[3],
+                's3p'   : rgb[4],
+                'ABC'   : rgb[5],
+                'fat'   : rgb[6],
+                'norn'  : rgb[7]}
+    '''
+    solverIdxMap = { 'ic3ia' : 0,
+                     'abc'   : 1,
+                     'z3'    : 2,
+                     'cvc4'  : 3,
+                     'norn'  : 4,
+                     's3p'   : 5,
+                     'ABC'   : 6,
+                     'fat'   : 7}
+    tmpdata,tmpsolver = [[] for x in range(8)],[[] for x in range(8)]
+    for i in range(8) :
+        tmpdata[solverIdxMap[solvers[i]]] = data[i]
+        tmpsolver[solverIdxMap[solvers[i]]] = solvers[i]
+
+    data = tmpdata
+    solvers = tmpsolver
+
+    # change solver name
+    for i in range(len(solvers)) :
+        if   solvers[i] == 'ic3ia' : solvers[i] = 'Slender-u'
+        elif solvers[i] == 'abc'   : solvers[i] = 'Slender-b'
+        elif solvers[i] == 'z3'    : solvers[i] = 'Z3STR3'
+        elif solvers[i] == 'norn'  : solvers[i] = 'Norn'
+        elif solvers[i] == 's3p'   : solvers[i] = 'S3P'
+        elif solvers[i] == 'fat'   : solvers[i] = 'TRAU'
+        elif solvers[i] == 'cvc4'  : solvers[i] = 'CVC4'
 
     csum = []
     for i in range(len(data)) :
-        print ('solver=%s' %(solvers[i]))
         d = np.array(data[i],dtype=float)
-        print ('origin')
-        for j in d : print (j)
+        if solvers[i] == 'z3' : tmpsolver
         np.cumsum(d,out=d)
-        print ('cumsum')
-        for j in d : print (j)
         csum.append(d)
 
     fig = plt.figure()
     ax  = plt.subplot(111)
     for i in range(len(csum)) :
         ax.plot(np.arange(len(csum[i])),csum[i],color=colorMap[solvers[i]],label=solvers[i])
+        #ax.plot(np.arange(len(csum[i])),csum[i],marker=markers[i],markersize=3,linewidth=0.1,color=colorMap[solvers[i]],label=solvers[i])
     box = ax.get_position()
     ax.set_position([box.x0,box.y0,box.width*0.8,box.height])
     ax.legend(loc='center left',bbox_to_anchor=(1,0.5))
-    plt.title('%s Sorted Cumulative Run Time' %(benchmark.title()))
     plt.ylabel('Time (s)')
-    plt.xlabel('Number of Solved Instance')
-    plt.savefig('%s/crt.jpg' %(r_dir),dpi=DPI)
+    plt.xlabel('Number of Solved Instances')
+    plt.savefig('%s/%s.jpg' %(r_dir,benchmark.lower()),dpi=DPI)
     plt.cla()
     plt.clf()
 
@@ -838,6 +975,42 @@ def opt_solve(benchmark,scope,opt,TO) :
     for solver in solvers :
         exp(benchmark,scope,dgIdxList,dgFileList,solver,TO)
 
+def rectifyKaluza() :
+    dgIdxList,dgFileList = getSplitMap('experiment/Kaluza/sample')
+    '''
+    for dg in dgFileList :
+        call('mkdir -p kaluza_sample/%s' %(dg),shell=True)
+        call('cp -r %s kaluza_sample/%s' %(dg,dg),shell=True)
+    '''
+    for dg in dgFileList :
+        lines = file2lines(join(dg,'sink.s3'))
+        rect  = open(join(dg,'sink.s3'),'w')
+        for line in lines :
+            if line == '(set-logic QF_S)' or line == '(get-model)' or line == '(set-option :produce-models true)' or line == '' : continue
+            if line.find('In ') != -1 :
+                v = line.split()
+                rect.write('%s' %(v[0]))
+                for i in range(1,len(v)) :
+                    if v[i] == '(In' :
+                        rect.write(' (=')
+                    else :
+                        rect.write(' %s' %(v[i]))
+                rect.write('\n')
+            else :
+                v = line.split()
+                if v[0] == '(declare-variable' :
+                    if len(v) != 3 : sys.exit('len(v) != 3')
+                    rect.write('(declare-fun %s () %s\n' %(v[1],v[2]))
+                else :
+                    rect.write('%s\n' %(line))
+        rect.close()
+    for dg in dgFileList :
+        lines = file2lines(join(dg,'sink.smt2'))
+        rect  = open(join(dg,'sink.smt2'),'w')
+        for line in lines :
+            if line == '(get-model)' or line == '(set-option :produce-models true)' or line == '' : continue
+            rect.write('%s\n' %(line))
+        rect.close()
 def rectify(name) :
     dgIdxList,dgFileList = getSplitMap('experiment/%s/all' %(name))
     
@@ -912,3 +1085,4 @@ if __name__ == '__main__' :
     parse(sys.argv[1:])
     #rectify('pisa')
     #rectify('appscan')
+    #rectifyKaluza()
