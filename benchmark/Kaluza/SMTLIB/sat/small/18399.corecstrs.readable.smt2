@@ -1,0 +1,10 @@
+(set-logic QF_S)
+
+(declare-fun T_1 () Bool)
+(declare-fun var_0xINPUT_23684 () String)
+
+(assert (= T_1 (= "-" var_0xINPUT_23684)))
+(assert T_1)
+
+(check-sat)
+

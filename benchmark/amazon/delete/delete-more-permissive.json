@@ -1,0 +1,38 @@
+
+{
+  "policies": [
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "sns:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "NotAction": "sns:Delete*",
+            "Resource": "*"
+        }
+    ]
+},
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "sns:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Deny",
+            "Action": "sns:Delete*",
+            "Resource": "*"
+        }
+    ]
+}
+
+
+ ]
+}
