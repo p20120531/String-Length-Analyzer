@@ -1,32 +1,26 @@
-#ifndef _PTNODE_H_
-#define _PTNODE_H_
+#ifndef _SMTNODE_H_
+#define _SMRNODE_H_
 #include "typedef.h"
-
-class PTNode {
-    friend class PT;
-    friend class KaluzaMgr;
+class SmtNode {
+    friend class SmtMgr;
     public :
-        PTNode          (const string& name, const Type& type) {
-            _name = name;
-            _type = type;
-            _flag = 0;
+        SmtNode (const string& name, const SmtType& type): _name(name), _type(type) {
+            _flag  = 0;
             _bflag = 0;
         }
         
         // Print Function
-        virtual void    print(const size_t&,size_t) const ;
+        void               print(const size_t&,size_t) const ;
         // Access Function
-        const string&     getName()const{return _name;}
-        const size_t&     getLevel()const{return _level;}
-        const Type&       getType()const{return _type;}
-        const size_t&     getFlag()const{return _flag;}
-        const size_t&     getBFlag()const{return _bflag;}
-        const PTNodeList& getChildren()const;
+        const string&      getName()const{return _name;}
+        const SmtType&     getType()const{return _type;}
+        const size_t&      getFlag()const{return _flag;}
+        const size_t&      getBFlag()const{return _bflag;}
+        const SmtNodeList& getChildren()const;
         // Modify Function 
-        void addChild(PTNode*);
+        void addChild(SmtNode*);
         void setName(const string& name) {_name = name;}
         void setFlag(const size_t& flag) {_flag=flag;}
-        void setLevel(size_t);
         // Conditional Fcuntion
         bool isReturnTypeStr();
         bool isVarStr();
@@ -35,215 +29,218 @@ class PTNode {
 
         void writeCVC4PredVar();
         void writeCVC4PredRoot(string&);
-        virtual DGNode* buildDG() = 0;
         void analyzeASCII() const;
-        //void analyze(bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,bool&,size_t&,size_t&,bool&,bool&,bool&,bool&,int,int,bool&,bool&,size_t&,size_t&,size_t&) const;
-        void analyze(bool& iteDVarLegal, bool& iteCLevel1, bool& iteChildNotAnd, bool& strinreRLevel1, bool& strninreRLevel1, bool& streqRLevel1, bool& strneqRLevel1, bool& strlenRLevel2, bool& andCLevel2, bool& ornexist, bool& strinreLCSV, bool& strninreLCSV, bool& streqLCSV, bool& strneqLCSV, size_t& strlenCnt, size_t& strlenEqCnt, bool& streqBothSV, bool& strneqBothSV, bool& strneqOneConst, bool& streqBothSC, int cLevel, int rLevel, bool& strinreReConcateMT2, bool& strConcateMT2, size_t& strinreReConcateCnt, size_t& strninreReConcateCnt, size_t& reConcateCnt) const;
-        virtual void buildPTNodeListMap(PTNode*);
+        virtual DTNode* buildDT();
+        virtual void buildSmtNodeListMap(Str2SmtNodeListMap&, SmtNode*) const;
     protected:
         string          _name;
-        Type            _type;
+        SmtType         _type;
         size_t          _flag;
         size_t          _bflag; // Branch Flag
-        size_t          _level;
-        PTNodeList      _children;
+        SmtNodeList     _children;
 };
 
-class PTVarIntNode : public PTNode {
+class SmtConstBoolNode : public SmtNode {
     public :
-        PTVarIntNode(const string& name) : PTNode(name,VAR_INT) {}
-        void print(const size_t& , size_t) const ;
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtConstBoolNode(const string& name) : SmtNode(name,CONST_BOOL) {}
 };
 
-class PTVarBoolNode : public PTNode {
+class SmtConstIntNode  : public SmtNode {
     public :
-        PTVarBoolNode(const string& name) : PTNode(name,VAR_BOOL) {}
-        void print(const size_t& , size_t) const ;
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtConstIntNode(const string& name) : SmtNode(name,CONST_INT) {}
 };
 
-class PTVarStringNode : public PTNode {
+class SmtConstStrNode  : public SmtNode {
     public :
-        PTVarStringNode(const string& name) : PTNode(name,VAR_STRING) {}
-        void print(const size_t& , size_t) const; 
-        DGNode* buildDG();
+        SmtConstStrNode(const string& name) : SmtNode(name,CONST_STR) {}
+        DTNode* buildDT();
 };
 
-class PTConstIntNode : public PTNode {
+class SmtVarBoolNode   : public SmtNode {
     public :
-        PTConstIntNode(const string& name) : PTNode(name,CONST_INT) {}
-        void print(const size_t& , size_t) const ;
-        DGNode* buildDG();
+        SmtVarBoolNode(const string& name) : SmtNode(name,VAR_BOOL) {}
+        void buildSmtNodeListMap(SmtNode*);
 };
 
-class PTConstBoolNode : public PTNode {
+class SmtVarIntNode : public SmtNode {
     public :
-        PTConstBoolNode(const string& name) : PTNode(name,CONST_BOOL) {}
-        void print(const size_t& , size_t) const ;
-        DGNode* buildDG();
+        SmtVarIntNode(const string& name) : SmtNode(name,VAR_INT) {}
+        void buildSmtNodeListMap(SmtNode*);
 };
 
-class PTConstStringNode : public PTNode {
+class SmtVarStrNode : public SmtNode {
     public :
-        PTConstStringNode(const string& name) : PTNode(name,CONST_STRING) {}
-        void print(const size_t& , size_t) const;
-        DGNode* buildDG();
+        SmtVarStrNode(const string& name) : SmtNode(name,VAR_STR) {}
+        DTNode* buildDT();
 };
 
-//----------------bool type-------------------
-
-class PTNotNode : public PTNode {
+class SmtEqNode : public SmtNode {
     public :
-        PTNotNode(const string& name) : PTNode(name,BOOL_NOT) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtEqNode(const string& name) : SmtNode("=",BOOL_EQ) {}
+        DTNode* buildDT();
+        void buildSmtNodeListMap(SmtNode*);
 };
 
-class PTEqNode : public PTNode {
+class SmtNotEqNode : public SmtNode {
     public :
-        PTEqNode(const string& name) : PTNode(name,BOOL_EQ) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtNotEqNode(const string& name) : SmtNode("!=",BOOL_NEQ) {}
+        DTNode* buildDT();
+        void buildSmtNodeListMap(SmtNode*);
 };
 
-class PTNotEqNode : public PTNode {
+class SmtBoolNode : public SmtNode {
     public :
-        PTNotEqNode(const string& name) : PTNode(name,BOOL_NEQ) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtBoolNode(const string& name, const SmtType& type) : SmtNode(name,type) {}
+        virtual DTNode* buildDT();
 };
 
-class PTAndNode : public PTNode {
+class SmtIntNode : public SmtNode {
     public :
-        PTAndNode(const string& name) : PTNode(name,BOOL_AND) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtIntNode(const string& name, const SmtType& type) : SmtNode(name,type) {}
+        virtual DTNode* buildDT();
 };
 
-class PTOrNode : public PTNode {
+class SmtStrNode : public SmtNode {
     public :
-        PTOrNode(const string& name) : PTNode(name,BOOL_OR) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtStrNode(const string& name, const SmtType& type, const DTType& dtype) : SmtNode(name,type),_dtype(dtype) {}
+        virtual DTNode* buildDT();
+    private:
+        DTType _dtype;
 };
 
-class PTIteNode : public PTNode {
+/////////////////////////// Bool Type ////////////////////////////////
+
+class SmtNotNode : public SmtBoolNode {
     public :
-        PTIteNode(const string& name) : PTNode(name,BOOL_ITE) {}
-        void print(const size_t& , size_t) const ;
-        DGNode* buildDG();
+        SmtNotNode(const string& name) : SmtNode("not",BOOL_NOT) {}
 };
 
-class PTLTNode : public PTNode {
+class SmtAndNode : public SmtBoolNode {
     public :
-        PTLTNode(const string& name) : PTNode(name,BOOL_LT) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtAndNode(const string& name) : SmtNode("and",BOOL_AND) {}
+        DTNode* buildDT();
 };
 
-class PTLTOEQNode : public PTNode {
+class SmtOrNode : public SmtBoolNode {
     public :
-        PTLTOEQNode(const string& name) : PTNode(name,BOOL_LTOEQ) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtOrNode(const string& name) : SmtNode("or",BOOL_OR) {}
+        DTNode* buildDT();
+        size_t getBeginBranchIdx() {return 0;}
+        size_t getEndBranchIdx()   {return _children.size();}
+        void   setBranchIdx(const size_t& idx) { _branch = idx;}
+    private:
+        size_t _branch;
 };
 
-class PTMTNode : public PTNode {
+class SmtIteNode : public SmtBoolNode {
     public :
-        PTMTNode(const string& name) : PTNode(name,BOOL_MT) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtIteNode(const string& name) : SmtNode("ite",BOOL_ITE) { }
+        DTNode* buildDT();
+        size_t getBeginBranchIdx() {return 1;}
+        size_t getEndBranchIdx()   {return 3;}
+        void   setBranchIdx(const size_t& idx) { _branch = idx;}
+    private:
+        size_t _branch;
 };
 
-class PTMTOEQNode : public PTNode {
+/////////////////////////// Int Type ////////////////////////////////
+
+class SmtLTNode : public SmtIntNode {
     public :
-        PTMTOEQNode(const string& name) : PTNode(name,BOOL_MTOEQ) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtLTNode(const string& name) : SmtNode("<",BOOL_LT) {}
+        DTNode* buildDT();
 };
 
-//-----------------int type-------------------
-
-class PTPlusNode : public PTNode {
+class SmtLTOEQNode : public SmtIntNode {
     public :
-        PTPlusNode(const string& name) : PTNode(name,INT_PLUS) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtLTOEQNode(const string& name) : SmtNode("<=",BOOL_LTOEQ) {}
+        DTNode* buildDT();
 };
 
-class PTMinusNode : public PTNode {
+class SmtMTNode : public SmtIntNode {
     public :
-        PTMinusNode(const string& name) : PTNode(name,INT_MINUS) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtMTNode(const string& name) : SmtNode(">",BOOL_MT) {}
+        DTNode* buildDT();
 };
 
-class PTDivNode : public PTNode {
+class SmtMTOEQNode : public SmtIntNode {
     public :
-        PTDivNode(const string& name) : PTNode(name,INT_DIV) {}
-        DGNode* buildDG();
-        void buildPTNodeListMap(PTNode*);
+        SmtMTOEQNode(const string& name) : SmtNode(">=",BOOL_MTOEQ) {}
+        DTNode* buildDT();
 };
 
-//-----------------string type---------------
-
-class PTStrConcateNode : public PTNode {
+class SmtPlusNode : public SmtIntNode {
     public :
-        PTStrConcateNode(const string& name) : PTNode(name,STRING_CONCATE) {}
-        DGNode* buildDG();
+        SmtPlusNode(const string& name) : SmtNode("+",INT_PLUS) {}
+        DTNode* buildDT();
 };
 
-class PTStrLenNode : public PTNode {
+class SmtMinusNode : public SmtIntNode {
     public :
-        PTStrLenNode(const string& name) : PTNode(name,INT_STRLEN) {}
-        DGNode* buildDG();
+        SmtMinusNode(const string& name) : SmtNode("-",INT_MINUS) {}
+        DTNode* buildDT();
 };
 
-class PTStrInReNode : public PTNode {
+class SmtNegNode : public SmtIntNode {
     public :
-        PTStrInReNode(const string& name) : PTNode(name,BOOL_STRINRE) {}
-        DGNode* buildDG();
+        SmtNegNode(const string& name) : SmtNode("-",INT_MINUS) {}
+        DTNode* buildDT();
 };
 
-class PTStrNotInReNode : public PTNode {
+class SmtDivNode : public SmtIntNode {
     public :
-        PTStrNotInReNode(const string& name) : PTNode(name,BOOL_STRNINRE) {}
-        DGNode* buildDG();
+        SmtDivNode(const string& name) : SmtNode("div",INT_DIV) {}
+        DTNode* buildDT();
 };
 
-class PTStrReplaceNode : public PTNode {
+/////////////////////////// String Type ////////////////////////////////
+
+class SmtStrConcateNode : public SmtStrNode {
     public :
-        PTStrReplaceNode(const string& name) : PTNode(name,STRING_REPLACE) {}
-        DGNode* buildDG();
+        SmtStrConcateNode(const string& name) : SmtStrNode("str.++",STRING_CONCATE,CONCATE) {}
 };
 
-class PTStrToReNode : public PTNode {
+class SmtStrLenNode : public SmtStrNode {
     public :
-        PTStrToReNode(const string& name) : PTNode(name,REGEX_STRTORE) {}
-        DGNode* buildDG();
+        SmtStrLenNode(const string& name) : SmtStrNode("str.len",INT_STRLEN,OTHER) {}
+        DTNode* buildDT();
 };
 
-//-----------------automaton type-------------------
-
-class PTReConcateNode : public PTNode {
+class SmtStrInReNode : public SmtStrNode {
     public :
-        PTReConcateNode(const string& name) : PTNode(name,REGEX_CONCATE) {}
-        DGNode* buildDG();
+        SmtStrInReNode(const string& name) : SmtStrNode("str.in.re",BOOL_STRINRE,OTHER) {}
+        DTNode* buildDT();
 };
 
-class PTReUnionNode : public PTNode {
+class SmtStrNotInReNode : public SmtStrNode {
     public :
-        PTReUnionNode(const string& name) : PTNode(name,REGEX_UNION) {}
-        DGNode* buildDG();
+        SmtStrNotInReNode(const string& name) : SmtStrNode("str.nin.re",BOOL_STRNINRE,OTHER) {}
+        DTNode* buildDT();
 };
 
-class PTReInterNode : public PTNode {
+class SmtStrReplaceNode : public SmtStrNode {
     public :
-        PTReInterNode(const string& name) : PTNode(name,REGEX_INTER) {}
-        DGNode* buildDG();
+        SmtStrReplaceNode(const string& name) : SmtStrNode("str.replace",STRING_REPLACE,REPLACE) {}
 };
 
+class SmtStrToReNode : public SmtStrNode {
+    public :
+        SmtStrToReNode(const string& name) : SmtStrNode("str.to.re",REGEX_STRTORE,OTHER) {}
+        DTNode* buildDT();
+};
+
+class SmtReConcateNode : public SmtStrNode {
+    public :
+        SmtReConcateNode(const string& name) : SmtReNode("re.++",REGEX_CONCATE,CONCATE) {}
+};
+
+class SmtReUnionNode : public SmtStrNode {
+    public :
+        SmtReUnionNode(const string& name) : SmtReNode("re.union",REGEX_UNION,UNION) {}
+};
+
+class SmtReInterNode : public SmtStrNode {
+    public :
+        SmtReInterNode(const string& name) : SmtReNode("re.inter",REGEX_INTER,INTER) {}
+};
 #endif

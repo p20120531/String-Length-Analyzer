@@ -1,14 +1,9 @@
 #include "kaluzaMgr.h"
 
-void KaluzaMgr::printDG()
-{        
-    _dg->print();
-}
-
-void KaluzaMgr::buildAndWriteDG()
+void SMTMgr::buildAndWriteDG()
 {
     #ifndef _NLOG_
-        splitLine(_logFile,"KaluzaMgr::buildAndWriteDG");
+        splitLine(_logFile,"SMTMgr::buildAndWriteDG");
     #endif
     size_t dgIdx = 0;
     PTNodeQueue&   ptq   = _pt->getPTQ();
@@ -22,8 +17,8 @@ void KaluzaMgr::buildAndWriteDG()
         IMP curimp = impq.front();
         ptq.pop();
         impq.pop();
-        #ifndef _NLOG_
-            _logFile << "[handle " << cur->getName() << "]" << endl;
+        #ifndef _SMTMGR_NDEBUG_
+            cout << "[handle " << cur->getName() << "]" << endl;
         #endif
         ++_gflag;
         cur->buildDG();
@@ -59,7 +54,6 @@ void KaluzaMgr::buildAndWriteDG()
             _dg->writeCVC4File(curimp);
             ++_gflag;
             _dg->writeCmdFile();
-            //dg->writeIC3LengthFile();
         }
         //cout << cur->getName() << ": level=" << cur->getLevel() << " sinkCnt=" << sinkList.size() << endl;
     }

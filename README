@@ -1,58 +1,60 @@
 ############################### Command Usage ##################################
-Attention: 1. <fileName*> is a string literal without file extension (e.g., .blif .vmt)
-           2. <cFileName*> is a string literal without file extension (e.g., .blif .vmt)
-           3. <sFileName*> is a string literal without file extension (e.g., .blif .vmt)
-           4. <integer> must greater than or equal to zero
+Attention: 1. <fileName*>  : a string literal without file extension (e.g., .blif .vmt)
+           2. <cFileName*> : a string literal without file extension (e.g., .blif .vmt)
+           3. <sFileName*> : a string literal without file extension (e.g., .blif .vmt)
+           4. <index>      : non-negative integer
            5. L(*) indicates the language recognized by the automaton describing by *
            6. replace, indexof, notcontains, notprefixof_smt and notsuffixof_smt are supported
               under the assumption that the complemented automaton is known 
               due to the incapability of constructing complement of language
 
-usage: addlen            <fileName> <integer>
-                         add an integer variable to indicate the length of an automaton
+usage: trklen            <fileName> <index>
+                         add an integer variable to track the length of an automaton
        fileName        : the name of the file describing an automaton
        integer         : the index of the integer variable
 
-usage: intersect         <fileName1> <fileName2>
+usage: intersect         <fileName_1> <fileName_2>
                          construct the intersection of two automata
        fileName        : the name of the file describing an automaton
 
-usage: concate           <fileName1> <fileName2>
+usage: concate           <fileName_1> <fileName_2>
                          construct the concatenation of two automata
        fileName        : the name of the file describing an automaton
 
-usage: replace           <fileName1> <fileName2> <fileName3> <cFileName>
+usage: replace           <fileName_1> <fileName_2> <fileName_3> <cFileName>
                          language-to-language replace corresponding to Rep(A1,A2,A3) in paper
        fileName        : the name of the file describing an automaton
        cFileName       : the name of the file describing a complmented automaton
 
-usage: contains          <fileName1> <fileName2>
-                         construct the intersection of L(fileName1) and .*L(fileName2).*
+usage: contains          <fileName_1> <fileName_2>
+                         construct the intersection of L(fileName_1) and .*L(fileName_2).*
        fileName        : the name of the file describing an automaton
 
 usage: notcontains       <fileName> <cFileName>
-                         construct the intersection of L(fileName1) and L(cFileName)
+                         construct the intersection of L(fileName) and L(cFileName)
        fileName        : the name of the file describing an automaton
        cFileName       : the name of the file describing a complemented automaton
 
-usage: indexof           <fileName> <sFileName> <cFileName> <integer1> <integer2>
+usage: trkidx            <fileName> <sFileName> <cFileName> <index_1> <index_2>
+                         construct an automaton that accept the intersection of L(fileName) and .*L(sFileName).* with index_1 indicating the not-less-than position of L(sFileName) and index_2 indicating the first occurence position of L(sFileName) (first occurence after index_1 position)
        fileName        : the name of the file describing an automaton
        sFileName       : the name of the file describing an automaton recognizing a string literal
        cFileName       : the name of the file describing a complemented automaton
-       integer1        : the index of the integer variable indicating the not-less-than position (WARNING)
-       integer2        : the index of the integer variable indicating the resultant position
+       index_1         : the index of the integer variable indicating the not-less-than position (WARNING)
+       index_2         : the index of the integer variable indicating the answer position
 
-usage: substr            <fileName> <integer1> <integer2>
+usage: substr            <fileName> <index_1> <index_2>
+                         construct the automaton recognizing the set of substrings with starting position and pass-the-end position specified by index_1 and index_2 resp.
        fileName        : the name of the file describing an automaton
-       integer1        : the index of the integer variable indicating the beginning position
-       integer2        : the index of the integer variable indicating the pass-the-end position (WARNING)
+       index_1         : the index of the integer variable indicating the beginning position
+       index_2         : the index of the integer variable indicating the pass-the-end position (WARNING)
 
-usage: prefixof_smt      <fileName1> <fileName2>
-                         construct the intersection of L(fileName1).* and L(fileName2)
+usage: prefixof_smt      <fileName_1> <fileName_2>
+                         construct the intersection of L(fileName_1).* and L(fileName_2)
        fileName        : the name of the file describing an automaton
 
-usage: suffixof_smt      <fileName1> <fileName2>
-                         construct the intersection of .*L(fileName1) and L(fileName2)
+usage: suffixof_smt      <fileName_1> <fileName_2>
+                         construct the intersection of .*L(fileName_1) and L(fileName_2)
        fileName        : the name of the file describing an automaton
 
 usage: notprefixof_smt   <cFileName> <fileName>
@@ -73,52 +75,67 @@ usage: write             <fileName>
                          write the current automaton to fileName
        fileName        : the name of the file describing an automaton
 
-usage: addpred           <fileName> 
-                         add the declaration and definition of the predicates described by fileName into current automaton
-       fileName        : the name of the smt2 predicate file
+usage: addpred
+                         add predicates into current automaton
 
-############################### Dependency Graph File Description ##################################
-Attention: A complete dependency graph including the following files
+usage: isempty           <fileName>
+                         construct the sequential circuit for ABC in BLIF format
 
-name        : cmd
-description : command file
-format      : [commands]
-              <write sink>
+############################### Length Automaton Description ##################################
+A Length Automaton file (LAut) includes 3 sections
 
-name        : aut
-description : record the correspondence of each leaf automaton in command file and its equivalent regex
-format      : [fileName regex]
-notice      : character not in [0-9a-zA-Z] must be escaped if it is supposed to be just a character
-              
-              ex:  "abc"
-                   "\?a\-b"
-                   "(ab)*&(bc)*"
-                   "ab|bc|ef"
-                   ~\(".*ab.*"\)
+<leaf automaton regex>
+;
+<predicates>
+;
+<dependencies>
 
-name        : pred
-description : predicates in smt2 format
-format      : [declare-fun]
-              <;>
-              [assert]
-notice      : for str.len , str.indexof , str.substr additional info. must be appended
-              for the string variable appears in str.len , str.indexof , str.substr, there is no need to declare
+section : leaf automaton regex
+desc    : the regular expression of each leaf automaton
+format  : <leaf automaton name> <regular expression>
+notice  : character not in [0-9a-zA-Z] must be escaped by a backslash if it is treated as a character
 
-              ex:  (= 0 (str.len T0_2)) ; len 0
-                   -> Int variable indexed 0 represent the length of T0_2
-                  
-                   (= v3 (str.indexof v1 "<" 0)) ; indexof 0 1
-                   -> Int variable indexed 0 represent the not-less-than position
-                      Int variable indexed 1 represent the resultant position
-                  
-                   (str.substr v1 0 v3) ; substr 2 3
-                   -> Int variable indexed 2 represent the beginning position
-                      Int variable indexed 3 represent the pass-the-end position
+section : predicates
+desc    : predicates in prefix expression with n-ary(n>1) operation embraced by parentheses
+format  : operations for boolean and integer are trivial, three operations associated with legnth 
+          are specified as follows:
+          
+          alias*   : an integer variable or a constant integer
+          index*   : an non-negative integer used in LAut construction
+          smt2     : described corresponding constraint in smt2 format
+		  
+          operation: get string length
+          desc     : assert an integer variable to represents the embedded integer in a trklen operation
+          smt2     : (= <alias> str.len <string variable>)
+          format   : len <alias> <index>
 
-name        : sink.smt2
-description : the smt2 file equivalent to the dependency graph
-format      : smt2
+          operation: get string indexof
+          desc     : assert two integer variable to represent the integer added in trkidx, with alias_1
+                     indicate the not-less-than position and alias_2 indicate the index
+          smt2     : (= <alias_2> (str.indexof <string variable> <constant string> <alias_1>))
+          format   : indexof <alias_1> <alias_2> <index_1> <index_2>
+                     <alias_1>: the not-less-than position
+                     <alias_2>: the answer position
+                     <index_1>: for <alias_1>
+                     <index_2>: for <alias_2>
+          
+          operation: string substr
+          desc     : assert the substring of a string variable starts from alias_1 with offset alias_2
+          smt2     : (str.substr <string variable> <alias_1> <alias_2>)
+          format   : substr <alias_1> <alias_2> <index_1> <index_2>
+                     <alias_1>: the start position
+                     <alias_2>: the offset
+                     <index_1>: for <alias_1>
+                     <index_2>: for <alias_2>
 
+section : dependencies
+desc    : bottom-up construction of the sink node
+format  : [commands] (a intermediate command should be followed with a "write" command)
+          <addpred>
+          <write sink>
+          <isempty sink>
+          
+############################### Automaton Alphabet Encoding ##################################
 using UTF-16 as alphabet
 append 1 more bit to represent special alphabet
 1 0000 0000 0000 0000 epsilon

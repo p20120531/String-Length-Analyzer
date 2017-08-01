@@ -79,7 +79,6 @@ class DGNode {
         void writeCmdFile (ofstream&,ofstream&);
         void writeCVC4File();
         void writeCVC4LeafNode(string&,string&);
-        void lcTraversal (Str2UintMap&,size_t&)const;
     private:
         string        _name;    // NEW_STR_n / NEW_RE_n for extra nodes
         Type          _type;

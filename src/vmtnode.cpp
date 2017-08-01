@@ -3,8 +3,12 @@
 
 using namespace std;
 
+///////////////////////////////// Global Variable /////////////////////////////
+
 extern AutMgr* autmgr;
 static size_t& gflag = autmgr->getGFlag();
+
+///////////////////////////// Non-Static Member ///////////////////////////////
 
 void VmtNode::print(const size_t& level) const
 {

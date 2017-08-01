@@ -23,25 +23,30 @@ class DG;
 class DGNode;
 class PredicateNode;
 
-enum Type {
-    VAR_BOOL=0, VAR_INT, VAR_STRING,
-    CONST_BOOL, CONST_INT, CONST_STRING,
-    // classified by return value
-    BOOL_NOT=10, BOOL_EQ, BOOL_NEQ, BOOL_AND, BOOL_OR, BOOL_ITE, BOOL_LT, BOOL_LTOEQ, BOOL_MT, BOOL_MTOEQ, BOOL_STRINRE, BOOL_STRNINRE, 
-    INT_PLUS=40, INT_MINUS, INT_DIV, INT_POS, INT_NEG, INT_STRLEN,
-    STRING_CONCATE, STRING_REPLACE,
-    REGEX_STRTORE, REGEX_CONCATE, REGEX_UNION, REGEX_INTER,
-    AUT_CONCATE=60, AUT_UNION, AUT_INTER, AUT_REPLACE, AUT_COMPLE
-    //OP_STRCONCATE, OP_STRLEN, OP_STRINRE, OP_STRREPLACE, OP_STRTORE,
-    //OP_RECONCATE, OP_REUNION, OP_REINTER
+enum SmtType {
+    VAR_BOOL=0, VAR_INT, VAR_STR,
+    CONST_BOOL, CONST_INT, CONST_STR,
+    EQ, NEQ,
+    // classified by argument type
+    NOT=10, AND, OR, ITE,
+    LT,LTOEQ,MT,MTOEQ,PLUS,MINUS,NEG,DIV,
+    STRCONCATE,STRLEN,STRINRE,STRNINRE,STRREPLACE,STRTORE,
+    RECONCATE,REUNION,REINTER
 };
 
-enum FType {
-    SMT2, VMT
+enum DTType {
+    CONCATE, UNION, INTER, REPLACE, COMPLE, OTHER
 };
 
-typedef vector<PT*>             PTList;
-typedef vector<PTNode*>         PTNodeList;
+typedef vector<SmtNode*>        SmtNodeList;
+typedef queue<SmtNode*>         SmtNodeQueue;
+typedef pair<string,SmtNode*>   Str2SmtNode;
+typedef map<string,SmtNode*>    Str2SmtNodeMap;
+typedef vector<DT*>             DTList;
+typedef pair<string,DTNode*>    Str2DTNode;
+typedef map<string,DTNode*>     Str2DTNodeMap;
+
+
 typedef vector<DG*>             DGList;
 typedef vector<DGNode*>         DGNodeList;
 typedef pair<string,Type>       Str2Type;

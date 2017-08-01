@@ -5,21 +5,7 @@ static       ofstream&       logFile = kmgr->getLogFile();
 static const vector<string>& bvList  = kmgr->getBVList();
 static const vector<string>& ivList  = kmgr->getIVList();
 static const Str2TypeMap&    typeMap = kmgr->getTypeMap();
-void PT::addAssertion(PTNode* n)
-{
-    _root->addChild(n);
-}
 
-void PT::print() const
-{
-    #ifndef _NLOG_
-    splitLine(logFile,"PT::print");
-    for (size_t i = 0, size = _root->_children.size(); i < size; ++i) {
-        logFile << _root->_name << " " << i + 1 << endl;
-        _root->_children[i]->print(_indent,0);
-    }
-    #endif
-}
 
 void PT::printPTNodeListMap() const
 {
@@ -36,78 +22,6 @@ void PT::printPTNodeListMap() const
 void PT::analyzeASCII()
 {
     _root->analyzeASCII();
-}
-void PT::analyze()
-{
-    #ifndef _NLOG_
-        splitLine(logFile,"PT::analyze");
-    #endif
-    _iteDVarLegal    = 1;
-    _iteCLevel1      = 1;
-    _iteChildNotAnd  = 0;
-    _strinreRLevel1  = 1;
-    _strninreRLevel1 = 1;
-    _streqRLevel1    = 1;
-    _strneqRLevel1   = 1;
-    _strlenRLevel2   = 1;
-    _andCLevel2      = 1;
-    _ornexist        = 1;
-    _strinreLCSV     = 1;
-    _strninreLCSV    = 1;
-    _streqLCSV       = 1;
-    _strneqLCSV      = 1;
-    _strlenCnt       = 0;
-    _strlenEqCnt     = 0;
-    _streqBothSV     = 0;
-    _strneqBothSV    = 0;
-    _strneqOneConst  = 1;
-    _streqBothSC     = 0;
-    
-    _strinreReConcateMT2 = 0;
-    _strConcateMT2 = 0;
-
-    _strinreReConcateCnt = 0;
-    _strninreReConcateCnt = 0;
-    _reConcateCnt = 0;
-
-    for (size_t i = 0, size = _root->_children.size(); i < size; ++i) {
-        _root->_children[i]->analyze(
-            _iteDVarLegal,_iteCLevel1,_iteChildNotAnd,_strinreRLevel1,_strninreRLevel1,
-            _streqRLevel1,_strneqRLevel1,_strlenRLevel2,_andCLevel2,_ornexist,
-            _strinreLCSV,_strninreLCSV,_streqLCSV,_strneqLCSV,
-            _strlenCnt,_strlenEqCnt,_streqBothSV,_strneqBothSV,_strneqOneConst,_streqBothSC,1,1,_strinreReConcateMT2,_strConcateMT2,_strinreReConcateCnt,_strninreReConcateCnt,_reConcateCnt);
-    }
-    cout << "   iteDVarLegal=" << _iteDVarLegal 
-         << " iteCLevel1=" << _iteCLevel1 
-         << " iteChildNotAnd=" << _iteChildNotAnd 
-         << " strinreRLevel1=" << _strinreRLevel1
-         << " strninreRLevel1=" << _strninreRLevel1
-         << " streqRLevel1=" << _streqRLevel1
-         << " strneqRLevel1=" << _strneqRLevel1
-         << " strlenRLevel2=" << _strlenRLevel2 << endl
-         << "   andCLevel2=" << _andCLevel2
-         << " ornexist=" << _ornexist
-         << " strinreLCSV=" << _strinreLCSV
-         << " strninreLCSV=" << _strninreLCSV
-         << " streqLCSV=" << _streqLCSV
-         << " strneqLCSV=" << _strneqLCSV << endl;
-    if (_strlenCnt == _strlenEqCnt)
-        cout << "   strlenCnt==strlenEqCnt";
-    else
-        cout << "   strlenCnt!=strlenEqCnt";
-    cout << " streqBothSV=" << _streqBothSV
-         << " strneqBothSV=" << _strneqBothSV 
-         << " strneqOneConst=" << _strneqOneConst
-         << " streqBothSC=" << _streqBothSC << endl
-         << "   strinreReConcateMT2=" << _strinreReConcateMT2
-         << " strConcateMT2=" << _strConcateMT2
-         << " strinreReConcateCnt=" << _strinreReConcateCnt 
-         << " strninreReConcateCnt=" << _strninreReConcateCnt 
-         << " reConcateCnt=" << _reConcateCnt;
-    if (_strinreReConcateCnt + _strninreReConcateCnt == _reConcateCnt)
-        cout << " re.++ match" << endl;
-    else 
-        cout << " re.++ not match" << endl;
 }
 
 void PT::mergeNotEquivalence()
@@ -143,16 +57,10 @@ void PT::mergeNotEquivalence()
                     Str2TypeMap::const_iterator jt = typeMap.find((*it)->_children[0]->_name);
                     if (jt != typeMap.end()){
                         if (jt->second != VAR_BOOL) {
-                            #ifndef _NLOG_
-                                logFile << "[WARNING:PT::mergNotEquivalence] \"not\" having non-Bool Variable child=" << (*it)->_children[0]->_name << endl;
-                            #endif
                             cout << "[WARNING:PT::mergeNotEquivalence] \"not\" having non-Bool Variable child=" << (*it)->_children[0]->_name << endl;
                         }
                     }
                     else {
-                        #ifndef _NLOG_
-                            logFile << "[WARNING:PT::mergeNotEquivalence] \"not\" having Bool Return Type child=" << (*it)->_children[0]->_name << " other than Bool Variable" << endl;
-                        #endif
                         cout << "[WARNING:PT::mergeNotEquivalence] \"not\" having Bool Return Type child=" << (*it)->_children[0]->_name << " other than Bool Variable" << endl;
                     }
                     ptq.push(*it);
