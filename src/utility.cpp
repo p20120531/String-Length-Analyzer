@@ -39,13 +39,13 @@ size_t stoi(const string& s)
     return sum;
 }
 
-void splitLine(ofstream& outFile, const char* s)
+void splitLine(const char* s)
 {
-    outFile << endl;
-    outFile << "--------------------"
-            << s
-            << "--------------------";
-    outFile << endl;
+    cout << endl;
+    cout << "--------------------"
+         << s
+         << "--------------------";
+    cout << endl;
 }
 
 void str2tokens(const string& s, vector<string>& tokenList)

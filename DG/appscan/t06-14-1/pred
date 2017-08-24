@@ -1,7 +1,0 @@
-(declare-fun i1 () Int)
-(declare-fun i2 () Int)
-;
-(assert (= i1 (str.indexof URL "www.ha45.com/index.html" 0))) ; indexof 0 1
-(assert (not (> i1 (- 0 1))))
-(assert (= i2 (str.indexof URL "www.ha45.com/index.htm" 0))) ; indexof 2 3
-(assert (> i2 (- 0 1)))

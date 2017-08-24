@@ -1,6 +1,0 @@
-(set-logic QF_S)
-(declare-fun s () String)
-(assert (str.contains s ">") )
-(assert (str.contains s "sc") )
-(assert (str.contains s "ript scr=") )
-(check-sat)

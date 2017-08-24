@@ -1,3 +1,0 @@
-(declare-fun i2 () Int)
-;
-(assert (= i2 (str.len v1))) ; len 0

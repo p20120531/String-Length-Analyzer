@@ -1,7 +1,0 @@
-(declare-fun s () String)
-(declare-fun ret0 () String)
-(declare-fun ret1 () String)
-(assert (= ret0 (ReplaceAll (ReplaceAll  s  "<"  "&lt;")  ">"  "&gt;") ) )
-(assert (= ret1 (Concat  ret0  "<br/>") ) )
-(assert (Contains ret1 "<") )
-(check-sat)

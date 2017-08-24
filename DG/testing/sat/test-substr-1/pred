@@ -1,6 +1,0 @@
-(declare-fun i1 () Int)
-(declare-fun i2 () Int)
-;
-(assert (str.substr v1 0 6)) ; substr 1 2
-(assert (= i1 (str.len v3))) ; len 3
-(assert (= i2 (str.len v1))) ; len 0

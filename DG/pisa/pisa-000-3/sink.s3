@@ -1,6 +1,0 @@
-(declare-fun v1 () String)
-(declare-fun ret () String)
-(assert (not (Contains v1 "<") ) )
-(assert (= ret v1) )
-(assert (Contains ret "<") )
-(check-sat)

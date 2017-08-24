@@ -1,5 +1,0 @@
-(set-logic QF_S)
-(declare-fun ret () String)
-(assert (= ret "x" ) )
-(assert (not (= ret "x") ) )
-(check-sat)

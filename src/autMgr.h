@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <climits>
 #include "utility.h"
+#include "typedef.h"
 #define TGRAPH_NDEBUG
 #define VMTNODE_NDEBUG
 #define AUT_NDEBUG
@@ -34,44 +35,7 @@
 #define AUT_OP_NDEBUG
 #define AUTMGR_NDEBUG
 
-class TGEdge;
-class TGraph;
-class VmtNode;
-class Aut;
-class AutMgr;
-
-// PARAM : has _paramList different from _source
-enum VmtType {
-    // LEAF  (leaf node)
-    // PI    (primary input)
-    INPUT , EXIST  , STATE  , LEN   , STATE_N , LEN_N , PREDBV , PREDIV , 
-    // CONST (constant)
-    NUM   , CONST0 , CONST1 , PARAM , SPECIAL , 
-    // IMD   (intermediate node)
-    NOT=30, NEG    , AND    , OR    , PLUS    , MINUS , LT     , LTOEQ  , EQ, MTOEQ, MT, EXCM, MODULE
-};
-
-enum ModuleType {
-    M_SFA, M_EQ, M_INC1
-};
-
-enum AType {
-    EPSILON, LEFT_ANGLE, RIGHT_ANGLE
-};
-
-enum AutOpType {
-    ADDLEN, PREFIX, SUFFIX, INTERSECT, CONCATE, REPLACE, REPLACE_A4
-};
-
-typedef vector<string>        STRList;
-typedef vector<char>          CHRList;
-typedef vector<TGEdge*>       TGEdgeList;
-typedef vector<VmtNode*>      VmtNodeList;
-typedef set<VmtNode*>         VmtNodeSet;
-typedef map<size_t,string>    CubeMap;
-typedef vector<VmtNodeList>   VarList;
-typedef pair<string,VmtNode*> Str2VmtNode;
-typedef map<string,VmtNode*>  Str2VmtNodeMap;
+namespace aut {
 
 class TGEdge{
     friend class AutMgr;
@@ -181,10 +145,10 @@ class Aut{
             parse(fileName.c_str()); 
         }
         Aut ( const string& fileName, const string& lvarIdxStr, const AutOpType& type ){
-            assert( (type == ADDLEN || type == PREFIX || type == SUFFIX) );
+            assert( (type == TRKLEN || type == PREFIX || type == SUFFIX) );
             init(fileName);
             parse(fileName.c_str());
-            if      (type == ADDLEN) addlen(lvarIdxStr);
+            if      (type == TRKLEN) addlen(lvarIdxStr);
             else if (type == PREFIX) prefix(lvarIdxStr);
             else                     suffix(lvarIdxStr);
         }
@@ -247,7 +211,7 @@ class Aut{
         size_t          mark();
         void            prefix(const string&);
         void            suffix(const string&);
-        void            addpred(const string&);
+        void            addpred(const STRList&, const STRList&);
         void            isempty(const string&);
         // Binary
         void            intersect(Aut*,Aut*);
@@ -349,5 +313,7 @@ class AutMgr{
         string  cube2vmt(const string& cube, const VmtNodeList&);
         // Data Member
         size_t  _gflag;
+};
+
 };
 #endif

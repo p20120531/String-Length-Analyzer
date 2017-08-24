@@ -1,6 +1,0 @@
-A1 ".*"
-A2 "www\.ha45\.com\/index\.html"
-A3 ~\(".*www\.ha45\.com\/index\.html.*"\)
-A5 ~\(".*www\.ha45\.com\/index\.htm.*"\)
-A6 "www\.ha45\.com\/\?vit\=fws"
-A7 ~\(".*www\.ha45\.com\/\?vit\=fws.*"\)

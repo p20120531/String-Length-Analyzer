@@ -1,0 +1,9 @@
+1. install virtualenv
+    https://www.tensorflow.org/install/install_linux#InstallingVirtualenv
+    follow step 1 and 2 for installation,
+    to activate your virtualenv type commands as in step 3
+
+2. git clone https://github.com/p20120531/String-Length-Analyzer.git
+    switch to "parse_remake" branch
+
+3. cp /users/p20120531/sla/bin/trau <the "bin" directory in your clone>

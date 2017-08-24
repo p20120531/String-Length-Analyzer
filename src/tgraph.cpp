@@ -1,6 +1,6 @@
 #include "autMgr.h"
 
-using namespace std;
+namespace aut {
 
 void TGEdge::print() const 
 {
@@ -339,4 +339,6 @@ size_t TGraph::label2Decimal(const string& s)
         assert( (size_t(s[0]) <= MAX_ENCODE));
         return size_t(s[0]);
     }
+}
+
 }

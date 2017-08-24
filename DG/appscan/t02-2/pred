@@ -1,4 +1,0 @@
-(declare-fun i1 () Int)
-;
-(assert (= i1 (str.len cookie_part2))) ; len 0
-(assert (> i1 12))

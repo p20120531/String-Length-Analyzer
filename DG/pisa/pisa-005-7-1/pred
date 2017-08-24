@@ -1,7 +1,0 @@
-(declare-fun i1 () Int)
-(declare-fun i3 () Int)
-;
-(assert (= i1 (- 0 1)))
-(assert (= i3 (str.indexof filename_1 "." 0))) ; indexof 0 1
-(assert (not (= i3 (- 0 1))))
-(assert (str.substr filename_1 0 i3)) ; substr 2 3

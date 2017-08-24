@@ -1,7 +1,0 @@
-(set-logic QF_S)
-(declare-fun s () String)
-(declare-fun var () String)
-(assert (str.contains s "<") )
-(assert (= var (str.++ "<scr" "ipt") ) )
-(assert (str.contains s var) )
-(check-sat)

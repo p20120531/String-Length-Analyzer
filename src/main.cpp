@@ -1,12 +1,10 @@
-#include "kaluzaMgr.h"
 #include "autMgr.h"
 #include "utility.h"
-KaluzaMgr* kmgr = new KaluzaMgr();
-AutMgr*  autmgr = new AutMgr();
+aut::AutMgr* autmgr = new aut::AutMgr();
 
 int main(int argc, char* argv[]) {
     //for (size_t i =0;i<50;++i)
-    //    cout << kmgr->uint2str(i) << endl;
+    //    cout << dtmgr->uint2str(i) << endl;
     /*
     vector<string> v;
     str2tokens(string("abc   dd asdas  "),v);
@@ -18,8 +16,8 @@ int main(int argc, char* argv[]) {
         cout << v[i] << endl;
     */
     //Kaluza
-    //kmgr->read(argv[1],argv[2]);
-    //kmgr->buildAndWriteDG();
+    //dtmgr->read(argv[1],argv[2]);
+    //dtmgr->buildAndWriteDG();
     /*
     string opt(argv[1]);
     if (opt == "0")
@@ -43,8 +41,8 @@ int main(int argc, char* argv[]) {
     autmgr->print();
     */
 
-    //kmgr->closeLogFile();
-    //kmgr->analyzePT();
+    //dtmgr->closeLogFile();
+    //dtmgr->analyzePT();
     /*
     vector<string> v;
     v.push_back("(= 0 (str.len T0_2))");
@@ -146,8 +144,8 @@ int main(int argc, char* argv[]) {
     else if (input == "11")
         autmgr->readCmdFile(argv[2]);
     else if (input == "12") {
-        kmgr->read(argv[2],argv[3]);
-        kmgr->analyzePTASCII();
+        dtmgr->read(argv[2],argv[3]);
+        dtmgr->analyzePTASCII();
     }
     else if (input == "13") {
         autmgr->dot2blif("test0.dot","test0.blif");
@@ -156,6 +154,7 @@ int main(int argc, char* argv[]) {
         autmgr->dot2blif("test1.dot","test1.blif");
     */
     // commands
+    /*
     if (input == "--intersect") {
         Aut* a1 = new Aut(argv[2]);
         Aut* a2 = new Aut(argv[3]);
@@ -163,11 +162,8 @@ int main(int argc, char* argv[]) {
         a3->intersect(a1,a2);
         a3->write(argv[3]);
     }
-    else if (input == "--buildDG") {
-        kmgr->read(argv[2],argv[3]);
-        kmgr->buildAndWriteDG();
-    }
-    else if (input == "--dot2blif") {
+    */
+    if (input == "--dot2blif") {
         autmgr->dot2blif(argv[2],argv[3]);
     }
     else if (input == "--blif2vmt") {
@@ -176,10 +172,7 @@ int main(int argc, char* argv[]) {
     else if (input == "--readCmd") {
         autmgr->readCmdFile(argv[2]);
     }
-    else if (input == "--analyze") {
-        kmgr->read(argv[2],argv[3],1);
-        kmgr->analyzePT();
-    }
+    /*
     else if (input == "0") {
         cout << "addlen " << argv[2] << endl << "write " << argv[3] << endl;
         Aut* a1 = new Aut(argv[2]);
@@ -216,15 +209,16 @@ int main(int argc, char* argv[]) {
     else if (input == "replace_A4") {
         Aut* a1 = new Aut(argv[2]);
         Aut* a2 = new Aut(argv[3]);
-        Aut* a3 = new Aut(a1,a2,REPLACE_A4);
+        Aut* a3 = new Aut(a1,a2,aut::REPLACE_A4);
         a3->write(argv[4]);
     }
     else if (input == "replace") {
         Aut* a1 = new Aut(argv[2]);
         Aut* a2 = new Aut(argv[3]);
-        Aut* a3 = new Aut(a1,a2,0,REPLACE);
+        Aut* a3 = new Aut(a1,a2,0,aut::REPLACE);
         a3->write(argv[4]);
     }
+    */
     else
         cout << "invalid option=" << input << endl;
     //cout << "at main"<< endl;

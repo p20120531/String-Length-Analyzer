@@ -1,8 +1,0 @@
-(set-logic QF_S)
-(declare-fun s () String)
-(declare-fun f () String)
-(declare-fun ret () String)
-(assert (= ret (str.replace s "<" "&lt;") ) )
-(assert (= f (str.++  "jquery.js"  """></script>" ) ) )
-(assert (= s  (str.++ "<script src=""" f ) ) )
-(check-sat)

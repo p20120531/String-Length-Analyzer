@@ -1,12 +1,12 @@
 #include "autMgr.h"
 #include <map>
 
-using namespace std;
-
 ///////////////////////////////// Global Variable /////////////////////////////
 
-extern AutMgr* autmgr;
+extern aut::AutMgr* autmgr;
 static size_t& gflag = autmgr->getGFlag();
+
+namespace aut {
 
 ///////////////////////////// Non-Static Member ///////////////////////////////
 
@@ -901,4 +901,6 @@ void VmtNode::writeSUBCKT(ofstream& file, vector<set<size_t> >& sizeMap ,bool& t
     for ( size_t i = 0, size = _children.size(); i < size; ++i)
         _children[i]->writeSUBCKT(file,sizeMap,tUsed,fUsed,isPred);
     
+}
+
 }

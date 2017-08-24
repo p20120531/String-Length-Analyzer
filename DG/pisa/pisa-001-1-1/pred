@@ -1,4 +1,0 @@
-(declare-fun v3 () Int)
-;
-(assert (= v3 (str.indexof v1 "<" 0))) ; indexof 0 1
-(assert (str.substr v1 0 v3)) ; substr 2 3

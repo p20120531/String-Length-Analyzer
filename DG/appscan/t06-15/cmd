@@ -1,7 +1,0 @@
-suffixof_smt A1 A2
-write D1
-intersect D1 A3
-write beforeaddpred
-addpred
-write sink
-isempty beforeaddpred

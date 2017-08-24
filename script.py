@@ -8,23 +8,21 @@ from subprocess32 import call
 from subprocess32 import TimeoutExpired
 from os import listdir
 from os.path import isdir, isfile, join
+
 ############################## Global Variable ###############################
 Default_TO              = 20
 DPI                     = 400
 ############################## Benchmark Directory ###########################
-benchmark_kaluza_dir    = ['benchmark/Kaluza/SMTLIB/sat/small'  ,
-                           'benchmark/Kaluza/SMTLIB/sat/big'    ,
-                           'benchmark/Kaluza/SMTLIB/unsat/small',
-                           'benchmark/Kaluza/SMTLIB/unsat/big'  ]
-#dg_kaluza_dir           = ['DG/Kaluza/sat/small']
-dg_kaluza_dir           = ['DG/Kaluza/sat/small'  ,'DG/Kaluza/sat/big',
-                           'DG/Kaluza/unsat/small','DG/Kaluza/unsat/big']
-dg_testing_dir          = ['DG/testing/sat', 'DG/testing/unsat']
-dg_pisa_dir             = ['DG/pisa']
-dg_appscan_dir          = ['DG/appscan']
-benchmark_dir           = {'Kaluza' : dg_kaluza_dir,'testing' : dg_testing_dir,'pisa' : dg_pisa_dir,'appscan' : dg_appscan_dir}
-benchmark_set           = (['Kaluza','testing','pisa','appscan','replace_involved'])
-benchmark_abbr_set      = (['--k','--ks','--t','--p','--a','--rep'])
+benchmark_dir           = {'kaluza'  : ['laut/kaluza'] ,
+                           'testing' : ['laut/testing/sat','laut/testing/unsat'],
+                           'pisa'    : ['laut/pisa'  ] ,
+                           'appscan' : ['laut/appscan']}
+benchmark_set           = (['kaluza','testing','pisa','appscan'])
+benchmark_abbr_set      = (['--k','--t','--p','--a'])
+benchmark_abbr_map      = {'--k' : 'kaluza' ,
+                           '--t' : 'testing',
+                           '--p' : 'pisa'   ,
+                           '--a' : 'appscan'}
 ############################## Binary Directory ##############################
 sla_dir                 = 'bin/sla'
 regex2dot_dir           = 'bin/regex2blif/target/regex2blif-0.0.1-SNAPSHOT.jar'
@@ -48,7 +46,8 @@ solver_list             = ['ic3ia','abc','z3','cvc4','norn','ABC','s3p','fat']
 exp_solver_list         = ['ic3ia','abc','z3','cvc4','s3p','norn','ABC','fat']
 repall_solver_list      = ['ic3ia','abc','ABC','fat','s3p']
 
-extention               = {'cvc4':'smt2','norn':'smt2','z3':'smt2','s3p':'s3','ic3ia':'vmt','abc':'abc','ABC':'smt2','fat':'s3'}
+extension               = {'cvc4':'smt2','norn':'smt2','z3':'smt2','s3p':'s3','ic3ia':'vmt','abc':'abc','ABC':'smt2','fat':'s3'}
+
 ##############################################################################
 # [Function Name] file2lines
 # [ Description ] parse file into list of lines
@@ -66,46 +65,31 @@ def file2lines(fileName) :
 # [  Arguments  ]
 ##############################################################################
 def init() :
-    d1 = ['experiment/Kaluza/result']
-    d2 = ['all','strlen','sample']
-    for i in d1 :
-        for j in d2 :
-            call('mkdir -p %s/%s' %(i,j),shell=True)
-    d3 = ['DG/Kaluza']
-    d4 = ['sat','unsat']
-    d5 = ['small','big']
-    for i in d3 :
-        for j in d4 :
-            for k in d5 :
-                call('mkdir -p %s/%s/%s' %(i,j,k),shell=True)
-    call('mkdir -p experiment/testing/result/all',shell=True)
-    call('mkdir -p experiment/appscan/result/all',shell=True)
-    call('mkdir -p experiment/pisa/result/all'   ,shell=True)
-    call('mkdir -p experiment/replace_involved/result/all'   ,shell=True)
-    call('mkdir -p tmp dbg', shell=True)
+    call('mkdir -p dbg tmp', shell=True)
+    for benchmark in benchmark_set : 
+        call('mkdir -p experiment/%s' %(benchmark), shell=True)
+
+def clean(benchmark) :
+    dgIdxList,dgFileList = getSplitMap('experiment/%s/map' %(benchmark))
+    for f in dgFileList :
+        call('rm %s/*.dot %s/*.blif %s/*.vmt %s/*.pfx %s/*.abc' %(f,f,f,f,f),shell=True)
+    
 
 ##############################################################################
-# [Function Name] getDGFile
-# [ Description ] return dependency graph files of the benchmark
-# [  Arguments  ] benchmark = ['Kaluza','testing','pisa','appscan']
+# [Function Name] getLAutFile
+# [ Description ] return length automaton files of the benchmark
+# [  Arguments  ] benchmark = ['kaluza','testing','pisa','appscan']
 ##############################################################################
-def getDGFile(benchmark) :
+def getLAutFile(benchmark) :
     if benchmark not in benchmark_set :
-        sys.exit('[ERROR::getDGFile] invalid benchmark=%s' %(benchmark))
+        sys.exit('[ERROR::getLAutFile] invalid benchmark=%s' %(benchmark))
     
     dgFile = []
     dirs   = benchmark_dir[benchmark]
-    
-    if benchmark == 'Kaluza' :
-        for d in dirs :
-            subpath = [join(d,sp) for sp in listdir(d) if isdir(join(d,sp))]
-            for sp in subpath :
-                dgFile += [join(sp,idx) for idx in listdir(sp) if isdir(join(sp,idx))]
-        return dgFile
-    else :
-        for d in dirs :
-            dgFile += [join(d,sp) for sp in listdir(d) if isdir(join(d,sp))]
-        return dgFile
+    for d in dirs :
+        for sp in listdir(d) : print(sp)
+        dgFile += [join(d,sp) for sp in listdir(d) if isdir(join(d,sp))]
+    return dgFile
 
 ##############################################################################
 # [Function Name] getSplitMap
@@ -125,11 +109,10 @@ def getSplitMap(mapFileName) :
 ##############################################################################
 # [Function Name] getExpResult
 # [ Description ] return record directory and experimental results
-# [  Arguments  ] benchmark = ['Kaluza','testing','pisa','appscan']
-#                 scope     = ['all','strlen','sample']
+# [  Arguments  ] benchmark = ['kaluza','testing','pisa','appscan']
 ##############################################################################
-def getExpResult(benchmark,scope) :
-    r_dir   = 'experiment/%s/result/%s' %(benchmark,scope)
+def getExpResult(benchmark) :
+    r_dir   = 'experiment/%s' %(benchmark)
     solvers = [ f[0:f.find('.')] for f in listdir(r_dir) if isfile(join(r_dir,f)) and f[f.rfind('.')+1:]=='csv']
     data,ret_solvers = [],[]
     for solver in solvers :
@@ -146,8 +129,8 @@ def getExpResult(benchmark,scope) :
 # [  Arguments  ] fileName : csv file
 ##############################################################################
 def getData(benchmark,fileName) :
-    pisa_mute_set    = (['1','2','3','4','5','6'])
-    appscan_mute_set = (['43','45','47','52','65','66','72'])
+    #pisa_mute_set    = (['1','2','3','4','5','6'])
+    #appscan_mute_set = (['43','45','47','52','65','66','72'])
     recStep = False
     solver = fileName[ fileName.rfind('/') + 1 : fileName.rfind('.') ]
     if solver not in solver_set : sys.exit('[ERROR::getData] invalid solver=%s' %(solver))
@@ -158,10 +141,10 @@ def getData(benchmark,fileName) :
         csvreader.next()
         csvreader.next()
         for row in csvreader :
-            if benchmark == 'pisa' :
-                if row[0] in pisa_mute_set : continue
-            elif benchmark == 'appscan' :
-                if row[0] in appscan_mute_set : continue
+            #if benchmark == 'pisa' :
+                #if row[0] in pisa_mute_set : continue
+            #elif benchmark == 'appscan' :
+                #if row[0] in appscan_mute_set : continue
             idx.append(row[0])
             sat.append(row[1])
             time.append(row[2])
@@ -172,87 +155,20 @@ def getData(benchmark,fileName) :
         return idx,sat,time
 
 ##############################################################################
-# [Function Name] buildDG
-# [ Description ] build dependency graph file(s) from the Kaluza benchmark
-# [  Arguments  ] benchmark = ['Kaluza','single']
-##############################################################################
-def buildDG(benchmark,argv=None) :
-    exePath = sla_dir
-    if benchmark == 'Kaluza' :
-        dirs1 = benchmark_kaluza_dir
-        dirs2 = dg_kaluza_dir
-        for i in range(len(dirs1)) : 
-            files = [f for f in listdir(dirs1[i]) if isfile(join(dirs1[i],f))]
-            for f in files :
-                smtFile = join(dirs1[i],f)
-                DGdir = join(dirs2[i],f[0:f.rfind('.')])
-                call('./%s --buildDG %s %s' %(exePath,smtFile,DGdir),shell=True)
-    elif benchmark == 'single' :
-        if len(argv) != 2 : 
-            sys.exit('[ERROR::buildDG] argv size not match for buildDG single')
-        call('./%s --buildDG %s %s' %(exePath,argv[0],argv[1]), shell=True)
-    else :
-        sys.exit('[ERROR::buildDG] invalid benchmark=%s' %(benchmark))
-
-##############################################################################
 # [Function Name] buildMap
 # [ Description ] build id to name map of files
-# [  Arguments  ] benchmark = ['Kaluza','testing','pisa','appscan']
-#                 scope = ['all','strlen','sample']
+# [  Arguments  ] benchmark = ['kaluza','testing','pisa','appscan']
 ##############################################################################
-def buildMap(benchmark,scope) :
+def buildMap(benchmark) :
     if benchmark not in benchmark_set :
         sys.exit('[ERROR::buildMap] invalid benchmark=%s' %(benchmark))
-    if scope != 'all' and scope != 'strlen' and scope != 'sample': 
-        sys.exit('[ERROR::buildMap] invalid scope=%s' %(scope))
-    if benchmark == 'Kaluza' :
-        mapFile = open(join('experiment/Kaluza',scope),'w')
-        mapFile.write('id,name')
-        dgFile,dgCnt = getDGFile('Kaluza'),0
-        if scope == 'all' :
-            for f in dgFile :
-                dgCnt += 1
-                mapFile.write('\n%d,%s' %(dgCnt,f))
-        elif scope == 'strlen' :
-            for f in dgFile :
-                dgCnt += 1
-                predFile = open(join(f,'pred'))
-                lines = predFile.read().splitlines()
-                predFile.close()
-                hasStrlen = False
-                firstcol  = False
-                for line in lines :
-                    if line[-1] != ')' and firstcol == True :
-                        hasStrlen = True
-                    if line[-1] == ';' :
-                        firstcol = True
-                if hasStrlen :
-                    mapFile.write('\n%d,%s' %(dgCnt,f))
-        elif scope == 'sample' :
-            sampleSize= 20000
-            strlenMapFile = open('experiment/Kaluza/strlen')
-            lines = strlenMapFile.read().splitlines()
-            strlenMapFile.close()
-            samples = np.random.choice(len(lines)-1,sampleSize,replace=False)
-            samples.sort()
-            splitNum = sampleSize / 5000
-            for i in range(splitNum) :
-                splitFile = open('experiment/Kaluza/sample_%s' %(i),'w')
-                splitFile.write('id,name')
-                for j in range(i*5000,(i+1)*5000) :
-                    splitFile.write('\n%s' %(lines[samples[j]+1]))
-                    mapFile.write('\n%s' %(lines[samples[j]+1]))
-                splitFile.close()
-        mapFile.close()
-    else :
-        if scope != 'all' : sys.exit('[ERROR::buildMap] benchmark=%s invalid scope=%s' %(benchmark,scope))
-        mapFile = open('experiment/%s/all' %(benchmark),'w')
-        mapFile.write('id,name')
-        dgFile,dgCnt = getDGFile(benchmark),0
-        for f in dgFile :
-            dgCnt += 1
-            mapFile.write('\n%d,%s' %(dgCnt,f))
-        mapFile.close()
+    mapFile = open('experiment/%s/map' %(benchmark),'w')
+    mapFile.write('id,name')
+    dgFile,dgCnt = getLAutFile(benchmark),0
+    for f in dgFile :
+        dgCnt += 1
+        mapFile.write('\n%d,%s' %(dgCnt,f))
+    mapFile.close()
 
 ##############################################################################
 # [Function Name] regex2dot
@@ -261,12 +177,12 @@ def buildMap(benchmark,scope) :
 ##############################################################################
 def regex2dot(dgFileList) :
     tmp = 'tmp/garbage'
-    dbg = 'dbg'
     cnt = 0
     for f in dgFileList :
         print ('fileCnt = %-6d fileName = %s'%(cnt,f))
-        lines = file2lines( join(f,'aut') )
+        lines = file2lines( join(f,'laut') )
         for line in lines :
+            if line == ';' : break
             name = line[ 0 : line.find(' ') ]
             drkt = join( f , name )
             fchr = line[ line.find(' ') + 1 ]
@@ -275,7 +191,7 @@ def regex2dot(dgFileList) :
             else              : regex = line[ line.find('~')   : line.rfind(')') + 1  ]
             print ('aut_name = %-4s regex = %s' %(name,regex))
             ret = call('java -jar %s -r %s -d %s.dot -o %s -l FATAL' 
-	    %(regex2dot_dir,regex,drkt,tmp),stdout=open('%s/r2d.log' %(dbg),'w'),shell=True)
+	    %(regex2dot_dir,regex,drkt,tmp),stdout=open('dbg/r2d.log','w'),shell=True)
             if ret != 0 : sys.exit('[ERROR::regex2dot] fails file=%s' %(drkt))
         cnt += 1
     print ('[INFO::regex2dot] %d cases pass' %(cnt))
@@ -290,8 +206,9 @@ def dot2blif(dgFileList) :
     cnt = 0
     for f in dgFileList :
         print ('fileCnt = %-6d fileName = %s'%(cnt,f))
-        lines = file2lines( join(f,'aut') )
+        lines = file2lines( join(f,'laut') )
         for line in lines :
+            if line == ';' : break
             name = line[ 0 : line.find(' ') ]
             drkt = join( f , name )
             fchr = line[ line.find(' ') + 1 ]
@@ -324,8 +241,9 @@ def blif2vmt(dgFileList) :
     exePath = sla_dir
     for f in dgFileList :
         print ('fileCnt = %-6d fileName = %s'%(cnt,f))
-        lines = file2lines( join(f,'aut') )
+        lines = file2lines( join(f,'laut') )
         for line in lines :
+            if line == ';' : break
             drkt = join( f , line[ 0 : line.find(' ')] )
             ret  = call('./%s --blif2vmt %s.blif %s.vmt' %(exePath,drkt,drkt),stdout=open('dbg/b2v.log','w'),shell=True)
             if ret != 0 : sys.exit('[ERROR::blif2vmt] blif2vmt fails file=%s' %(drkt))
@@ -342,7 +260,7 @@ def readCmd(dgFileList) :
     exePath = sla_dir
     for f in dgFileList :
         print ('fileCnt = %-6d fileName = %s'%(cnt,f))
-        cmdFile = join(f,'cmd')
+        cmdFile = join(f,'laut')
         ret = call('./%s --readCmd %s' %(exePath,cmdFile),stdout=open('dbg/readcmd.log','w'),shell=True)
         if ret != 0 : sys.exit('[ERROR::readCmd] readCmd fails file=%s' %(cmdFile))
         cnt += 1
@@ -351,17 +269,16 @@ def readCmd(dgFileList) :
 ##############################################################################
 # [Function Name] exp
 # [ Description ] experiment on different solvers
-# [  Arguments  ] benchmark  = ['Kaluza','testing','pisa','appscan']
-#                 scope      = ['all','strlen','sample']
+# [  Arguments  ] benchmark  = ['kaluza','testing','pisa','appscan']
 #                 dgIdxList  : idx list of dependency graph files
 #                 dgFileList : file list of dependency graph files
 #                 solver     = ['cvc4','norn','z3','ic3ia']
 #                 1 = sat ; 0 = unsat ; x = error ; t = timeout 
 ##############################################################################
-def exp(benchmark,scope,dgIdxList,dgFileList,solver,TO) :
+def exp(benchmark,dgIdxList,dgFileList,solver,TO) :
     if benchmark not in benchmark_set :
         sys.exit('[ERROR::exp] invalid benchmark=%s' %(benchmark))
-    recordName,header = expParam(benchmark,scope,solver)
+    recordName,header = expParam(benchmark,solver)
     record = open(recordName,'w')
     record.write('benchmark=%s,TO=%.6f' %(benchmark,TO))
     record.write('\n%s' %(header))
@@ -370,27 +287,16 @@ def exp(benchmark,scope,dgIdxList,dgFileList,solver,TO) :
         expRecord(solver,dgIdxList[i],dgFileList[i],record,TO)
     record.close()
 
-def expParam(benchmark,scope,solver) :
-    recordName = 'experiment/%s/result/%s/%s.csv' %(benchmark,scope,solver)
+def expParam(benchmark,solver) :
+    recordName = 'experiment/%s/%s.csv' %(benchmark,solver)
     header     = 'id,sat,time'
     if solver == 'ic3ia' or solver == 'abc': header ='id,sat,time,step'
     return recordName,header
 
-def expSingle(dgFileDir,TO) :
-    if dgFileDir[-1] == '/' : dgFileDir = dgFileDir[0:dgFileDir.rfind('/')]
-    fileName = dgFileDir[dgFileDir.rfind('/') + 1:]
-    call('mkdir -p experiment/single/%s' %(fileName),shell=True)
-    record = open('experiment/single/%s/all_solver.csv' %(fileName),'w')
-    record.write('file : %s TO=%.2fs' %(fileName,TO))
-    record.write('\nidx,sat,time[,step]')
-    for solver in exp_solver_list :
-        record.write('\n%s' %(solver))
-        expRecord(solver,'1',dgFileDir,record,TO)
-
 def expRecord(solver,idx,dirName,record,TO) :
     if solver not in solver_set :
         sys.exit('[ERROR::expRecord] invalid solver name=%s' %(solver))
-    f       = join(dirName,'sink.%s' %(extention[solver]))
+    f       = join(dirName,'sink.%s' %(extension[solver]))
     exePath = solver_dir[solver]
     option  = solver_opt[solver]
     tmpPath = 'tmp/exp'
@@ -512,7 +418,6 @@ def exp_ic3ia(idx,dt,lines,record) :
     else                       : sat = 'x';\
                                  dt  = 0.0
     #TODO safe <-> frame , unsafe <-> step
-    print ('sat=%s' %(sat))
     step = 'x'
     if sat == '1' :
         for i in range(1,len(lines)+1) :
@@ -535,10 +440,9 @@ def exp_ic3ia(idx,dt,lines,record) :
 # [Function Name] ConsistencyChecking
 # [ Description ] consistency checking
 # [  Arguments  ] benchmark  = ['Kaluza','testing','pisa','appscan']
-#                 scope      = ['all','strlen','sample']
 ##############################################################################
-def ConsistencyChecking(benchmark,scope) :
-    r_dir,data,solvers = getExpResult(benchmark,scope)
+def ConsistencyChecking(benchmark) :
+    r_dir,data,solvers = getExpResult(benchmark)
     
     # Case Number Checking
     logFile = open('%s/log' %(r_dir),'w')
@@ -679,16 +583,15 @@ def ConsistencyChecking(benchmark,scope) :
 # [Function Name] plot
 # [ Description ] plot
 # [  Arguments  ] benchmark = ['Kaluza','testing','pisa','appscan']
-#                 scope     = ['all','strlen','sample']
 ##############################################################################
-def plot(benchmark,scope) :
+def plot(benchmark) :
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpat
     from matplotlib.font_manager import FontProperties
     
-    r_dir,data,solvers = getExpResult(benchmark,scope)
+    r_dir,data,solvers = getExpResult(benchmark)
     
     for i in range(len(solvers)) :
         if solvers[i] == 'z3' :
@@ -719,29 +622,6 @@ def plot(benchmark,scope) :
     for i in range(len(solvers)) :
         if solvers[i] == 'ic3ia' or solvers[i] == 'abc' :
             plotScatter(benchmark,r_dir,data[i],solvers[i],plt,mpat)
-
-    '''
-    unsafeStep = np.array(unsafeStep).astype(float)
-    unsafeTime = np.array(unsafeTime).astype(float)
-    print unsafeStep
-    print unsafeTime
-    coeff = np.polyfit(unsafeStep, unsafeTime, 1)
-    yp    = np.zeros(unsafeStep.shape[0])
-    prod  = np.ones(unsafeStep.shape[0])
-    for i in range(1,len(coeff)+1) :
-        yp += coeff[-i] * prod
-        prod *= x
-    plt.plot(unsafeStep,yp,'g')
-    '''
-    '''
-    plt.scatter(unsafeStep,unsafeTime,c='b')
-    plt.title('Time vs Step Scatter Plot (# of case = %d)' %(len(unsafeStep)))
-    plt.xlabel('Step Count')
-    plt.ylabel('Run Time (s)')
-    plt.savefig('%s/step_ic3ia_unsafe.jpg' %(rstr),dpi=DPI)
-    plt.cla()
-    plt.clf()
-    '''
 
 def plotScatter(benchmark,r_dir,data,solver,plt,mpat) :
     unsat,sat = [ [] for x in range(2) ] , [ [] for x in range(2) ]
@@ -856,99 +736,46 @@ def plotCumTime(benchmark,r_dir,data,solvers,plt,mpat) :
 ##############################################################################
 
 def parse(argv) :
-    if   len(argv) == 1 : opt1(argv)
+    if   argv[0] == '--h' : opt_help(argv)
     elif len(argv) == 2 : opt2(argv)
     elif len(argv) <= 4 : opt3(argv)
     else                :
         sys.exit('[ERROR::parse] invalid argc=%d' %(len(argv)))
 
-def benchmark_scope(opt) :
-    if opt not in benchmark_abbr_set :
-        sys.exit('[ERROR::benchmark_scope] invalid opt=%s' %(opt))
-    if   opt == '--k'  : return 'Kaluza' , 'strlen'
-    elif opt == '--ks' : return 'Kaluza' , 'sample'
-    elif opt == '--t'  : return 'testing', 'all'
-    elif opt == '--p'  : return 'pisa'   , 'all'
-    elif opt == '--a'  : return 'appscan', 'all'
-    elif opt == '--rep': return 'replace_involved', 'all'
-
-def opt1(argv) :
-    if   argv[0] == '--buildDG'  : 
-        buildDG('Kaluza')
-        buildMap('Kaluza','all')
-    elif argv[0] == '--resample' :
-        call('rm experiment/Kaluza/sample', shell=True)
-        call('rm -rf experiment/Kaluza/result/sample', shell=True)
-        buildMap('Kaluza','sample')
-    elif argv[0] == '--h' or argv[0] == '-h' :
-        print ('''
-    --buildDG    ( for Kaluza )
-    --resample   ( for Kaluza )
-    --build      < --k | --ks | --t | --p | --a >
-    --clear      < --k | --ks | --t | --p | --a > ( only clear map and experimental results )
-    --reset      < --k | --ks | --t | --p | --a | --rep > ( remove *.dot *.blif *.vmt )
-    --cc         < --k | --ks | --t | --p | --a | --rep >
-    --plot       < --k | --ks | --t | --p | --a | --rep >
+def opt_help(argv) :
+    print ('''
+    --k=kaluza --t=testing --p=pisa --a=appscan
     
-    --execmd     < --k | --ks | --t | --p | --a | --rep > 
-                 < --r2d   | --d2b  | --b2v | --cmd | --all >
+    --build      < --k | --t | --p | --a >
+    --clean      < --k | --t | --p | --a >
+    --cc         < --k | --t | --p | --a >
+    --plot       < --k | --t | --p | --a >
     
-    --solve      < --k | --ks | --t | --p | --a | --rep > 
+    --execmd     < --k | --t | --p | --a > < --r2d | --d2b  | --b2v | --cmd | --all >
+    
+    --solve      < --k | --t | --p | --a > 
                  < --ic3ia | --cvc4 | --z3 | --s3p | --abc | --ABC | --fat | --norn | --all >
                  [ time out (default=20s) ]
     
-    --single     <    dgFileName    > < --r2d | --d2b | --b2v | --cmd | --all | --solve [ time out (default=20s) ] | --reset >
-    
-    --mapFile    <    mapFileName   > < --r2d | --d2b | --b2v | --cmd | --all | --solve [ time out (default=20s) ] | --reset >
               ''')
-    else :
-        sys.exit('[ERROR::opt1] invalid opt=%s' %(argv[0]))
 
 def opt2(argv) :
     if argv[1] not in benchmark_abbr_set :
         sys.exit('[ERROR::opt2] invalid opt=%s' %(argv[1]))
-    t = benchmark_scope(argv[1])
-    if   argv[0] == '--build'   : buildMap(t[0],t[1])
-    elif argv[0] == '--clear'   : call('rm experiment/%s/%s' %(t[0],t[1]),shell=True);\
-                                  call('rm -rf experiment/%s/result/%s' %(t[0],t[1]),shell=True)
-    elif argv[0] == '--reset'   : opt_reset(t[0],t[1])
-    elif argv[0] == '--cc'      : ConsistencyChecking(t[0],t[1])
-    elif argv[0] == '--plot'    : plot(t[0],t[1])
+    t = benchmark_abbr_map[argv[1]]
+    if   argv[0] == '--build'   : buildMap(t)
+    elif argv[0] == '--clean'   : clean(t)
+    elif argv[0] == '--cc'      : ConsistencyChecking(t)
+    elif argv[0] == '--plot'    : plot(t)
     else                        : sys.exit('[ERROR::opt2] invalid opt=%s' %(argv[0]))
 
 def opt3(argv) :
-    if   argv[0] == '--execmd' : t = benchmark_scope(argv[1]);\
-                                 dgIdx,dgFiles = getSplitMap('experiment/%s/%s' %(t[0],t[1]));\
+    if   argv[0] == '--execmd' : dgIdx,dgFiles = getSplitMap('experiment/%s/map' %(benchmark_abbr_map[argv[1]]));\
                                  opt_execmd(argv[2],dgFiles)
     elif argv[0] == '--solve'  : 
-        t = benchmark_scope(argv[1])
-        if len(argv) == 3 : opt_solve(t[0],t[1],argv[2],Default_TO)
-        else              : opt_solve(t[0],t[1],argv[2],float(argv[3]))
-    elif argv[0] == '--single' :
-        if argv[2] == '--reset' :
-            call('rm %s/*.dot %s/*.blif %s/*.vmt' %(argv[1],argv[1],argv[1]), shell=True)
-        elif argv[2] == '--solve' :
-            if len(argv) == 3 : expSingle(argv[1],Default_TO)
-            else              : expSingle(argv[1],float(argv[3]))
-        else :
-            dgFileList = [argv[1]]
-            opt_execmd(argv[2],dgFileList)
-    elif argv[0] == '--mapFile' :
-        scope = argv[1][argv[1].rfind('/')+1:]
-        dgIdxList,dgFileList = getSplitMap('%s' %(argv[1]))
-        #for i in range(len(dgIdxList)) :
-            #print ('%-8s %s' %(dgIdxList[i],dgFileList[i]))
-        if argv[2] == '--reset' :
-            for dg in dgFileList : 
-                call('rm %s/*.dot %s/*.blif %s/*.vmt' %(dg,dg,dg), shell=True)
-        elif argv[2] == '--solve' :
-            call('mkdir -p experiment/Kaluza/result/%s' %(scope))
-            if len(argv) == 4 : TO = float(argv[3])
-            else              : TO = Default_TO
-            for solver in exp_solver_list :
-                exp('Kaluza',scope,dgIdxList,dgFileList,solver,TO)
-        else :
-            opt_execmd(argv[2],dgFileList)
+        t = benchmark_abbr_map[argv[1]]
+        if len(argv) == 3 : opt_solve(t,argv[2],Default_TO)
+        else              : opt_solve(t,argv[2],float(argv[3]))
     else : sys.exit('[ERROR::opt3] invalid opt=%s' %(argv[0]))
 
 def opt_execmd(opt,dgFileList) :
@@ -962,127 +789,72 @@ def opt_execmd(opt,dgFileList) :
                           readCmd(dgFileList)
     else : sys.exit('[ERROR:opt_execmd] invalid opt=%s' %(opt))
 
-def opt_reset(benchmark,scope) :
-    dgIdxList, dgFileList = getSplitMap('experiment/%s/%s' %(benchmark,scope))
-    for dgFile in dgFileList :
-        call('rm %s/*.dot %s/*.blif %s/*.vmt' %(dgFile,dgFile,dgFile), shell=True)
-
-def opt_solve(benchmark,scope,opt,TO) :
-    if   benchmark == 'replace_involved' : solvers = repall_solver_list
-    elif opt == '--all' : solvers = exp_solver_list
+def opt_solve(benchmark,opt,TO) :
+    if   opt == '--all' : solvers = exp_solver_list
     else                : solvers = [ opt[ opt.rfind('-') + 1 : ] ]
-    dgIdxList, dgFileList = getSplitMap('experiment/%s/%s' %(benchmark,scope))
+    dgIdxList, dgFileList = getSplitMap('experiment/%s/map' %(benchmark))
     for solver in solvers :
-        exp(benchmark,scope,dgIdxList,dgFileList,solver,TO)
+        exp(benchmark,dgIdxList,dgFileList,solver,TO)
 
-def rectifyKaluza() :
-    dgIdxList,dgFileList = getSplitMap('experiment/Kaluza/sample')
-    '''
-    for dg in dgFileList :
-        call('mkdir -p kaluza_sample/%s' %(dg),shell=True)
-        call('cp -r %s kaluza_sample/%s' %(dg,dg),shell=True)
-    '''
-    for dg in dgFileList :
-        lines = file2lines(join(dg,'sink.s3'))
-        rect  = open(join(dg,'sink.s3'),'w')
-        for line in lines :
-            if line == '(set-logic QF_S)' or line == '(get-model)' or line == '(set-option :produce-models true)' or line == '' : continue
-            if line.find('In ') != -1 :
-                v = line.split()
-                rect.write('%s' %(v[0]))
-                for i in range(1,len(v)) :
-                    if v[i] == '(In' :
-                        rect.write(' (=')
-                    else :
-                        rect.write(' %s' %(v[i]))
-                rect.write('\n')
-            else :
-                v = line.split()
-                if v[0] == '(declare-variable' :
-                    if len(v) != 3 : sys.exit('len(v) != 3')
-                    rect.write('(declare-fun %s () %s\n' %(v[1],v[2]))
-                else :
-                    rect.write('%s\n' %(line))
-        rect.close()
-    for dg in dgFileList :
-        lines = file2lines(join(dg,'sink.smt2'))
-        rect  = open(join(dg,'sink.smt2'),'w')
-        for line in lines :
-            if line == '(get-model)' or line == '(set-option :produce-models true)' or line == '' : continue
-            rect.write('%s\n' %(line))
-        rect.close()
-def rectify(name) :
-    dgIdxList,dgFileList = getSplitMap('experiment/%s/all' %(name))
-    
-    for dg in dgFileList :
-        lines = file2lines(join(dg,'cmd'))
-        rect  = open(join(dg,'cmd'),'w')
-        for line in lines :
-            if line == 'addpred pred' :
-                rect.write('addpred\n')
-            else :
-                rect.write('%s\n' %(line))
-        rect.close()
-    
-    for dg in dgFileList :
-        lines = file2lines(join(dg,'cmd'))
-        rect  = open(join(dg,'cmd'),'w')
-        for i in range(len(lines)) :
-            rect.write('%s\n' %(lines[i]))
-            if i != len(lines) - 1 :
-                if lines[i+1] == 'addpred' :
-                    rect.write('write beforeaddpred\n')
-        rect.write('isempty beforeaddpred')
-        rect.close()
-    
-    for dg in dgFileList :
-        lines = file2lines(join(dg,'sink.s3'))
-        rect  = open(join(dg,'sink.s3'),'w')
-        for line in lines :
-            if line == '(set-logic QF_S)' or line == '(get-model)' or line == '(set-option :produce-models true)' or line == '' : continue
-            v = line.split()
-            if v[0] == '(declare-variable' :
-                if len(v) != 3 : sys.exit('len(v) != 3')
-                rect.write('(declare-fun %s () %s\n' %(v[1],v[2]))
-            else :
-                rect.write('%s\n' %(line))
-        rect.close()
-    for dg in dgFileList :
-        lines = file2lines(join(dg,'sink.smt2'))
-        rect  = open(join(dg,'sink.smt2'),'w')
-        for line in lines :
-            if line == '(get-model)' or line == '(set-option :produce-models true)' or line == '' : continue
-            rect.write('%s\n' %(line))
-        rect.close()
-
-def sampleKaluza() :
-    tot = 2000.0
-    dgIdxList,dgFileList = getSplitMap('experiment/Kaluza/strlen')
-    scope = [[] for x in range(4)]
-    for i in range(len(dgFileList)) :
-        v = dgFileList[i].split('/')
-        if v[2] == 'sat' :
-            if v[3] == 'small' : idx = 0
-            else : idx = 1
+def mergeFile(mapFile,kaluza=0) :
+    lines = file2lines(mapFile)
+    cnt = 0
+    for i in range(1,len(lines)) :
+        cnt += 1
+        path = (lines[i].split(','))[1]
+        print ('path=%s' %(path))
+        
+        if kaluza == 1 :
+            call('mkdir -p laut/kaluza/%d' %(cnt),shell=True)
+            call('cp %s/sink.smt2 laut/kaluza/%d' %(path,cnt), shell=True)
+            call('cp %s/sink.s3   laut/kaluza/%d' %(path,cnt), shell=True)
+            laut = open('laut/kaluza/%d/laut' %(cnt),'w')
         else :
-            if v[3] == 'small' : idx = 2
-            else : idx = 3
-        scope[idx].append((dgIdxList[i],dgFileList[i]))
-    
-    sample = []
-    for i in range(4) :
-        sampleSize = int( tot * len(scope[i]) / len(dgFileList) )
-        sampleIdx  = np.random.choice(len(scope[i]),sampleSize,replace=False)
-        for idx in sampleIdx : sample.append(scope[i][idx])
-    
-    f = open('experiment/Kaluza/sample','w')
-    f.write('id,name')
-    for t in sample : f.write('\n%s,%s' %(t[0],t[1]))
-    f.close()
+            laut = open('%s/laut' %(path),'w')
+
+        aut  = file2lines('%s/aut'  %(path))
+        pred = file2lines('%s/pred' %(path))
+        cmd  = file2lines('%s/cmd'  %(path))
+        
+        for l in aut : laut.write('%s\n' %(l))
+        laut.write(';\n')
+
+        section = 0
+        for l in pred :
+            if l == ';' :
+                section = 1
+                laut.write(';\n')
+                continue
+            if section == 0 :
+                v = l.split()
+                laut.write('%s %s\n' %(v[1],v[3][0:-1]))
+            else :
+                if l[-1] == ')' :
+                    laut.write('%s\n' %(l[8:-1]))
+                else :
+                    v = l.split()
+                    if   v[3] == '(str.len' : laut.write('(trklen %s %s)\n' %(v[2],v[7]))
+                    elif v[2] == '(str.len' : laut.write('(trklen %s %s)\n' %(v[4][0:-1],v[7]))
+                    elif v[3] == '(str.indexof' : laut.write('(trkidx %s %s %s %s)\n' %(v[6][0:-3],v[2],v[9],v[10]))
+                    elif v[2] == '(str.indexof' : laut.write('(trkidx %s %s %s %s)\n' %(v[5][0:-1],v[6][0:-2],v[9],v[10]))
+                    elif v[1] == '(str.substr'  : laut.write('(substr %s %s %s %s)\n' %(v[3],v[4][0:-2],v[7],v[8]))
+
+        laut.write(';\n')
+
+        for l in cmd :
+            if l == 'write beforeaddpred' : continue
+            if l == 'addpred' or l == 'addpred pred' :
+                laut.write('addpred\nwrite sink\nisempty sink')
+                break
+            v = l.split()
+            if v[0] == 'addlen' : v[0] = 'trklen'
+            elif v[0] == 'indexof' : v[0] = 'trkidx'
+            laut.write('%s' %(v[0]))
+            for j in range(1,len(v)) : laut.write(' %s' %(v[j]))
+            laut.write('\n')
+        laut.close()
 
 if __name__ == '__main__' :
-    init()
-    parse(sys.argv[1:])
-    #rectify('pisa')
-    #rectify('appscan')
-    #rectifyKaluza()
+    #init()
+    #parse(sys.argv[1:])
+    mergeFile(sys.argv[1],1)

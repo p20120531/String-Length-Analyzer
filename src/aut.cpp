@@ -1,11 +1,11 @@
 #include "autMgr.h"
 
-using namespace std;
-
 ///////////////////////////////// Global Variable /////////////////////////////
 
-extern AutMgr* autmgr;
+extern aut::AutMgr* autmgr;
 static size_t& gflag = autmgr->getGFlag();
+
+namespace aut {
 
 ///////////////////////////////// Static Member ///////////////////////////////
 
@@ -1555,8 +1555,9 @@ void Aut::suffix(const string& lvarIdxStr)
     renameDef();
 }
 
-void Aut::addpred(const string& fileName)
+void Aut::addpred(const STRList& declList, const STRList& predList)
 {
+    /*
     string line;
     ifstream file(fileName.c_str());
 
@@ -1578,6 +1579,12 @@ void Aut::addpred(const string& fileName)
             cout << "[ERROR::Aut::addpred] invalid sCnt=" << sCnt << endl;
         }
     }
+    */
+    size_t sCnt = 0, pCnt = 0;
+    // using a stand-alone vmap to prevent naming collision
+    Str2VmtNodeMap predVMap;
+    for (size_t i = 0, size = declList.size(); i < size; ++i) parseDef (declList[i], predVMap);
+    for (size_t i = 0, size = predList.size(); i < size; ++i) parsePred(predList[i], pCnt, predVMap);
     
     // renaming and replace global by local
     for (size_t i = 0, size = _piList[PREDBV].size(); i < size; ++i) {
@@ -1634,10 +1641,10 @@ void Aut::addpred(const string& fileName)
 
 void Aut::parseDef(const string& line, Str2VmtNodeMap& vmap)
 {
-    cout << "pvmap in parseDef " << &vmap << endl;
     #ifndef AUT_OP_NDEBUG
         cout << "[Aut::parseDef] line = \"" << line << "\"" << endl;
     #endif
+    /*
     size_t i = 0, j = 0;
     string name, type;
     while (line[i] != ' ') ++i;
@@ -1648,6 +1655,11 @@ void Aut::parseDef(const string& line, Str2VmtNodeMap& vmap)
     j = i;
     while (line[i] != ')') ++i;
     type = line.substr(j,i-j);
+    */
+    STRList tokenList;
+    str2tokens(line," ",tokenList);
+    const string& name = tokenList[0];
+    const string& type = tokenList[1];
     
     #ifndef AUT_OP_NDEBUG
         cout << "[Aut::parseDef] name=" << name << " type=" << type << endl;
@@ -1671,150 +1683,125 @@ void Aut::parseDef(const string& line, Str2VmtNodeMap& vmap)
 
 void Aut::parsePred(const string& line, size_t& pCnt, Str2VmtNodeMap& vmap)
 {
-    cout << "pvmap in parsepred " << &vmap << endl;
     #ifndef AUT_OP_NDEBUG
         cout << "[Aut::parsePred] line = \"" << line << "\"" << endl;
     #endif
-    if (line[8] != '(') {
-        size_t i = 8;
+    if (line[0] != '(') {
+        size_t i = 0;
         while (line[i] != ')') ++i;
-        string var = line.substr(8,i-8);
+        string var = line.substr(0,i-0);
         Str2VmtNodeMap::iterator it = vmap.find(var);
         assert((it != vmap.end()));
         defineFun( "p" + itos(pCnt++), var, _predList, vmap);
     }
-    else {
-        if ( *(line.rbegin()) == ')') {
-            string body = line.substr(8,line.size()-1-8);
-            defineFun( "p" + itos(pCnt++), body, _predList, vmap);
+    else if ( line.size() >= 7) {
+        string op = line.substr(1,6);
+        STRList tokenList;
+        str2tokens(line," ()",tokenList);
+
+        if ( op == "trklen") {
+            size_t lvarIdx = stoi(tokenList[2]);
+            VmtNode* pNode = new VmtNode( "p" + itos(pCnt++) );
+            _predList.push_back(pNode);
+            vmap.insert(Str2VmtNode(pNode->_name,pNode));
+
+            const string& aname = tokenList[1];
+
+            VmtNode* alias = 0;
+            Str2VmtNodeMap::iterator it = vmap.find(aname);
+            if (it == vmap.end()) {alias = new VmtNode(aname); cout << "not found " << aname << endl;}
+            else                  {alias = it->second; cout << "find " << aname << endl;}
+
+            VmtNode* eq = new VmtNode("=");
+            eq->addChild(alias);
+            eq->addChild(piList[LEN][lvarIdx]);
+            pNode->addChild(eq);
         }
-        else {
-            size_t i = 8;
-            size_t dCnt = 1;
-            while (dCnt != 0) {
-                ++i;
-                if     (line[i] == '(') ++dCnt;
-                else if(line[i] == ')') --dCnt;
-            }
-            vector<string> bodyTokens;
-            str2tokens(line.substr(8,(i+1)-8)," ()",bodyTokens);
-
-            vector<string> tokenList;
-            str2tokens(line.substr(line.find_last_of(';')+1),tokenList);
+        else if ( op == "trkidx") {
+            assert( (tokenList.size() == 5) );
+            size_t n0 = stoi(tokenList[3]);
+            size_t n1 = stoi(tokenList[4]);
+            VmtNode* pNode0 = new VmtNode( "p" + itos(pCnt++) );
+            VmtNode* pNode1 = new VmtNode( "p" + itos(pCnt++) );
+            _predList.push_back(pNode0);
+            _predList.push_back(pNode1);
+            vmap.insert(Str2VmtNode(pNode0->_name,pNode0));
+            vmap.insert(Str2VmtNode(pNode1->_name,pNode1));
             
-            if (tokenList[0] == "len") {
-                assert( (tokenList.size() == 2) );
-                assert( (bodyTokens[0] == "=") );
-                assert( (bodyTokens[2] == "str.len" || bodyTokens[1] == "str.len") );
-                size_t lvarIdx = stoi(tokenList[1]);
-                VmtNode* pNode = new VmtNode( "p" + itos(pCnt++) );
-                _predList.push_back(pNode);
-                vmap.insert(Str2VmtNode(pNode->_name,pNode));
+            const string& aname = tokenList[2];
+            const string& kname = tokenList[1];
 
-                string aname;
-                if (bodyTokens[2] == "str.len") aname = bodyTokens[1];
-                else                            aname = bodyTokens[3];
+            VmtNode* alias = 0;
+            VmtNode* kNode = 0;
+            Str2VmtNodeMap::iterator it0 = vmap.find(aname);
+            assert( (it0 != vmap.end()) );
+            alias = it0->second;
+            Str2VmtNodeMap::iterator it1 = vmap.find(kname);
+            if (it1 == vmap.end()) kNode = new VmtNode(kname);
+            else                   kNode = it1->second;
+            
+            VmtNode* eq0   = new VmtNode("=");
+            VmtNode* plus0 = new VmtNode("+");
+            plus0->addChild(piList[LEN][n0]);
+            plus0->addChild(piList[LEN][n1]);
+            eq0->addChild(alias);
+            eq0->addChild(plus0);
+            pNode0->addChild(eq0);
 
-                VmtNode* alias = 0;
-                Str2VmtNodeMap::iterator it = vmap.find(aname);
-                if (it == vmap.end()) {alias = new VmtNode(aname); cout << "not found " << aname << endl;}
-                else                  {alias = it->second; cout << "find " << aname << endl;}
+            VmtNode* eq1   = new VmtNode("=");
+            eq1->addChild(kNode);
+            eq1->addChild(piList[LEN][n1]);
+            pNode1->addChild(eq1);
+        }
+        else if ( op == "substr") {
+            assert( (tokenList.size() == 5) );
+            size_t n0 = stoi(tokenList[3]);
+            size_t n1 = stoi(tokenList[4]);
+            VmtNode* pNode0 = new VmtNode( "p" + itos(pCnt++) );
+            VmtNode* pNode1 = new VmtNode( "p" + itos(pCnt++) );
+            _predList.push_back(pNode0);
+            _predList.push_back(pNode1);
+            vmap.insert(Str2VmtNode(pNode0->_name,pNode0));
+            vmap.insert(Str2VmtNode(pNode1->_name,pNode1));
 
-                VmtNode* eq = new VmtNode("=");
-                eq->addChild(alias);
-                eq->addChild(piList[LEN][lvarIdx]);
-                pNode->addChild(eq);
-            }
-            else if (tokenList[0] == "substr") {
-                assert( (tokenList.size() == 3) );
-                assert( (bodyTokens[0] == "str.substr") );
-                size_t n0 = stoi(tokenList[1]);
-                size_t n1 = stoi(tokenList[2]);
-                VmtNode* pNode0 = new VmtNode( "p" + itos(pCnt++) );
-                VmtNode* pNode1 = new VmtNode( "p" + itos(pCnt++) );
-                _predList.push_back(pNode0);
-                _predList.push_back(pNode1);
-                vmap.insert(Str2VmtNode(pNode0->_name,pNode0));
-                vmap.insert(Str2VmtNode(pNode1->_name,pNode1));
-
-                VmtNode* i1Node  = 0;
-                VmtNode* i12Node = 0;
-                VmtNode* i2Node  = 0;
-                Str2VmtNodeMap::iterator it0  = vmap.find(bodyTokens[2]);
-                if (it0 == vmap.end()) {
-                    assert( (isNumber(bodyTokens[2])) );
-                    i1Node  = new VmtNode(bodyTokens[2]);
-                    i12Node = new VmtNode(bodyTokens[2]);
-                }
-                else {
-                    i1Node  = it0->second;
-                    i12Node = i1Node;
-                }
-                Str2VmtNodeMap::iterator it1  = vmap.find(bodyTokens[3]);
-                if (it1 == vmap.end()) i2Node = new VmtNode(bodyTokens[3]);
-                else                   i2Node = it1->second;
-
-                VmtNode* eq0   = new VmtNode("=");
-                eq0->addChild(piList[LEN][n0]);
-                eq0->addChild(i1Node);
-                pNode0->addChild(eq0);
-                
-                VmtNode* eq1   = new VmtNode("=");
-                VmtNode* plus1 = new VmtNode("+");
-                plus1->addChild(i12Node);
-                plus1->addChild(i2Node);
-                eq1->addChild(piList[LEN][n1]);
-                eq1->addChild(plus1);
-                pNode1->addChild(eq1);
-            }
-            else if (tokenList[0] == "indexof") {
-                assert( (tokenList.size() == 3) );
-                assert( (bodyTokens[0] == "=") );
-                assert( (bodyTokens[2] == "str.indexof" || bodyTokens[1] == "str.indexof") );
-                size_t n0 = stoi(tokenList[1]);
-                size_t n1 = stoi(tokenList[2]);
-                VmtNode* pNode0 = new VmtNode( "p" + itos(pCnt++) );
-                VmtNode* pNode1 = new VmtNode( "p" + itos(pCnt++) );
-                _predList.push_back(pNode0);
-                _predList.push_back(pNode1);
-                vmap.insert(Str2VmtNode(pNode0->_name,pNode0));
-                vmap.insert(Str2VmtNode(pNode1->_name,pNode1));
-                
-                string aname,kname;
-                if (bodyTokens[2] == "str.indexof") {
-                    aname = bodyTokens[1];
-                    kname = bodyTokens[5];
-                }
-                else {
-                    aname = bodyTokens[5];
-                    kname = bodyTokens[4];
-                }
-                VmtNode* alias = 0;
-                VmtNode* kNode = 0;
-                Str2VmtNodeMap::iterator it0 = vmap.find(aname);
-                assert( (it0 != vmap.end()) );
-                alias = it0->second;
-                Str2VmtNodeMap::iterator it1 = vmap.find(kname);
-                if (it1 == vmap.end()) kNode = new VmtNode(kname);
-                else                   kNode = it1->second;
-                
-                VmtNode* eq0   = new VmtNode("=");
-                VmtNode* plus0 = new VmtNode("+");
-                plus0->addChild(piList[LEN][n0]);
-                plus0->addChild(piList[LEN][n1]);
-                eq0->addChild(alias);
-                eq0->addChild(plus0);
-                pNode0->addChild(eq0);
-
-                VmtNode* eq1   = new VmtNode("=");
-                eq1->addChild(kNode);
-                eq1->addChild(piList[LEN][n1]);
-                pNode1->addChild(eq1);
+            VmtNode* i1Node  = 0;
+            VmtNode* i12Node = 0;
+            VmtNode* i2Node  = 0;
+            Str2VmtNodeMap::iterator it0  = vmap.find(tokenList[1]);
+            if (it0 == vmap.end()) {
+                assert( (isNumber(tokenList[1])) );
+                i1Node  = new VmtNode(tokenList[1]);
+                i12Node = new VmtNode(tokenList[1]);
             }
             else {
-                cout << "readPredFile::[WARNING] invalid type=" << tokenList[0] << endl;
+                i1Node  = it0->second;
+                i12Node = i1Node;
             }
+            Str2VmtNodeMap::iterator it1  = vmap.find(tokenList[2]);
+            if (it1 == vmap.end()) i2Node = new VmtNode(tokenList[2]);
+            else                   i2Node = it1->second;
+
+            VmtNode* eq0   = new VmtNode("=");
+            eq0->addChild(piList[LEN][n0]);
+            eq0->addChild(i1Node);
+            pNode0->addChild(eq0);
+            
+            VmtNode* eq1   = new VmtNode("=");
+            VmtNode* plus1 = new VmtNode("+");
+            plus1->addChild(i12Node);
+            plus1->addChild(i2Node);
+            eq1->addChild(piList[LEN][n1]);
+            eq1->addChild(plus1);
+            pNode1->addChild(eq1);
         }
+        else {
+            string body = line.substr(0,line.size()-0);
+            defineFun( "p" + itos(pCnt++), body, _predList, vmap);
+        }
+    }
+    else {
+        string body = line.substr(0,line.size()-0);
+        defineFun( "p" + itos(pCnt++), body, _predList, vmap);
     }
 }
 
@@ -2211,4 +2198,6 @@ void Aut::writeINC1(const size_t& bitNum, ofstream& file)
     file << "\n.names const1"
          << "\n1"
          << "\n.end\n";
+}
+
 }

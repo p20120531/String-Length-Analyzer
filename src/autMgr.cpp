@@ -1,6 +1,6 @@
 #include "autMgr.h"
 
-using namespace std;
+namespace aut {
 
 void AutMgr::dot2blif(const char* inFileName, const char* outFileName)
 {
@@ -187,9 +187,15 @@ void AutMgr::readCmdFile(const char* fileName)
     string path(fileName);
     path = path.substr(0,path.find_last_of("/")) + "/";
     cout << ">> readCmd::dgDir = " << path << endl;
+    size_t section = 0;
     Aut* cur = 0;
-    vector<string> tokenList;
+    vector<string> tokenList, declList, predList;
     while(getline(file,line)) {
+        if (line == ";")  { ++section; continue; }
+        if (section == 0) { continue; }
+        else if (section == 1) { declList.push_back(line); continue; }
+        else if (section == 2) { predList.push_back(line); continue; }
+        
         tokenList.clear();
         str2tokens(line,tokenList);
         if (tokenList[0][0] == ';' || tokenList[0] == ";") continue;
@@ -230,8 +236,8 @@ void AutMgr::readCmdFile(const char* fileName)
             Aut* a2 = new Aut( path + tokenList[2] + ".vmt" );
             cur     = new Aut( a1, a2, CONCATE );
         }
-        else if (tokenList[0] == "addlen") {
-            cur = new Aut( path + tokenList[1] + ".vmt", tokenList[2], ADDLEN );
+        else if (tokenList[0] == "trklen") {
+            cur = new Aut( path + tokenList[1] + ".vmt", tokenList[2], TRKLEN );
         }
         else if (tokenList[0] == "replace") {
             Aut* a1 = new Aut( path + tokenList[1] + ".vmt" );
@@ -251,18 +257,18 @@ void AutMgr::readCmdFile(const char* fileName)
             Aut* a3 = new Aut( path + tokenList[1] + "_prefix.pfx" );
             Aut* a4 = new Aut( a2, a3, CONCATE );
             //a4->addpred( path + "pred" );
-            a4->write  ( path + "pfx.vmt" );
-            a4->isempty( path + "pfx.blif" );
+            //a4->write  ( path + "pfx.vmt" );
+            //a4->isempty( path + "pfx.blif" );
             
             cur = new Aut( path + tokenList[1] + "_prefix.pfx" , tokenList[2], SUFFIX );
         }
-        else if (tokenList[0] == "indexof") {
+        else if (tokenList[0] == "trkidx") {
             Aut* a1  = new Aut( path + tokenList[3] + ".vmt" );
             Aut* a2  = new Aut( alphabet_dir );
             //Aut* a3 = new Aut();
             //a3->concate(a1,a2);
             Aut* a3  = new Aut( a1, a2, CONCATE );
-            Aut* a4  = new Aut( sigma_star_dir, tokenList[4], ADDLEN );
+            Aut* a4  = new Aut( sigma_star_dir, tokenList[4], TRKLEN );
             //a4->addlen(tokenList[4]);
             Aut* a5  = new Aut( path + tokenList[2] + ".vmt" );
             //Aut* a6 = new Aut();
@@ -271,7 +277,7 @@ void AutMgr::readCmdFile(const char* fileName)
             //Aut* a7 = new Aut();
             //a7->intersect(a6,a3);
             Aut* a7  = new Aut( a6, a3, INTERSECT );
-            Aut* a8  = new Aut( sigma_star_dir, tokenList[5], ADDLEN );
+            Aut* a8  = new Aut( sigma_star_dir, tokenList[5], TRKLEN );
             //a8->addlen(tokenList[5]);
             //Aut* a9 = new Aut();
             //a9->concate(a8,a7);
@@ -284,21 +290,24 @@ void AutMgr::readCmdFile(const char* fileName)
         }
         else if (tokenList[0] == "isempty") {
             Aut* a1 = new Aut( epsilon_dir );
-            Aut* a2 = new Aut( path + tokenList[1] + ".vmt" );
+            Aut* a2 = new Aut( path + "before_addpred.vmt" );
             cur     = new Aut( a1, a2, CONCATE );
-            cur->addpred( path + "pred" );
+            cur->addpred( declList, predList );
             cur->write  ( path + "fin.vmt" );
             cur->isempty( path + "sink.blif" );
             
             string abcFileName = path + "sink.abc";
             ofstream abcFile( abcFileName.c_str() );
+            
+            // Modify ABC Operation here
             abcFile << "read " << path << "sink.blif\n"
                     << "strash\n"
                     << "pdr";
             abcFile.close();
         }
         else if (tokenList[0] == "addpred") {
-            cur->addpred( path + "pred" );
+            cur->write  ( path + "before_addpred.vmt" );
+            cur->addpred( declList, predList );
         }
         else if (tokenList[0] == "write") {
             cur->write( path + tokenList[1] + ".vmt" );
@@ -308,4 +317,6 @@ void AutMgr::readCmdFile(const char* fileName)
             return;
         }
     }
+}
+
 }

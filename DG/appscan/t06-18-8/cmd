@@ -1,9 +1,0 @@
-notcontains A1 A3
-write D1
-notcontains D1 A5
-write D2
-notcontains D2 A7
-write beforeaddpred
-addpred
-write sink
-isempty beforeaddpred
