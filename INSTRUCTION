@@ -27,3 +27,5 @@
     export LD_LIBRARY_PATH
     PATH="< the absolute path of the "bin" directory in your clone >/z3-z3-4.4.1.0/build/":$PATH
     export PATH
+
+5. type "script.py --h" to get help information

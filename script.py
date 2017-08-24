@@ -746,16 +746,16 @@ def opt_help(argv) :
     print ('''
     --k=kaluza --t=testing --p=pisa --a=appscan
     
-    --build      < --k | --t | --p | --a >
-    --clean      < --k | --t | --p | --a >
-    --cc         < --k | --t | --p | --a >
-    --plot       < --k | --t | --p | --a >
+    build map file           : --build      < --k | --t | --p | --a >
+    remove intermediate files: --clean      < --k | --t | --p | --a >
+    consistency checking     : --cc         < --k | --t | --p | --a >
+    plot figures             : --plot       < --k | --t | --p | --a >
     
-    --execmd     < --k | --t | --p | --a > < --r2d | --d2b  | --b2v | --cmd | --all >
+    construction             : --execmd     < --k | --t | --p | --a > < --r2d | --d2b  | --b2v | --cmd | --all >
     
-    --solve      < --k | --t | --p | --a > 
-                 < --ic3ia | --cvc4 | --z3 | --s3p | --abc | --ABC | --fat | --norn | --all >
-                 [ time out (default=20s) ]
+    solve                    : --solve      < --k | --t | --p | --a > 
+                                            < --ic3ia | --cvc4 | --z3 | --s3p | --abc | --ABC | --fat | --norn | --all >
+                                            [ time out (default=20s) ]
     
               ''')
 
@@ -855,6 +855,6 @@ def mergeFile(mapFile,kaluza=0) :
         laut.close()
 
 if __name__ == '__main__' :
-    #init()
-    #parse(sys.argv[1:])
-    mergeFile(sys.argv[1],1)
+    init()
+    parse(sys.argv[1:])
+    #mergeFile(sys.argv[1],1)
