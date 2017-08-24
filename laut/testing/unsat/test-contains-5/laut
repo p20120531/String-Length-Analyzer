@@ -1,0 +1,20 @@
+A1 ".*"
+A2 "ab"
+A3 ".*"
+A4 "(bb)+"
+;
+i1 Int
+;
+(trklen i1 0)
+;
+trklen A1 0
+write D1
+intersect D1 A2
+write D2
+intersect A3 A4
+write D3
+contains D2 D3
+write D4
+addpred
+write sink
+isempty sink

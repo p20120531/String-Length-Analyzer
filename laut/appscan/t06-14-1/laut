@@ -1,0 +1,20 @@
+A1 ".*"
+A2 "www\.ha45\.com\/index\.html"
+A3 ~\(".*www\.ha45\.com\/index\.html.*"\)
+A4 "www\.ha45\.com\/index\.htm"
+A5 ~\(".*www\.ha45\.com\/index\.htm.*"\)
+;
+i1 Int
+i2 Int
+;
+(trkidx 0 i1 0 1)
+(not (> i1 (- 0 1)))
+(trkidx 0 i2 2 3)
+(> i2 (- 0 1))
+;
+trkidx A1 A2 A3 0 1
+write D1
+trkidx D1 A4 A5 2 3
+addpred
+write sink
+isempty sink

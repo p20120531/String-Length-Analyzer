@@ -1,0 +1,28 @@
+A1 ".*"
+A2 "abcdef"
+A3 ".*"
+A4 "(b)*"
+;
+i1 Int
+i2 Int
+;
+(substr 1 1 1 2)
+(trklen i1 3)
+(trklen i2 0)
+(= i2 2)
+;
+trklen A1 0
+write D1
+intersect D1 A2
+write D2
+substr D2 1 2
+write D3
+intersect D3 A3
+write D4
+trklen D4 3
+write D5
+intersect D5 A4
+write D6
+addpred
+write sink
+isempty sink

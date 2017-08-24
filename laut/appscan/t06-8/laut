@@ -1,0 +1,14 @@
+A1 "\_HA"
+A2 ".*"
+A3 ~\(""\)
+A4 ""
+;
+;
+intersect A2 A3
+write D1
+intersect D1 A4
+write D2
+suffixof_smt A1 D2
+addpred
+write sink
+isempty sink

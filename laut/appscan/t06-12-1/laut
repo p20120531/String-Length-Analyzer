@@ -1,0 +1,13 @@
+A1 ".*"
+A2 "www\.ha45\.com\/index\.html"
+A3 ~\(".*www\.ha45\.com\/index\.html.*"\)
+;
+i1 Int
+;
+(trkidx 0 i1 0 1)
+(> i1 (- 0 1))
+;
+trkidx A1 A2 A3 0 1
+addpred
+write sink
+isempty sink

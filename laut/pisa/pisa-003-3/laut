@@ -1,0 +1,11 @@
+A1 ".*"
+A2 "x"
+A3 ~\("x"\)
+;
+;
+intersect A1 A2
+write D1
+intersect D1 A3
+addpred
+write sink
+isempty sink

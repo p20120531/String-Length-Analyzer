@@ -1,0 +1,17 @@
+A1 ".*"
+A2 "abcdef"
+A3 "abcdef"
+;
+i2 Int
+;
+(trklen i2 0)
+;
+trklen A1 0
+write D1
+intersect D1 A2
+write D2
+contains D2 A3
+write D4
+addpred
+write sink
+isempty sink

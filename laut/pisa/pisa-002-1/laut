@@ -1,0 +1,14 @@
+A1 ".*"
+A2 "\<"
+A3 "sc"
+A4 "ript scr\="
+;
+;
+contains A1 A2
+write D1
+contains D1 A3
+write D2
+contains D2 A4
+addpred
+write sink
+isempty sink

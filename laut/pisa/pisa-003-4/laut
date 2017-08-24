@@ -1,0 +1,26 @@
+A1 ".*"
+A2 ~\(".*\<.*"\)
+A3 ~\(".*\>.*"\)
+A4 "\<scr"
+A5 "ipt"
+A6 ".*"
+A7 ".*"
+A8 ~\("x"\)
+;
+;
+notcontains A1 A2
+write D1
+notcontains D1 A3
+write D2
+concate A4 A5
+write D3
+intersect A6 D3
+write D4
+contains D2 D4
+write D5
+intersect A7 A8
+write D6
+intersect D5 D6
+addpred
+write sink
+isempty sink

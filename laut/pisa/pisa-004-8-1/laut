@@ -1,0 +1,30 @@
+A1 ".*"
+A6 ~\(".*\/.*"\)
+A7 ".*"
+A8 ".*"
+A9 "\."
+A10 ~\(".*\..*"\)
+A11 ".*"
+A12 "\.\.\/"
+;
+i1 Int
+i3 Int
+;
+(= i1 (- 0 1))
+(trkidx 0 i3 0 1)
+(= i3 (- 0 1))
+;
+contains A1 A6
+write D7
+intersect D7 A7
+write D9
+intersect D9 A8
+write D10
+trkidx D10 A9 A10 0 1
+write D11
+intersect D11 A11
+write D12
+contains D12 A12
+addpred
+write sink
+isempty sink

@@ -1,0 +1,41 @@
+A1 ".*"
+A2 "http\:\/\/xf\.house\.somesite\.com\/"
+A3 ".*"
+A4 "\/search\/0\-0\-0\-0\-0\-0\-0\-0\-0\-1\-1\.html"
+A5 "\?keyword\="
+A6 ".*"
+A7 ~\(" .*"\)
+A8 ~\("	.*"\)
+A9 ~\(".*	"\)
+A10 ~\(".* "\)
+A11 ".*"
+A12 ~\(""\)
+A13 ".*"
+;
+;
+concate A2 A3
+write D1
+concate D1 A4
+write D2
+intersect A1 D2
+write D3
+notprefixof_smt A7 A6
+write D4
+notprefixof_smt A8 D4
+write D5
+notsuffixof_smt A9 D5
+write D6
+notsuffixof_smt A10 D6
+write D7
+intersect A11 A12
+write D8
+intersect D7 D8
+write D9
+concate A5 D9
+write D10
+concate D3 D10
+write D11
+intersect D11 A13
+addpred
+write sink
+isempty sink

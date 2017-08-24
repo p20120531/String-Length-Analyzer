@@ -1,0 +1,27 @@
+A1 ".*"
+A2 "(a)*"
+A3 "aa"
+A4 "d"
+A5 ~\(".*aa.*"\)
+A6 ".*"
+;
+i1 Int
+i2 Int
+;
+(trklen i1 1)
+(trklen i2 0)
+(= 9 (+ i1 i2))
+;
+trklen A1 0
+write D1
+intersect D1 A2
+write D2
+replace D2 A3 A4 A5
+write D3
+intersect D3 A6
+write D4
+trklen D4 1
+write D5
+addpred
+write sink
+isempty sink

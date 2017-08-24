@@ -1,0 +1,12 @@
+A1 ".*"
+A3 ~\(".*www\.ha45\.com\/index\.html.*"\)
+;
+i1 Int
+;
+(= i1 (- 0 1))
+(> i1 (- 0 1))
+;
+notcontains A1 A3
+addpred
+write sink
+isempty sink

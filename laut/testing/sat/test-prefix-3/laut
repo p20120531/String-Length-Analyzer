@@ -1,0 +1,13 @@
+A1 ".*"
+A2 "abc"
+A3 "abc"
+;
+;
+;
+intersect A1 A2
+write D1
+prefixof_smt D1 A3
+write D2
+addpred
+write sink
+isempty sink

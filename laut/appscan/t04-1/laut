@@ -1,0 +1,38 @@
+A1 ".*"
+A2 ".*"
+A3 "(\?|\;)searchLang\=(a|b|c|d|e|f|g|h|i|j|k|l|m|n)"
+A4 ".*"
+A5 ""
+A6 ~\(""\)
+A7 ".*"
+A8 "expires\=Thu\, 18 Dec 2013 12\:00\:00 UTC\;searchLang\="
+A9 ".*"
+A10 "domain\=www\.somesite\.com"
+;
+i1 Int
+;
+(trklen i1 0)
+(> i1 12)
+;
+trklen A2 0
+write D1
+intersect D1 A3
+write D2
+intersect A4 A5
+write D3
+intersect A1 A6
+write D4
+concate D2 D3
+write D5
+concate D4 D5
+write D6
+intersect D6 A7
+write D7
+concate A9 A10
+write D8
+concate A8 D8
+write D9
+intersect D7 D9
+addpred
+write sink
+isempty sink

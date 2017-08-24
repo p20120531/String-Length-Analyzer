@@ -1,0 +1,12 @@
+A1 ".*"
+A3 ~\(".*eOfferCode.*"\)
+;
+index Int
+;
+(= index (- 0 1))
+(= index (- 0 1))
+;
+notcontains A1 A3
+addpred
+write sink
+isempty sink

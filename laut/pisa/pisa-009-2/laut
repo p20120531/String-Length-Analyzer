@@ -1,0 +1,27 @@
+A1 ".*"
+A2 "\<"
+A3 "\&lt\;"
+A4 ~\(".*\<.*"\)
+A5 "\>"
+A6 "\&gt\;"
+A7 ~\(".*\>.*"\)
+A8 ".*"
+A9 "\<br\/\>"
+A10 ".*"
+A11 "\>"
+;
+;
+replace A1 A2 A3 A4
+write D1
+replace D1 A5 A6 A7
+write D2
+intersect D2 A8
+write D3
+concate D3 A9
+write D4
+intersect D4 A10
+write D5
+contains D5 A11
+addpred
+write sink
+isempty sink

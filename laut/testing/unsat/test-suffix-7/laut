@@ -1,0 +1,21 @@
+A1 ".*"
+A2 "(a)*"
+A3 ".*"
+A4 "aa|a"
+;
+i1 Int
+;
+(trklen i1 0)
+(> i1 2)
+;
+intersect A1 A2
+write D1
+trklen D1 0
+write D2
+intersect A3 A4
+write D3
+suffixof_smt D2 D3
+write D4
+addpred
+write sink
+isempty sink

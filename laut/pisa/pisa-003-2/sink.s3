@@ -1,0 +1,6 @@
+(declare-fun s () String)
+(declare-fun var () String)
+(assert (Contains s ">") )
+(assert (= var (Concat "<scr" "ipt") ) )
+(assert (Contains s var) )
+(check-sat)

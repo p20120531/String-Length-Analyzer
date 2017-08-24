@@ -1,0 +1,30 @@
+A1 ".*"
+A2 '\<script type \= \"text\/javascript\"\>'
+A3 "\<"
+A4 "\&lt\;"
+A5 ~\(".*\<.*"\)
+A6 "\>"
+A7 "\&gt\;"
+A8 ~\(".*\>.*"\)
+A9 ".*"
+A10 "\<br\/\>"
+A11 ".*"
+A12 "\>"
+;
+;
+intersect A1 A2
+write D1
+replace D1 A3 A4 A5
+write D2
+replace D2 A6 A7 A8
+write D3
+intersect D3 A9
+write D4
+concate D4 A10
+write D5
+intersect D5 A11
+write D6
+contains D6 A12
+addpred
+write sink
+isempty sink

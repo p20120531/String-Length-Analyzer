@@ -1,0 +1,7 @@
+(declare-fun s () String)
+(declare-fun f () String)
+(declare-fun ret () String)
+(assert (= ret (ReplaceAll s "<" "&lt;") ) )
+(assert (= f (Concat  "jquery.js"  "\"></script>" ) ) )
+(assert (= s  (Concat "<script src=\"" f ) ) )
+(check-sat)

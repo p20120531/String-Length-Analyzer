@@ -1,0 +1,50 @@
+A1 ".*"
+A2 "eOfferCode"
+A3 ~\(".*eOfferCode.*"\)
+A4 ".*"
+A5 "\&"
+A6 ~\(".*\&.*"\)
+A8 ~\(".*\=.*"\)
+A9 ".*"
+A10 ~\(""\)
+;
+index Int
+index1 Int
+index2 Int
+i1 Int
+i3 Int
+i4 Int
+i5 Int
+;
+(trkidx 0 index 1 2)
+(not (= index (- 0 1)))
+(trklen i1 0)
+(= i3 (- i1 index))
+(substr index i3 3 4)
+(trkidx 0 index1 5 6)
+(not (= index1 (- 0 1)))
+(= index2 (- 0 1))
+(= i4 (+ index2 1))
+(= i5 (- index1 (+ index2 1)))
+(substr i4 i5 9 10)
+;
+trklen A1 0
+write D1
+trkidx D1 A2 A3 1 2
+write D2
+substr D2 3 4
+write D3
+intersect D3 A4
+write D4
+trkidx D4 A5 A6 5 6
+write D5
+notcontains D5 A8
+write D6
+substr D6 9 10
+write D7
+intersect D7 A9
+write D8
+intersect D8 A10
+addpred
+write sink
+isempty sink

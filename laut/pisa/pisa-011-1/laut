@@ -1,0 +1,25 @@
+A1 '\<script src\=\"'
+A2 ".*"
+A3 "jquery\.js"
+A4 '\"\>\<\/script\>'
+A5 ".*"
+A6 "\<"
+A7 "\&lt\;"
+A8 ~\(".*\<.*"\)
+A9 ".*"
+;
+;
+concate A3 A4
+write D1
+intersect A2 D1
+write D2
+concate A1 D2
+write D3
+intersect D3 A5
+write D4
+replace D4 A6 A7 A8
+write D5
+intersect D5 A9
+addpred
+write sink
+isempty sink

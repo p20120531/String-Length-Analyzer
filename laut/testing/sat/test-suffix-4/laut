@@ -1,0 +1,16 @@
+A1 ".*"
+A2 "abc"
+A3 "abc"
+;
+;
+(trklen 3 0)
+;
+intersect A1 A2
+write D1
+trklen D1 0
+write D2
+suffixof_smt D2 A3
+write D3
+addpred
+write sink
+isempty sink

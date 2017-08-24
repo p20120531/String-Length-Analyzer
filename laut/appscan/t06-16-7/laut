@@ -1,0 +1,26 @@
+A1 ".*"
+A2 "www\.ha45\.com\/index\.html"
+A3 ~\(".*www\.ha45\.com\/index\.html.*"\)
+A5 ~\(".*www\.ha45\.com\/index\.htm.*"\)
+A6 "www\.ha45\.com\/\?vit\=fws"
+A7 ~\(".*www\.ha45\.com\/\?vit\=fws.*"\)
+;
+i1 Int
+i2 Int
+i3 Int
+;
+(= i1 (- 0 1))
+(not (> i1 (- 0 1)))
+(= i2 (- 0 1))
+(not (> i2 (- 0 1)))
+(trkidx 0 i3 4 5)
+(> i3 (- 0 1))
+;
+notcontains A1 A3
+write D1
+notcontains D1 A5
+write D2
+trkidx D2 A6 A7 4 5
+addpred
+write sink
+isempty sink

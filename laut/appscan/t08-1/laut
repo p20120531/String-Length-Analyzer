@@ -1,0 +1,41 @@
+A1 ".*"
+A2 "	 	Lxxxx29886 	"
+A3 ".*" p1
+A4 "( |	)*"
+A5 ".*"
+A6 ~\(".* "\)
+A7 ~\(".*	"\)
+A8 ~\("	.*"\)
+A9 ~\(" .*"\)
+A10 ".*"
+A11 ".*"
+A12 "( |	)*"
+A13 ".*"
+;
+;
+intersect A1 A2
+write D1
+intersect A3 A4
+write D2
+notsuffixof_smt A5 A6
+write D3
+notsuffixof_smt D3 A7
+write D4
+notprefixof_smt D4 A8
+write D5
+notprefixof_smt D5 A9
+write D6
+intersect D6 A10
+write D7
+intersect A11 A12
+write D8
+concate D7 D8
+write D9
+concate D2 D9
+write D10
+intersect D1 D10
+write D11
+intersect D11 A13
+addpred
+write sink
+isempty sink

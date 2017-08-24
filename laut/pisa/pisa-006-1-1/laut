@@ -1,0 +1,57 @@
+A1 ".*"
+A2 ".*"
+A3 "\/"
+A4 ".*"
+A5 ~\(".*\/.*"\)
+A6 "\/"
+A7 ".*"
+A8 ".*"
+A9 "\."
+A10 ~\(".*\..*"\)
+A11 ".*"
+A12 "\.\.\/"
+;
+ii1 Int
+i1 Int
+i2 Int
+i3 Int
+;
+(trklen i1 1)
+(not (= i1 (- 0 1)))
+(trklen ii1 0)
+(= i2 (- ii1 i1))
+(substr i1 i2 2 3)
+(trkidx 0 i3 4 5)
+(not (= i3 (- 0 1)))
+(substr 0 i3 6 7)
+;
+trklen A1 0
+write D1
+trklen A2 1
+write D2
+notcontains A4 A5
+write D3
+concate A3 D3
+write D4
+concate D2 D4
+write D5
+intersect D1 D5
+write D6
+contains D6 A6
+write D7
+intersect D7 A7
+write D8
+substr D8 2 3
+write D9
+intersect D9 A8
+write D10
+trkidx D10 A9 A10 4 5
+write D11
+substr D11 6 7
+write D12
+intersect D12 A11
+write D13
+contains D13 A12
+addpred
+write sink
+isempty sink

@@ -1,0 +1,11 @@
+A1 "\_ha"
+A2 ".*"
+A3 "srcvit\_ha"
+;
+;
+suffixof_smt A1 A2
+write D1
+intersect D1 A3
+addpred
+write sink
+isempty sink

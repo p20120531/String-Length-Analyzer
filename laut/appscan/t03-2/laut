@@ -1,0 +1,32 @@
+A1 ".*"
+A2 ".*"
+A3 "(\?|\;)searchLang\=(a|b|c|d|e|f|g|h|i|j|k|l|m|n)"
+A4 ".*"
+A5 "\;"
+A7 ".*"
+A8 ".*"
+A9 "expires\=Thu\, 18 Dec 2013 12\:00\:00 UTC\;searchLang\=nb\;domain\=local\;"
+;
+i1 Int
+;
+(trklen i1 0)
+(> i1 11)
+;
+trklen A2 0
+write D1
+intersect D1 A3
+write D2
+concate A5 A8
+write D7
+intersect A4 D7
+write D4
+concate D2 D4
+write D5
+concate A1 D5
+write D6
+intersect D6 A7
+write D8
+intersect D8 A9
+addpred
+write sink
+isempty sink

@@ -1,0 +1,18 @@
+A1 ".*"
+A2 "aaac"
+A3 "ab"
+A4 "d"
+A5 ~\(".*ab.*"\)
+A6 ".*"
+;
+;
+;
+intersect A1 A2
+write D1
+replace D1 A3 A4 A5
+write D2
+intersect D2 A6
+write D3
+addpred
+write sink
+isempty sink

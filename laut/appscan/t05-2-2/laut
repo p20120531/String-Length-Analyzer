@@ -1,0 +1,31 @@
+A1 ".*"
+A2 ".*"
+A3 "(\?|\;)searchLang\=(a|b|c|d|e|f|g|h|i|j|k|l|m|n)"
+A10 ~\(".*\=.*"\)
+;
+idx1 Int
+len1 Int
+i1 Int
+i2 Int
+;
+(= i1 (- 0 1))
+(= idx1 (+ i1 1))
+(trklen len1 0)
+(> idx1 0)
+(> len1 idx1)
+(> len1 11)
+(= i2 (- len1 idx1))
+(substr idx1 i2 3 4)
+;
+trklen A2 0
+write D8
+notcontains D8 A10
+write D1
+intersect D1 A3
+write D2
+substr D2 3 4
+write D3
+intersect D3 A1
+addpred
+write sink
+isempty sink
